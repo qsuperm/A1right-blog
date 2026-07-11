@@ -4,15 +4,15 @@ import { CMS, SITE } from '../../config';
 export const prerender = true;
 
 const quickLinks = [
-  { label: '返回前台', href: '/', external: false },
+  { label: '返回博客', href: '/', external: false },
   { label: '英文首页', href: '/en', external: false },
   { label: 'GitHub 仓库', href: `https://github.com/${CMS.repo}`, external: true },
 ];
 
 const notes = [
-  `文章会直接提交到 ${CMS.repo} 的 ${CMS.branch} 分支`,
+  `文章会提交到 ${CMS.repo} 的 ${CMS.branch} 分支`,
   '图片会上传到 public/images/uploads',
-  '发布完成后 Cloudflare 会自动重新部署',
+  '发布后 Cloudflare Workers 会自动重新部署',
 ];
 ---
 
@@ -22,382 +22,118 @@ const notes = [
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
-    <title>{SITE.name} 后台登录</title>
+    <title>{SITE.name} · 后台管理</title>
+    <link href="/admin/config.yml" type="text/yaml" rel="cms-config-url" />
     <link rel="stylesheet" href="/admin/custom.css" />
     <style>
       :root {
-        color-scheme: dark;
-        --login-bg: #0a0f1a;
-        --login-surface: rgba(13, 19, 33, 0.84);
-        --login-surface-soft: rgba(255, 255, 255, 0.06);
-        --login-border: rgba(120, 169, 255, 0.18);
-        --login-text: #eff4ff;
-        --login-text-soft: rgba(239, 244, 255, 0.72);
-        --login-accent: #8ddfff;
-        --login-accent-strong: #85a5ff;
-        --login-shadow: 0 22px 60px rgba(3, 6, 16, 0.5);
+        color-scheme: light;
+        --mint: #20bd91;
+        --mint-deep: #109875;
+        --mint-soft: #ebf9f4;
+        --ink: #202726;
+        --muted: #6f7b77;
+        --line: rgba(25, 77, 62, 0.1);
+        --card: rgba(255, 255, 255, 0.9);
+        --shadow: 0 24px 70px rgba(21, 52, 43, 0.2);
       }
 
-      * {
-        box-sizing: border-box;
-      }
-
-      html,
+      * { box-sizing: border-box; }
+      html, body { margin: 0; min-height: 100%; font-family: var(--font-sans, 'Noto Sans SC', 'Microsoft YaHei', sans-serif); }
       body {
-        margin: 0;
-        min-height: 100%;
+        color: var(--ink);
+        background: #e9f3ef;
+      }
+      body:not(.admin-shell--cms-active) {
         background:
-          radial-gradient(circle at top left, rgba(98, 202, 255, 0.16), transparent 28%),
-          radial-gradient(circle at top right, rgba(188, 142, 255, 0.18), transparent 34%),
-          linear-gradient(180deg, #0f1524 0%, #0a0f1a 52%, #090d16 100%);
-        color: var(--login-text);
-        font-family: 'Noto Sans SC', 'Segoe UI', sans-serif;
+          linear-gradient(rgba(14, 25, 31, .42), rgba(14, 25, 31, .5)),
+          url('/images/anime-hero-room.jpg') center / cover fixed no-repeat;
       }
 
-      body.admin-shell--cms-active {
-        background: var(--login-bg);
+      .admin-login { min-height: 100vh; padding: 0 22px 38px; }
+      .admin-login__navbar {
+        width: min(1180px, 100%); min-height: 68px; margin: 0 auto;
+        padding: 0 24px; display: flex; align-items: center; justify-content: space-between; gap: 18px;
+        border: 1px solid rgba(255,255,255,.45); border-top: 0; border-radius: 0 0 16px 16px;
+        background: rgba(255,255,255,.82); box-shadow: 0 4px 18px rgba(0,0,0,.1); backdrop-filter: blur(18px);
       }
+      .admin-login__brand { display: flex; align-items: center; gap: 9px; font-weight: 850; }
+      .admin-login__brand span { font-family: var(--font-display, 'Noto Sans SC', 'Microsoft YaHei', sans-serif); font-weight: 700; letter-spacing: .015em; }
+      .admin-login__brand i { color: var(--mint); font-size: 1.8rem; font-style: normal; transform: rotate(-18deg); }
+      .admin-login__navlinks { display: flex; gap: 8px; }
+      .admin-login__navlinks a { padding: 8px 12px; border-radius: 9px; color: var(--muted); font-size: .84rem; font-weight: 700; text-decoration: none; }
+      .admin-login__navlinks a:hover { color: var(--mint-deep); background: var(--mint-soft); }
 
-      .admin-login {
-        min-height: 100vh;
-        padding: 28px;
-        display: grid;
-        place-items: center;
-      }
-
-      .admin-login__frame {
-        width: min(1080px, 100%);
-        position: relative;
-      }
-
-      .admin-login__frame::before,
-      .admin-login__frame::after {
-        content: '';
-        position: absolute;
-        border-radius: 999px;
-        filter: blur(48px);
-        opacity: 0.72;
-        z-index: 0;
-      }
-
-      .admin-login__frame::before {
-        width: 180px;
-        height: 180px;
-        left: -36px;
-        top: -30px;
-        background: rgba(98, 202, 255, 0.24);
-      }
-
-      .admin-login__frame::after {
-        width: 220px;
-        height: 220px;
-        right: -48px;
-        bottom: -44px;
-        background: rgba(167, 125, 255, 0.18);
-      }
-
+      .admin-login__frame { width: min(980px, 100%); margin: 80px auto 0; }
       .admin-login__card {
-        position: relative;
-        z-index: 1;
-        overflow: hidden;
-        display: grid;
-        grid-template-columns: minmax(280px, 0.94fr) minmax(360px, 1.06fr);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 32px;
-        background: rgba(11, 16, 28, 0.82);
-        box-shadow: var(--login-shadow);
-        backdrop-filter: blur(18px);
+        overflow: hidden; display: grid; grid-template-columns: 330px minmax(0, 1fr);
+        border: 1px solid rgba(255,255,255,.55); border-radius: 20px;
+        background: var(--card); box-shadow: var(--shadow); backdrop-filter: blur(20px);
       }
+      .admin-login__profile { padding: 22px; border-right: 1px solid var(--line); text-align: center; }
+      .admin-login__avatar { width: 100%; aspect-ratio: 1; border-radius: 14px; object-fit: cover; object-position: center; }
+      .admin-login__profile h2 { margin: 18px 0 0; font-size: 1.55rem; }
+      .admin-login__profile-line { display: block; width: 48px; height: 4px; margin: 9px auto 0; border-radius: 99px; background: var(--mint); }
+      .admin-login__profile p { margin: 13px 0 0; color: var(--muted); font-size: .9rem; line-height: 1.7; }
+      .admin-login__profile-icons { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin-top: 18px; }
+      .admin-login__profile-icons span { height: 40px; display: grid; place-items: center; border-radius: 10px; background: var(--mint-soft); color: var(--mint-deep); font-weight: 800; }
 
-      .admin-login__visual {
-        position: relative;
-        min-height: 620px;
-        padding: 28px;
-        display: flex;
-        align-items: flex-end;
-        background:
-          linear-gradient(180deg, rgba(5, 8, 16, 0.06) 0%, rgba(5, 8, 16, 0.68) 68%, rgba(5, 8, 16, 0.92) 100%),
-          url('/images/anime-hero-city.jpg') center / cover no-repeat;
-      }
+      .admin-login__content { padding: 44px; display: flex; flex-direction: column; justify-content: center; }
+      .admin-login__badge { align-self: flex-start; padding: 7px 12px; border-radius: 999px; background: var(--mint-soft); color: var(--mint-deep); font-size: .8rem; font-weight: 800; }
+      .admin-login__title { margin: 18px 0 0; font-size: clamp(2rem, 4vw, 2.8rem); line-height: 1.15; }
+      .admin-login__summary { margin: 14px 0 0; color: var(--muted); line-height: 1.8; }
+      .admin-login__meta { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
+      .admin-login__meta span { padding: 7px 10px; border-radius: 8px; background: #f5f8f7; color: var(--muted); font-size: .78rem; }
+      .admin-login__cta { margin-top: 24px; display: grid; gap: 10px; }
+      .admin-login__trigger { min-height: 48px; padding: 0 20px; border: 0; border-radius: 11px; background: var(--mint); color: #fff; font: inherit; font-weight: 850; cursor: pointer; box-shadow: 0 12px 26px rgba(32,189,145,.24); }
+      .admin-login__trigger:hover:not(:disabled) { background: #28c99b; transform: translateY(-1px); }
+      .admin-login__trigger:disabled { opacity: .55; cursor: wait; }
+      .admin-login__status { margin: 0; color: var(--muted); font-size: .84rem; }
+      .admin-login__notes { margin: 20px 0 0; padding: 15px 16px 15px 32px; border: 1px solid var(--line); border-radius: 12px; background: rgba(238,248,244,.7); color: var(--muted); font-size: .82rem; }
+      .admin-login__notes li + li { margin-top: 7px; }
 
-      .admin-login__visual::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        background:
-          radial-gradient(circle at 22% 18%, rgba(141, 223, 255, 0.24), transparent 24%),
-          linear-gradient(180deg, rgba(133, 165, 255, 0.06), transparent 22%);
-      }
+      #nc-root { min-height: 100vh; }
+      body:not(.admin-shell--cms-active) #nc-root { position: fixed; inset: 0; opacity: 0; pointer-events: none; }
+      body.admin-shell--cms-active .admin-login { display: none; }
+      body.admin-shell--cms-active #nc-root { position: relative; opacity: 1; pointer-events: auto; }
 
-      .admin-login__avatar {
-        position: relative;
-        z-index: 1;
-        width: 88px;
-        height: 88px;
-        border-radius: 28px;
-        display: grid;
-        place-items: center;
-        font-size: 2.3rem;
-        font-weight: 800;
-        color: #f7fbff;
-        background: linear-gradient(160deg, rgba(77, 209, 255, 0.32), rgba(152, 129, 255, 0.34));
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        box-shadow: 0 18px 36px rgba(4, 10, 22, 0.34);
-      }
-
-      .admin-login__visual-copy {
-        position: relative;
-        z-index: 1;
-        margin-left: 18px;
-      }
-
-      .admin-login__visual-copy p {
-        margin: 0;
-        color: rgba(239, 244, 255, 0.82);
-        line-height: 1.7;
-      }
-
-      .admin-login__visual-copy strong {
-        display: block;
-        margin-bottom: 10px;
-        font-size: 1.24rem;
-        color: #f3f8ff;
-      }
-
-      .admin-login__content {
-        padding: 42px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-      }
-
-      .admin-login__badge {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        align-self: flex-start;
-        min-height: 34px;
-        padding: 0 14px;
-        border-radius: 999px;
-        background: rgba(141, 223, 255, 0.12);
-        color: #b9eeff;
-        font-size: 0.92rem;
-        font-weight: 700;
-      }
-
-      .admin-login__title {
-        margin: 18px 0 0;
-        font-size: clamp(2.3rem, 5vw, 3.2rem);
-        line-height: 1.08;
-      }
-
-      .admin-login__summary {
-        margin: 16px 0 0;
-        color: var(--login-text-soft);
-        line-height: 1.8;
-        font-size: 1.02rem;
-      }
-
-      .admin-login__meta {
-        margin-top: 22px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-      }
-
-      .admin-login__meta span {
-        display: inline-flex;
-        align-items: center;
-        min-height: 38px;
-        padding: 0 14px;
-        border-radius: 999px;
-        background: var(--login-surface-soft);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        color: rgba(239, 244, 255, 0.86);
-        font-size: 0.92rem;
-      }
-
-      .admin-login__cta {
-        margin-top: 26px;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-      }
-
-      .admin-login__trigger {
-        min-width: 220px;
-        min-height: 52px;
-        padding: 0 22px;
-        border: 0;
-        border-radius: 999px;
-        background: linear-gradient(135deg, #79dfff, #8a9eff 72%, #ab8cff);
-        color: #08111f;
-        font-weight: 800;
-        font-size: 1rem;
-        cursor: pointer;
-        box-shadow: 0 16px 34px rgba(86, 144, 255, 0.32);
-        transition: transform 160ms ease, filter 160ms ease, opacity 160ms ease;
-      }
-
-      .admin-login__trigger:hover:not(:disabled) {
-        transform: translateY(-1px);
-        filter: brightness(1.04);
-      }
-
-      .admin-login__trigger:disabled {
-        opacity: 0.52;
-        cursor: wait;
-      }
-
-      .admin-login__status {
-        margin: 0;
-        color: rgba(239, 244, 255, 0.68);
-        font-size: 0.95rem;
-      }
-
-      .admin-login__links {
-        margin-top: 24px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 12px;
-      }
-
-      .admin-login__link {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 42px;
-        padding: 0 14px;
-        border-radius: 999px;
-        border: 1px solid var(--login-border);
-        background: rgba(116, 148, 255, 0.08);
-        color: #f4f8ff;
-        font-weight: 700;
-        text-decoration: none;
-      }
-
-      .admin-login__notes {
-        margin: 24px 0 0;
-        padding: 18px 18px 18px 20px;
-        border-radius: 22px;
-        background: rgba(255, 255, 255, 0.04);
-        border: 1px solid rgba(255, 255, 255, 0.06);
-        color: rgba(239, 244, 255, 0.8);
-      }
-
-      .admin-login__notes li + li {
-        margin-top: 10px;
-      }
-
-      #nc-root {
-        min-height: 100vh;
-      }
-
-      body:not(.admin-shell--cms-active) #nc-root {
-        position: fixed;
-        inset: 0;
-        opacity: 0;
-        pointer-events: none;
-      }
-
-      body.admin-shell--cms-active .admin-login {
-        display: none;
-      }
-
-      body.admin-shell--cms-active #nc-root {
-        position: relative;
-        inset: auto;
-        opacity: 1;
-        pointer-events: auto;
-      }
-
-      @media (max-width: 920px) {
-        .admin-login {
-          padding: 18px;
-        }
-
-        .admin-login__card {
-          grid-template-columns: 1fr;
-        }
-
-        .admin-login__visual {
-          min-height: 300px;
-        }
-      }
-
-      @media (max-width: 560px) {
-        .admin-login__content,
-        .admin-login__visual {
-          padding: 22px;
-        }
-
-        .admin-login__title {
-          font-size: 2rem;
-        }
-
-        .admin-login__meta,
-        .admin-login__links {
-          flex-direction: column;
-        }
-
-        .admin-login__link,
-        .admin-login__trigger {
-          width: 100%;
-        }
+      @media (max-width: 760px) {
+        .admin-login { padding: 0 12px 24px; }
+        .admin-login__navbar { padding: 0 14px; }.admin-login__navlinks a:nth-child(2) { display: none; }
+        .admin-login__frame { margin-top: 28px; }.admin-login__card { grid-template-columns: 1fr; }
+        .admin-login__profile { border-right: 0; border-bottom: 1px solid var(--line); }
+        .admin-login__avatar { max-height: 260px; }.admin-login__content { padding: 28px 22px; }
       }
     </style>
   </head>
   <body>
     <div class="admin-login" id="admin-login-shell">
+      <header class="admin-login__navbar">
+        <div class="admin-login__brand"><i>❧</i><span>{SITE.name}</span></div>
+        <nav class="admin-login__navlinks">
+          {quickLinks.map((item) => <a href={item.href} target={item.external ? '_blank' : undefined} rel={item.external ? 'noreferrer' : undefined}>{item.label}</a>)}
+        </nav>
+      </header>
+
       <main class="admin-login__frame">
         <section class="admin-login__card">
-          <div class="admin-login__visual">
-            <div class="admin-login__avatar">{SITE.avatarText}</div>
-            <div class="admin-login__visual-copy">
-              <strong>{SITE.englishName}</strong>
-              <p>轻量后台 + 二次元封面 + GitHub 同步发布</p>
-            </div>
+          <div class="admin-login__profile">
+            <img class="admin-login__avatar" src="/images/a1right-avatar.png" alt={SITE.author} />
+            <h2>{SITE.author}</h2><i class="admin-login__profile-line"></i>
+            <p>学生 · 安全学习者<br />Web 安全 / CTF / Agent 渗透</p>
+            <div class="admin-login__profile-icons"><span>▤</span><span>⌘</span><span>#</span></div>
           </div>
 
           <div class="admin-login__content">
-            <div class="admin-login__badge">Decap CMS · GitHub 后台</div>
-            <h1 class="admin-login__title">{SITE.name} 后台登录</h1>
-            <p class="admin-login__summary">
-              登录后就能在线写文章、传图片、发布 Web 安全 / CTF / Agent 渗透内容。整体走轻量博客后台风格，但保留你现在的二次元气质。
-            </p>
-
-            <div class="admin-login__meta">
-              <span>{CMS.repo}</span>
-              <span>{CMS.branch}</span>
-              <span>{SITE.provisionalUrl}</span>
-            </div>
-
+            <div class="admin-login__badge">FIREFLY · CONTENT STUDIO</div>
+            <h1 class="admin-login__title">登录博客后台</h1>
+            <p class="admin-login__summary">通过 GitHub 登录后，可以在线写文章、上传图片并发布中英文安全笔记。</p>
+            <div class="admin-login__meta"><span>{CMS.repo}</span><span>{CMS.branch}</span><span>Decap CMS</span></div>
             <div class="admin-login__cta">
-              <button class="admin-login__trigger" id="admin-login-trigger" type="button" disabled>
-                使用 GitHub 登录
-              </button>
+              <button class="admin-login__trigger" id="admin-login-trigger" type="button" disabled>使用 GitHub 登录</button>
               <p class="admin-login__status" id="admin-login-status">正在加载后台登录模块…</p>
             </div>
-
-            <div class="admin-login__links">
-              {quickLinks.map((item) => (
-                <a
-                  class="admin-login__link"
-                  href={item.href}
-                  target={item.external ? '_blank' : undefined}
-                  rel={item.external ? 'noreferrer' : undefined}
-                >
-                  {item.label}
-                </a>
-              ))}
-            </div>
-
-            <ul class="admin-login__notes">
-              {notes.map((item) => (
-                <li>{item}</li>
-              ))}
-            </ul>
+            <ul class="admin-login__notes">{notes.map((item) => <li>{item}</li>)}</ul>
           </div>
         </section>
       </main>
@@ -412,74 +148,47 @@ const notes = [
       const cmsRoot = document.getElementById('nc-root');
       let cmsHasEnteredApp = false;
 
-      const cmsTextTranslations = new Map([
-        ['内容', '文章管理'],
-        ['媒体', '图片库'],
-        ['集合', '内容栏目'],
+      const translations = new Map([
+        ['Content', '文章管理'], ['Media', '图片库'], ['Collections', '内容栏目'],
+        ['New Chinese Post', '新建中文文章'], ['New English Post', '新建英文文章'],
       ]);
-
-      const cmsAttributeTranslations = new Map([
-        ['Account options dropdown', '账户菜单'],
-        ['List view option', '列表视图'],
-        ['Grid view option', '卡片视图'],
-        ['Strikethrough', '删除线'],
-        ['Set publishedAt to now', '将发布日期设为今天'],
-        ['Set updatedAt to now', '将更新日期设为今天'],
+      const attributeTranslations = new Map([
+        ['Account options dropdown', '账户菜单'], ['List view option', '列表视图'], ['Grid view option', '卡片视图'],
+        ['Strikethrough', '删除线'], ['Set publishedAt to now', '将发布日期设为现在'], ['Set updatedAt to now', '将更新日期设为现在'],
       ]);
 
       const syncRouteClass = () => {
         const hash = window.location.hash;
         document.body.classList.toggle('admin-route--editor', /\/(new|entries\/)/.test(hash));
-        document.body.classList.toggle(
-          'admin-route--collection',
-          hash.startsWith('#/collections/') && !/\/(new|entries\/)/.test(hash),
-        );
+        document.body.classList.toggle('admin-route--collection', hash.startsWith('#/collections/') && !/\/(new|entries\/)/.test(hash));
         document.body.classList.toggle('admin-route--dashboard', hash === '#/' || hash === '');
       };
 
       const localizeCmsUI = () => {
         if (!cmsRoot) return;
-
         cmsRoot.querySelectorAll('[aria-label], [title]').forEach((element) => {
           ['aria-label', 'title'].forEach((attribute) => {
             const current = element.getAttribute(attribute);
-            const translated = current ? cmsAttributeTranslations.get(current) : null;
+            const translated = current ? attributeTranslations.get(current) : null;
             if (translated) element.setAttribute(attribute, translated);
           });
         });
-
         const walker = document.createTreeWalker(cmsRoot, NodeFilter.SHOW_TEXT);
-        const textNodes = [];
+        const nodes = [];
         let node;
-
-        while ((node = walker.nextNode())) textNodes.push(node);
-
-        textNodes.forEach((textNode) => {
+        while ((node = walker.nextNode())) nodes.push(node);
+        nodes.forEach((textNode) => {
           const value = textNode.nodeValue?.trim();
-          const translated = value ? cmsTextTranslations.get(value) : null;
+          const translated = value ? translations.get(value) : null;
           if (translated) textNode.nodeValue = textNode.nodeValue.replace(value, translated);
         });
-
-        const siteLink = cmsRoot.querySelector('a[href="https://a1right-blog.3223771807.workers.dev"]');
-        if (siteLink && siteLink.textContent?.includes('workers.dev')) siteLink.textContent = '查看博客 ↗';
-
         syncRouteClass();
       };
 
-      const findGithubButton = () => {
-        const buttons = Array.from(cmsRoot?.querySelectorAll('button') ?? []);
-        return buttons.find((button) => /github|登录|log in/i.test(button.textContent ?? '')) ?? null;
-      };
-
+      const findGithubButton = () => Array.from(cmsRoot?.querySelectorAll('button') ?? []).find((button) => /github|登录|log in/i.test(button.textContent ?? '')) ?? null;
       const cmsEditorReady = () => {
-        const structuralMatch =
-          Boolean(cmsRoot?.querySelector('aside')) ||
-          Boolean(cmsRoot?.querySelector('[class*="CollectionContainer"]')) ||
-          Boolean(cmsRoot?.querySelector('[class*="EditorContainer"]')) ||
-          Boolean(cmsRoot?.querySelector('[class*="ToolbarContainer"]'));
-
-        if (structuralMatch) cmsHasEnteredApp = true;
-
+        const ready = Boolean(cmsRoot?.querySelector('aside')) || Boolean(cmsRoot?.querySelector('[class*="CollectionContainer"]')) || Boolean(cmsRoot?.querySelector('[class*="EditorContainer"]')) || Boolean(cmsRoot?.querySelector('[class*="ToolbarContainer"]'));
+        if (ready) cmsHasEnteredApp = true;
         return cmsHasEnteredApp;
       };
 
@@ -487,65 +196,35 @@ const notes = [
         localizeCmsUI();
         const githubButton = findGithubButton();
         const editorReady = cmsEditorReady();
-
         document.body.classList.toggle('admin-shell--cms-active', editorReady);
-
         if (editorReady) {
           loginTrigger?.setAttribute('disabled', 'disabled');
-          if (loginStatus) loginStatus.textContent = '已进入后台，正在展开编辑器…';
-          return;
-        }
-
-        if (githubButton) {
+          if (loginStatus) loginStatus.textContent = '已进入后台';
+        } else if (githubButton) {
           loginTrigger?.removeAttribute('disabled');
-          if (loginStatus) loginStatus.textContent = '后台已连接完成，点击按钮开始 GitHub 授权。';
-          return;
+          if (loginStatus) loginStatus.textContent = '后台连接完成，可以开始 GitHub 授权';
+        } else {
+          loginTrigger?.setAttribute('disabled', 'disabled');
+          if (loginStatus) loginStatus.textContent = '正在加载后台登录模块…';
         }
-
-        loginTrigger?.setAttribute('disabled', 'disabled');
-        if (loginStatus) loginStatus.textContent = '正在加载后台登录模块…';
       };
 
       loginTrigger?.addEventListener('click', () => {
         const githubButton = findGithubButton();
-
-        if (!githubButton) {
-          if (loginStatus) loginStatus.textContent = '登录按钮还没准备好，稍等 1 秒再试。';
-          syncAdminState();
-          return;
-        }
-
+        if (!githubButton) { if (loginStatus) loginStatus.textContent = '登录模块还未准备好，请稍后再试'; return; }
         if (loginStatus) loginStatus.textContent = '正在打开 GitHub 授权窗口…';
         githubButton.click();
       });
 
-      const decapObserver = new MutationObserver(() => {
-        syncAdminState();
-      });
-
-      if (cmsRoot) {
-        decapObserver.observe(cmsRoot, {
-          childList: true,
-          subtree: true,
-          attributes: true,
-        });
-      }
-
-      window.addEventListener('hashchange', () => {
-        syncRouteClass();
-        window.setTimeout(syncAdminState, 60);
-      });
-
+      if (cmsRoot) new MutationObserver(syncAdminState).observe(cmsRoot, { childList: true, subtree: true, attributes: true });
+      window.addEventListener('hashchange', () => window.setTimeout(syncAdminState, 60));
       syncAdminState();
 
       const decapScript = document.createElement('script');
       decapScript.src = 'https://unpkg.com/decap-cms@3.14.1/dist/decap-cms.js';
       decapScript.defer = true;
-      decapScript.onload = () => syncAdminState();
-      decapScript.onerror = () => {
-        if (loginStatus) loginStatus.textContent = '后台登录模块加载失败，刷新页面后再试一次。';
-      };
-
+      decapScript.onload = syncAdminState;
+      decapScript.onerror = () => { if (loginStatus) loginStatus.textContent = '后台模块加载失败，请刷新页面重试'; };
       document.body.append(decapScript);
       window.setInterval(syncAdminState, 1200);
     </script>

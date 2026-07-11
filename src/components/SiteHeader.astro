@@ -15,35 +15,35 @@ const postsHref = getPostsIndexUrl(locale);
 const hasGithub = SITE.githubUrl.trim().length > 0;
 
 const nav = [
-  { href: homeHref, label: UI[locale].home },
-  { href: postsHref, label: UI[locale].posts },
-  { href: getCategoriesIndexUrl(locale), label: UI[locale].categories },
-  { href: getTagsIndexUrl(locale), label: UI[locale].tags },
+  { href: homeHref, label: UI[locale].home, icon: '⌂' },
+  { href: postsHref, label: UI[locale].posts, icon: '▤' },
+  { href: getCategoriesIndexUrl(locale), label: UI[locale].categories, icon: '♟' },
+  { href: getTagsIndexUrl(locale), label: UI[locale].tags, icon: '⌗' },
 ];
 ---
 
 <header class="site-header">
   <div class="site-header__inner">
     <a class="site-logo" href={homeHref} aria-label={SITE.author}>
-      <span class="site-logo__mark">A1</span>
+      <span class="site-logo__mark" aria-hidden="true">❧</span>
       <span class="site-logo__text">{locale === 'en' ? SITE.englishName : SITE.name}</span>
     </a>
 
     <nav class="site-nav" aria-label="Primary navigation">
       {nav.map((item) => (
-        <a href={item.href}>{item.label}</a>
+        <a href={item.href}><span aria-hidden="true">{item.icon}</span>{item.label}</a>
       ))}
     </nav>
 
     <div class="site-header__actions">
       <SearchOverlay locale={locale} />
       {hasGithub && (
-        <a class="site-header__link" href={SITE.githubUrl} target="_blank" rel="noreferrer">
-          {UI[locale].github}
+        <a class="site-header__link site-header__link--github" href={SITE.githubUrl} target="_blank" rel="noreferrer">
+          ◉
         </a>
       )}
-      <a class="site-header__link" href={switchHref} aria-label={UI[locale].switchLanguageLabel}>
-        {UI[locale].switchLanguage}
+      <a class="site-header__link site-header__link--language" href={switchHref} aria-label={UI[locale].switchLanguageLabel}>
+        文
       </a>
       <ThemeToggle locale={locale} />
     </div>

@@ -1,0 +1,192 @@
+@font-face {
+  font-family: "HarmonyOS Sans SC";
+  src:
+    local(HarmonyOS_Sans_SC_Regular),
+    local(HarmonyOS_Sans_SC),
+    local("HarmonyOS Sans SC Regular"),
+    local("HarmonyOS Sans SC"),
+    url("/assets/fonts/harmonyos/HarmonyOS_Sans_SC_Regular_base.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0000-00FF,
+    U+0100-024F,
+    U+0250-02AF,
+    U+2000-206F,
+    U+20A0-20CF,
+    U+2100-214F,
+    U+2150-218F,
+    U+2190-21FF,
+    U+2200-22FF,
+    U+2300-23FF,
+    U+2460-24FF,
+    U+2500-257F,
+    U+25A0-25FF,
+    U+2600-26FF,
+    U+2E80-2EFF,
+    U+3000-303F,
+    U+31C0-31EF,
+    U+3200-32FF,
+    U+3300-33FF,
+    U+FE10-FE1F,
+    U+FE30-FE4F,
+    U+FF00-FFEF;
+}
+
+@font-face {
+  font-family: "HarmonyOS Sans SC";
+  src:
+    local(HarmonyOS_Sans_SC_Regular),
+    local(HarmonyOS_Sans_SC),
+    local("HarmonyOS Sans SC Regular"),
+    local("HarmonyOS Sans SC"),
+    url("/assets/fonts/harmonyos/HarmonyOS_Sans_SC_Regular_cjk_1.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+4E00-562A;
+}
+
+@font-face {
+  font-family: "HarmonyOS Sans SC";
+  src:
+    local(HarmonyOS_Sans_SC_Regular),
+    local(HarmonyOS_Sans_SC),
+    local("HarmonyOS Sans SC Regular"),
+    local("HarmonyOS Sans SC"),
+    url("/assets/fonts/harmonyos/HarmonyOS_Sans_SC_Regular_cjk_2.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+562B-5E55;
+}
+
+@font-face {
+  font-family: "HarmonyOS Sans SC";
+  src:
+    local(HarmonyOS_Sans_SC_Regular),
+    local(HarmonyOS_Sans_SC),
+    local("HarmonyOS Sans SC Regular"),
+    local("HarmonyOS Sans SC"),
+    url("/assets/fonts/harmonyos/HarmonyOS_Sans_SC_Regular_cjk_3.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+5E56-6680;
+}
+
+@font-face {
+  font-family: "HarmonyOS Sans SC";
+  src:
+    local(HarmonyOS_Sans_SC_Regular),
+    local(HarmonyOS_Sans_SC),
+    local("HarmonyOS Sans SC Regular"),
+    local("HarmonyOS Sans SC"),
+    url("/assets/fonts/harmonyos/HarmonyOS_Sans_SC_Regular_cjk_4.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+6681-6EAB;
+}
+
+@font-face {
+  font-family: "HarmonyOS Sans SC";
+  src:
+    local(HarmonyOS_Sans_SC_Regular),
+    local(HarmonyOS_Sans_SC),
+    local("HarmonyOS Sans SC Regular"),
+    local("HarmonyOS Sans SC"),
+    url("/assets/fonts/harmonyos/HarmonyOS_Sans_SC_Regular_cjk_5.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+6EAC-76D6;
+}
+
+@font-face {
+  font-family: "HarmonyOS Sans SC";
+  src:
+    local(HarmonyOS_Sans_SC_Regular),
+    local(HarmonyOS_Sans_SC),
+    local("HarmonyOS Sans SC Regular"),
+    local("HarmonyOS Sans SC"),
+    url("/assets/fonts/harmonyos/HarmonyOS_Sans_SC_Regular_cjk_6.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+76D7-7F01;
+}
+
+@font-face {
+  font-family: "HarmonyOS Sans SC";
+  src:
+    local(HarmonyOS_Sans_SC_Regular),
+    local(HarmonyOS_Sans_SC),
+    local("HarmonyOS Sans SC Regular"),
+    local("HarmonyOS Sans SC"),
+    url("/assets/fonts/harmonyos/HarmonyOS_Sans_SC_Regular_cjk_7.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+7F02-872C;
+}
+
+@font-face {
+  font-family: "HarmonyOS Sans SC";
+  src:
+    local(HarmonyOS_Sans_SC_Regular),
+    local(HarmonyOS_Sans_SC),
+    local("HarmonyOS Sans SC Regular"),
+    local("HarmonyOS Sans SC"),
+    url("/assets/fonts/harmonyos/HarmonyOS_Sans_SC_Regular_cjk_8.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+872D-8F57;
+}
+
+@font-face {
+  font-family: "HarmonyOS Sans SC";
+  src:
+    local(HarmonyOS_Sans_SC_Regular),
+    local(HarmonyOS_Sans_SC),
+    local("HarmonyOS Sans SC Regular"),
+    local("HarmonyOS Sans SC"),
+    url("/assets/fonts/harmonyos/HarmonyOS_Sans_SC_Regular_cjk_9.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+8F58-9782;
+}
+
+@font-face {
+  font-family: "HarmonyOS Sans SC";
+  src:
+    local(HarmonyOS_Sans_SC_Regular),
+    local(HarmonyOS_Sans_SC),
+    local("HarmonyOS Sans SC Regular"),
+    local("HarmonyOS Sans SC"),
+    url("/assets/fonts/harmonyos/HarmonyOS_Sans_SC_Regular_cjk_10.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  unicode-range: U+9783-9FA5;
+}
+
+@font-face {
+  font-family: "LXGW WenKai Title";
+  src:
+    local("LXGW WenKai Medium"),
+    local("LXGW WenKai"),
+    url("/assets/fonts/lxgw/lxgw-wenkai-title.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-sans: "HarmonyOS Sans SC", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-display: "LXGW WenKai Title", "HarmonyOS Sans SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "Cascadia Code", "JetBrains Mono", "Fira Code", monospace;
+}

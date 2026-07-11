@@ -1,3 +1,5 @@
+@import url('/assets/fonts/fonts.css');
+
 :root {
   color-scheme: dark;
   --admin-bg: #091019;
@@ -28,7 +30,7 @@ input,
 textarea,
 button,
 select {
-  font-family: "HarmonyOS Sans SC", "MiSans", "Noto Sans SC", "Microsoft YaHei", sans-serif !important;
+  font-family: var(--font-sans) !important;
 }
 
 html,
@@ -97,7 +99,7 @@ a {
 code,
 pre,
 #nc-root [class*="CodeMirror"] {
-  font-family: "Cascadia Code", "JetBrains Mono", "Fira Code", monospace !important;
+  font-family: var(--font-mono) !important;
 }
 
 #nc-root,
@@ -742,4 +744,164 @@ pre,
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* Firefly mint workspace */
+:root {
+  color-scheme: light;
+  --admin-bg: #edf5f1;
+  --admin-bg-deep: #e7f1ed;
+  --admin-panel: rgba(255, 255, 255, 0.94);
+  --admin-panel-solid: #ffffff;
+  --admin-panel-raised: #f2f8f5;
+  --admin-panel-soft: rgba(32, 189, 145, 0.07);
+  --admin-border: rgba(25, 77, 62, 0.1);
+  --admin-border-strong: rgba(32, 189, 145, 0.28);
+  --admin-text: #202726;
+  --admin-text-soft: #6f7b77;
+  --admin-text-faint: #8a9591;
+  --admin-cyan: #20bd91;
+  --admin-cyan-strong: #18a980;
+  --admin-coral: #20bd91;
+  --admin-coral-soft: rgba(32, 189, 145, 0.1);
+  --admin-success: #20bd91;
+  --admin-shadow: 0 14px 42px rgba(29, 68, 57, 0.1);
+}
+
+html,
+body { background: var(--admin-bg-deep); color: var(--admin-text); }
+
+body.admin-shell--cms-active {
+  background:
+    radial-gradient(circle at 86% 0%, rgba(32, 189, 145, .09), transparent 30rem),
+    radial-gradient(circle at 5% 82%, rgba(118, 194, 173, .08), transparent 28rem),
+    linear-gradient(145deg, #edf6f2, #e8f2ee 60%, #f3f8f6) !important;
+}
+
+body.admin-shell--cms-active::before {
+  opacity: .3;
+  background-image:
+    linear-gradient(rgba(32, 189, 145, .035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(32, 189, 145, .035) 1px, transparent 1px);
+}
+
+::selection { color: #fff; background: var(--admin-cyan); }
+* { scrollbar-color: rgba(32, 189, 145, .28) transparent; }
+*::-webkit-scrollbar-thumb { background: rgba(32, 189, 145, .26); background-clip: padding-box; }
+
+#nc-root header[class*="AppHeader"],
+#nc-root [class*="ToolbarContainer"] {
+  border-color: var(--admin-border) !important;
+  background: rgba(255, 255, 255, .88) !important;
+  box-shadow: 0 4px 18px rgba(29, 68, 57, .08) !important;
+  backdrop-filter: blur(20px) saturate(125%);
+}
+
+#nc-root [class*="AppHeaderLogo"]::after { border-color: #fff; }
+#nc-root [class*="AppHeaderLogo"] img {
+  border-color: var(--admin-border-strong) !important;
+  background: var(--admin-panel-raised) !important;
+  box-shadow: none !important;
+}
+
+#nc-root [class*="AppHeaderNavLink"]:hover,
+#nc-root [class*="AppHeaderButton"]:hover,
+#nc-root .header-link-active { background: var(--admin-panel-soft) !important; }
+
+#nc-root [class*="AppHeaderQuickNewButton"],
+#nc-root [class*="CollectionTopNewButton"],
+#nc-root [class*="PublishButton"] {
+  border-color: rgba(32, 189, 145, .34) !important;
+  color: #fff !important;
+  background: #20bd91 !important;
+  box-shadow: 0 10px 24px rgba(32, 189, 145, .2) !important;
+}
+
+#nc-root [class*="AvatarDropdownButton"] {
+  color: var(--admin-cyan) !important;
+  background: var(--admin-panel-raised) !important;
+}
+
+#nc-root aside[class*="SidebarContainer"],
+#nc-root [class*="CollectionTopContainer"],
+#nc-root [class*="CollectionControlsContainer"],
+#nc-root [class*="ListCard-card"],
+#nc-root [class*="ControlContainer"] {
+  border-color: var(--admin-border) !important;
+  background: var(--admin-panel) !important;
+  box-shadow: var(--admin-shadow) !important;
+}
+
+#nc-root [class*="CollectionTopContainer"] {
+  background:
+    radial-gradient(circle at 92% 20%, rgba(32, 189, 145, .1), transparent 17rem),
+    var(--admin-panel) !important;
+}
+
+#nc-root [class*="ListCard-card"]::before { background: var(--admin-cyan); }
+#nc-root [class*="ListCard-card"]:hover,
+#nc-root [class*="ControlContainer"]:focus-within {
+  border-color: var(--admin-border-strong) !important;
+  background: #fff !important;
+}
+
+#nc-root [class*="InputContainer"],
+#nc-root input:not([type="checkbox"]):not([type="radio"]),
+#nc-root textarea,
+#nc-root select,
+#nc-root [class$="-control"],
+#nc-root [class*="MarkdownControl"],
+#nc-root [class*="EditorControl"] {
+  border-color: var(--admin-border) !important;
+  color: var(--admin-text) !important;
+  background: #f6faf8 !important;
+  box-shadow: none !important;
+}
+
+#nc-root input:focus,
+#nc-root textarea:focus,
+#nc-root select:focus,
+#nc-root [class$="-control"]:focus-within {
+  border-color: rgba(32, 189, 145, .5) !important;
+  box-shadow: 0 0 0 3px rgba(32, 189, 145, .09) !important;
+}
+
+#nc-root [class*="ImageControl"] button,
+#nc-root [aria-label="image field"] button,
+#nc-root [aria-label="datetime field"] button { background: var(--admin-panel-raised) !important; }
+
+#nc-root [role="switch"] { background: #cfdad6 !important; }
+#nc-root [role="switch"][aria-checked="true"] { background: var(--admin-cyan) !important; }
+
+#nc-root [class*="EditorToolbar"],
+#nc-root [class*="ToolbarButton"] {
+  border-color: var(--admin-border) !important;
+  color: var(--admin-text-soft) !important;
+  background: #eef6f2 !important;
+}
+
+#nc-root [class*="CodeMirror"],
+#nc-root [class*="CodeMirror"] pre,
+#nc-root [class*="CodeMirror"] textarea {
+  color: #25312e !important;
+  background: #f7faf9 !important;
+}
+
+#nc-root [role="menu"],
+#nc-root [role="listbox"],
+#nc-root [class*="DropdownList"],
+#nc-root [class*="Modal"] {
+  color: var(--admin-text) !important;
+  background: #fff !important;
+  box-shadow: 0 20px 55px rgba(29, 68, 57, .16) !important;
+}
+
+#nc-root [role="menuitem"]:hover,
+#nc-root [role="option"]:hover,
+#nc-root [aria-selected="true"] { background: var(--admin-panel-soft) !important; }
+
+.Toastify__toast {
+  color: var(--admin-text) !important;
+  background: #fff !important;
+  box-shadow: var(--admin-shadow) !important;
 }
