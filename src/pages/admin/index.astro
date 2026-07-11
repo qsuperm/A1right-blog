@@ -416,7 +416,23 @@ const notes = [
         return buttons.find((button) => /github/i.test(button.textContent ?? '')) ?? null;
       };
 
-      const cmsEditorReady = () => Boolean(cmsRoot?.querySelector('aside')) && Boolean(cmsRoot?.querySelector('main'));
+      const cmsEditorReady = () => {
+        const rootText = cmsRoot?.textContent?.trim() ?? '';
+        const hash = window.location.hash;
+        const hashSuggestsApp =
+          hash.startsWith('#/collections/') ||
+          hash.startsWith('#/collections') ||
+          hash.startsWith('#/media') ||
+          hash.startsWith('#/search') ||
+          hash.startsWith('#/workflow');
+        const structuralMatch =
+          Boolean(cmsRoot?.querySelector('aside')) ||
+          Boolean(cmsRoot?.querySelector('main')) ||
+          Boolean(cmsRoot?.querySelector('form')) ||
+          Boolean(cmsRoot?.querySelector('[role="main"]'));
+
+        return structuralMatch || (hashSuggestsApp && rootText.length > 0);
+      };
 
       const syncAdminState = () => {
         const githubButton = findGithubButton();
@@ -464,6 +480,10 @@ const notes = [
           attributes: true,
         });
       }
+
+      window.addEventListener('hashchange', () => {
+        window.setTimeout(syncAdminState, 60);
+      });
 
       syncAdminState();
 
