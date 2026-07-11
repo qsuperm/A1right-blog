@@ -26,5 +26,6 @@ pnpm-debug.log*
 # local editor / AI tooling
 .vscode/
 .codex-artifacts/
+.wrangler/
 AGENTS.md
 CLAUDE.md

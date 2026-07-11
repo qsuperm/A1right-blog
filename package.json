@@ -28,7 +28,9 @@
     "@astrojs/check": "^0.9.9",
     "concurrently": "^10.0.3",
     "decap-server": "^3.9.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "wrangler": "^4.110.0"
   },
+  "packageManager": "pnpm@10.14.0",
   "description": "A1right's bilingual cybersecurity and CTF blog"
 }
