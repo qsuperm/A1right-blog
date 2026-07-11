@@ -315,6 +315,11 @@ const writingNotes = [
     </div>
 
     <noscript>需要启用 JavaScript 才能使用后台发文页面。</noscript>
-    <script src="https://unpkg.com/decap-cms@3.1.12/dist/decap-cms.js"></script>
+    <script is:inline>
+      const decapScript = document.createElement('script');
+      decapScript.src = 'https://unpkg.com/decap-cms@3.1.12/dist/decap-cms.js';
+      decapScript.defer = true;
+      document.body.append(decapScript);
+    </script>
   </body>
 </html>
