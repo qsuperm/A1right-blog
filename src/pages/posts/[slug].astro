@@ -1,0 +1,33 @@
+﻿---
+import { render } from 'astro:content';
+import PostLayout from '../../layouts/PostLayout.astro';
+import { getArticlesByLocale, getArticleUrl, getReadingMinutesFromText } from '../../utils/articles';
+
+export async function getStaticPaths() {
+  const articles = await getArticlesByLocale('zh-cn');
+  return articles.map((entry) => ({
+    params: { slug: entry.data.routeSlug },
+    props: { entry },
+  }));
+}
+
+const { entry } = Astro.props;
+const [allZh, allEn] = await Promise.all([getArticlesByLocale('zh-cn'), getArticlesByLocale('en')]);
+const articleIndex = allZh.findIndex((item) => item.id === entry.id);
+const previous = articleIndex < allZh.length - 1 ? allZh[articleIndex + 1] : undefined;
+const next = articleIndex > 0 ? allZh[articleIndex - 1] : undefined;
+const translation = allEn.find((item) => item.data.translationKey === entry.data.translationKey);
+const { Content, headings } = await render(entry);
+const readingMinutes = getReadingMinutesFromText(entry.body ?? "");
+---
+
+<PostLayout
+  entry={entry}
+  locale="zh-cn"
+  headings={headings}
+  Content={Content}
+  readingMinutes={readingMinutes}
+  previous={previous}
+  next={next}
+  alternatePath={translation ? getArticleUrl(translation) : undefined}
+/>

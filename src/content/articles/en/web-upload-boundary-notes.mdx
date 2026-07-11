@@ -1,0 +1,83 @@
+﻿---
+translationKey: web-upload-boundary-notes
+locale: en
+routeSlug: web-upload-boundary-notes
+title: "Upload boundaries: verify the real execution flow before bypass talk"
+excerpt: Trace the real upload pipeline first, then reason about extension checks, MIME checks, renaming, and reachable storage paths.
+categoryKey: web-security
+category: Web Security
+tags:
+  - File Upload
+  - Web Security
+  - Validation Flow
+publishedAt: 2026-07-10
+updatedAt: 2026-07-11
+cover: /images/anime-hero-city.jpg
+coverAlt: Anime street scene at dusk
+pinned: true
+---
+
+## Start by proving the real flow
+
+The easiest mistake in upload testing is to stack payloads before knowing which checks actually run. I now try to verify four things first:
+
+1. whether the browser only performs hint-level validation,
+2. whether a proxy rejects the request before the app sees it,
+3. which order the app uses for extension, MIME, or magic-byte checks,
+4. whether the storage path and the public access path are really the same chain.
+
+Once that flow is clear, later bypass ideas stop being guesses.
+
+## Four common turning points
+
+### 1. Front-end limits are not the boundary
+
+A visible `accept="image/*"` attribute helps UX, but it is rarely the real control. The server route, parser, and persistence logic are where the important decisions usually happen.
+
+### 2. MIME checks and extension checks drift apart easily
+
+Some stacks validate the extension first and let storage detect MIME later. Others do the opposite. Whenever two layers rely on different signals, the key question becomes: which layer makes the final allow or deny decision?
+
+```ts
+const allowExt = ['png', 'jpg', 'jpeg'];
+const ext = filename.split('.').pop()?.toLowerCase();
+
+if (!ext || !allowExt.includes(ext)) {
+  throw new Error('blocked by ext');
+}
+
+if (!contentType.startsWith('image/')) {
+  throw new Error('blocked by mime');
+}
+```
+
+This looks simple, but the final behavior changes if renaming or content sniffing happens later in the pipeline.
+
+### 3. Renaming matters more than the original suffix
+
+Uploading a name is not the same as keeping that name. If the file is always renamed to a UUID before persistence, many direct-access risks shrink immediately.
+
+### 4. The reachable path sets the real severity
+
+A file can be accepted without being executable. It can land on disk without being web-reachable. It can be reachable without being interpreted in the way an attacker wants. The decisive point is always the final observable effect.
+
+## A compact way to record evidence
+
+I like to keep a short table like this:
+
+| Layer | Observation | Result |
+| --- | --- | --- |
+| Browser | `accept` / JS hints | UX only |
+| Proxy | body size or type limits | confirm separately |
+| App | extension + MIME | likely decisive boundary |
+| Storage | rename / directory policy | affects retrieval |
+
+This keeps the later writeup anchored to what really decided the outcome.
+
+## A steadier conclusion style
+
+Instead of saying “this upload bypass works” too early, I prefer conclusions like this:
+
+> In the current chain, the decisive controls are the application-layer extension check and the rename-before-store behavior; browser hints and surface MIME values are not sufficient boundaries on their own.
+
+That reads more like engineering evidence and stays useful when the next test starts.

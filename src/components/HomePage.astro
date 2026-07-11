@@ -1,0 +1,402 @@
+﻿---
+import { SITE, UI, type Locale } from '../config';
+import {
+  CATEGORY_META,
+  formatDate,
+  getArticleUrl,
+  getArticlesByLocale,
+  getCategoryUrl,
+  getPostsIndexUrl,
+  getTagUrl,
+  getUniqueTagCount,
+  padCount,
+} from '../utils/articles';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const isEnglish = locale === 'en';
+const homeHref = isEnglish ? '/en' : '/';
+const postsHref = getPostsIndexUrl(locale);
+const githubUrl = SITE.githubUrl.trim();
+const hasGithub = githubUrl.length > 0;
+const articles = await getArticlesByLocale(locale);
+const featured = articles.find((entry) => entry.data.pinned) ?? articles[0];
+const posts = articles.filter((entry) => entry.id !== featured?.id).slice(0, 3);
+const totalTags = getUniqueTagCount(articles);
+
+const categoryCounts = articles.reduce<Record<string, number>>((acc, entry) => {
+  acc[entry.data.categoryKey] = (acc[entry.data.categoryKey] ?? 0) + 1;
+  return acc;
+}, {});
+
+const hero = isEnglish
+  ? {
+      kicker: 'Cyber Journal',
+      title: SITE.englishName,
+      subtitle: 'A bilingual note space focused on web security, CTF writeups, and agent pentest experiments.',
+      line: 'Real MDX posts are now wired into the homepage, with article detail pages and bilingual routing ready to use.',
+    }
+  : {
+      kicker: 'Cyber Journal',
+      title: SITE.name,
+      subtitle: '围绕 Web 安全、CTF 题解与 Agent 渗透实验整理的双语个人笔记站。',
+      line: '现在首页已经接入真实 MDX 文章、文章详情页，以及中英双语路由。',
+    };
+
+const ribbon = isEnglish
+  ? [
+      { label: 'Archive', count: padCount(articles.length), href: postsHref },
+      { label: 'Web', count: padCount(categoryCounts['web-security'] ?? 0), href: `${homeHref}#categories` },
+      { label: 'CTF', count: padCount(categoryCounts['ctf-writeup'] ?? 0), href: `${homeHref}#categories` },
+      { label: 'Agent', count: padCount(categoryCounts['agent-pentest'] ?? 0), href: `${homeHref}#categories` },
+    ]
+  : [
+      { label: '归档', count: padCount(articles.length), href: postsHref },
+      { label: 'Web', count: padCount(categoryCounts['web-security'] ?? 0), href: `${homeHref}#categories` },
+      { label: 'CTF', count: padCount(categoryCounts['ctf-writeup'] ?? 0), href: `${homeHref}#categories` },
+      { label: 'Agent', count: padCount(categoryCounts['agent-pentest'] ?? 0), href: `${homeHref}#categories` },
+    ];
+
+const profile = isEnglish
+  ? {
+      name: SITE.author,
+      role: 'Student / Security learner',
+      portrait: '/images/anime-profile-purple-hair.jpg',
+      desc:
+        'This notebook now keeps real articles, bilingual links, and a calmer structure that can grow with new writeups.',
+      hello: "Hello, I'm A1right.",
+      actions: [
+        { label: 'Posts', href: postsHref },
+        { label: 'Focus', href: `${homeHref}#categories` },
+      ],
+    }
+  : {
+      name: SITE.author,
+      role: '学生 / 安全学习者',
+      portrait: '/images/anime-profile-purple-hair.jpg',
+      desc:
+        '现在这本笔记已经开始承载真实文章、双语跳转和更稳定的内容结构，后面可以继续往里填安全记录。',
+      hello: '你好，我是 A1right。',
+      actions: [
+        { label: '文章流', href: postsHref },
+        { label: '专题', href: `${homeHref}#categories` },
+      ],
+    };
+
+const notices = isEnglish
+  ? {
+      title: 'Announcement',
+      lines: [
+        'Homepage cards now jump to real article pages.',
+        'Current columns: Web Security, CTF Writeups, and Agent Pentest.',
+        'Content is written in MDX and stays compatible with free Cloudflare Pages hosting.',
+      ],
+    }
+  : {
+      title: '公告',
+      lines: [
+        '首页卡片现在已经可以直接跳转到真实文章页。',
+        '当前栏目先聚焦 Web 安全、CTF 题解、Agent 渗透。',
+        '内容使用 MDX 编写，仍然保持和 Cloudflare Pages 免费部署兼容。',
+      ],
+    };
+
+const roadmap = isEnglish
+  ? {
+      title: 'Next steps',
+      lines: ['Replace sample posts with real notes', 'Add an about / links page', 'Connect the correct GitHub profile'],
+    }
+  : {
+      title: '下一步',
+      lines: ['把示例文章换成真实内容', '补一个 About / Links 页面', '填回正确的 GitHub 账号'],
+    };
+
+const categoryCards = (['web-security', 'ctf-writeup', 'agent-pentest'] as const).map((key) => ({
+  key,
+  name: CATEGORY_META[key][locale].name,
+  desc: CATEGORY_META[key][locale].desc,
+  count: categoryCounts[key] ?? 0,
+}));
+
+const stats = isEnglish
+  ? {
+      title: 'Site stats',
+      items: [
+        ['Posts', String(articles.length)],
+        ['Categories', String(categoryCards.length)],
+        ['Tags', String(totalTags)],
+        ['Search', 'Pagefind'],
+        ['Theme', 'Auto'],
+      ],
+    }
+  : {
+      title: '站点统计',
+      items: [
+        ['文章', String(articles.length)],
+        ['分类', String(categoryCards.length)],
+        ['标签', String(totalTags)],
+        ['搜索', 'Pagefind'],
+        ['主题', '自动'],
+      ],
+    };
+
+const siteInfo = isEnglish
+  ? {
+      title: 'Site info',
+      items: [
+        ['Framework', 'Astro 7'],
+        ['Deploy', 'Cloudflare Pages'],
+        ['Mode', 'Static'],
+        ['Language', 'ZH / EN'],
+      ],
+    }
+  : {
+      title: '站点信息',
+      items: [
+        ['框架', 'Astro 7'],
+        ['部署', 'Cloudflare Pages'],
+        ['模式', 'Static'],
+        ['语言', '中 / 英'],
+      ],
+    };
+
+const lab = isEnglish
+  ? {
+      title: 'Build lab',
+      lines: [
+        'Article detail pages now include cover, tags, reading time, and a table of contents.',
+        'The content system is ready for both Chinese and English posts under one collection.',
+      ],
+    }
+  : {
+      title: '建设实验区',
+      lines: [
+        '文章详情页现在已经有封面、标签、阅读时长和目录。',
+        '内容系统已经能同时承载中文和英文文章，并共用一套集合配置。',
+      ],
+    };
+
+const visuals = isEnglish
+  ? {
+      left: {
+        title: 'Mood board',
+        caption: 'Anime visuals still stay in the layout, but now they support real posts instead of acting as placeholders.',
+        image: '/images/anime-night-sky.jpg',
+        portrait: true,
+      },
+      right: {
+        title: 'Side portrait',
+        caption: 'A lighter side card keeps the homepage from becoming all text and no atmosphere.',
+        image: '/images/anime-side-portrait.jpg',
+        portrait: false,
+      },
+    }
+  : {
+      left: {
+        title: '氛围板',
+        caption: '二次元视觉还保留在页面里，但现在已经是给真实内容做陪衬，而不是单纯占位。',
+        image: '/images/anime-night-sky.jpg',
+        portrait: true,
+      },
+      right: {
+        title: '侧边人物卡',
+        caption: '用更轻一点的侧边插图，避免首页重新变成只有文字的硬邦邦布局。',
+        image: '/images/anime-side-portrait.jpg',
+        portrait: false,
+      },
+    };
+
+const readMoreLabel = isEnglish ? 'Read article' : '阅读全文';
+---
+
+<section class="firefly-hero">
+  <div class="firefly-hero__media" aria-hidden="true"></div>
+  <div class="firefly-hero__overlay"></div>
+  <div class="firefly-hero__float firefly-hero__float--left" aria-hidden="true"></div>
+  <div class="firefly-hero__float firefly-hero__float--right" aria-hidden="true"></div>
+  <div class="firefly-hero__inner">
+    <p class="firefly-hero__kicker">{hero.kicker}</p>
+    <h1>{hero.title}</h1>
+    <p class="firefly-hero__subtitle">{hero.subtitle}</p>
+    <p class="firefly-hero__line">{hero.line}</p>
+  </div>
+</section>
+
+<section class="firefly-ribbon" aria-label="Homepage channels">
+  <div class="firefly-ribbon__inner">
+    <a class="firefly-ribbon__home" href={homeHref} aria-label={UI[locale].home}>⌂</a>
+    {ribbon.map((item) => (
+      <a class="firefly-ribbon__chip" href={item.href}>
+        <span>{item.label}</span>
+        <small>{item.count}</small>
+      </a>
+    ))}
+    <a class="firefly-ribbon__more" href={`${homeHref}#lab`}>{isEnglish ? 'More' : '更多'}</a>
+  </div>
+</section>
+
+<section class="firefly-layout">
+  <aside class="firefly-side firefly-side--left">
+    <article class="ff-card ff-profile">
+      <div class="ff-profile__portrait-wrap">
+        <img class="ff-profile__portrait" src={profile.portrait} alt={profile.name} loading="lazy" />
+        <div class="ff-profile__avatar">{SITE.avatarText}</div>
+      </div>
+      <h2>{profile.name}</h2>
+      <p class="ff-profile__hello">{profile.hello}</p>
+      <p class="ff-profile__role">{profile.role}</p>
+      <p class="ff-profile__desc">{profile.desc}</p>
+
+      <div class="ff-profile__actions">
+        {profile.actions.map((item) => (
+          <a href={item.href}>{item.label}</a>
+        ))}
+        {hasGithub && (
+          <a href={githubUrl} target="_blank" rel="noreferrer">
+            {UI[locale].github}
+          </a>
+        )}
+      </div>
+    </article>
+
+    <article class={`ff-card ff-visual ${visuals.left.portrait ? 'ff-visual--portrait' : ''}`}>
+      <img src={visuals.left.image} alt={visuals.left.title} loading="lazy" />
+      <div class="ff-visual__body">
+        <h3>{visuals.left.title}</h3>
+        <p>{visuals.left.caption}</p>
+      </div>
+    </article>
+
+    <article class="ff-card ff-panel">
+      <h3>{notices.title}</h3>
+      <ul>
+        {notices.lines.map((line) => (
+          <li>{line}</li>
+        ))}
+      </ul>
+    </article>
+
+    <article class="ff-card ff-panel">
+      <h3>{roadmap.title}</h3>
+      <ul>
+        {roadmap.lines.map((line) => (
+          <li>{line}</li>
+        ))}
+      </ul>
+    </article>
+  </aside>
+
+  <main class="firefly-main">
+    <section id="posts" class="ff-feed">
+      {featured && (
+        <article class="ff-card ff-post ff-post--featured">
+          <a class="ff-post__media" href={getArticleUrl(featured)}>
+            <img src={featured.data.cover} alt={featured.data.coverAlt} loading="lazy" />
+          </a>
+          <div class="ff-post__body">
+            <div class="ff-post__meta">
+              <a href={getCategoryUrl(locale, featured.data.categoryKey)}>
+                {featured.data.pinned ? UI[locale].sticky : featured.data.category}
+              </a>
+              <time datetime={featured.data.publishedAt.toISOString()}>{formatDate(featured.data.publishedAt, locale)}</time>
+              <small>{featured.data.category}</small>
+            </div>
+            <h2><a href={getArticleUrl(featured)}>{featured.data.title}</a></h2>
+            <p>{featured.data.excerpt}</p>
+            <div class="ff-post__tags">
+              {featured.data.tags.map((tag) => (
+                <a href={getTagUrl(locale, tag)}>#{tag}</a>
+              ))}
+            </div>
+            <a class="ff-post__readmore" href={getArticleUrl(featured)}>{readMoreLabel}</a>
+          </div>
+        </article>
+      )}
+
+      {posts.map((post) => (
+        <article class="ff-card ff-post">
+          <a class="ff-post__media" href={getArticleUrl(post)}>
+            <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" />
+          </a>
+          <div class="ff-post__body">
+            <div class="ff-post__meta">
+              <a href={getCategoryUrl(locale, post.data.categoryKey)}>{post.data.category}</a>
+              <time datetime={post.data.publishedAt.toISOString()}>{formatDate(post.data.publishedAt, locale)}</time>
+              <small>{post.data.category}</small>
+            </div>
+            <h3><a href={getArticleUrl(post)}>{post.data.title}</a></h3>
+            <p>{post.data.excerpt}</p>
+            <div class="ff-post__tags">
+              {post.data.tags.map((tag) => (
+                <a href={getTagUrl(locale, tag)}>#{tag}</a>
+              ))}
+            </div>
+            <a class="ff-post__readmore" href={getArticleUrl(post)}>{readMoreLabel}</a>
+          </div>
+        </article>
+      ))}
+    </section>
+
+    <section id="categories" class="ff-focus">
+      <div class="ff-section-title">
+        <p>{UI[locale].featured}</p>
+        <h2>{isEnglish ? 'Core tracks' : '当前核心方向'}</h2>
+      </div>
+      <div class="ff-focus__grid">
+        {categoryCards.map((item) => (
+          <a class="ff-card ff-focus__card" href={getCategoryUrl(locale, item.key)}>
+            <div class="ff-focus__count">{padCount(item.count)}</div>
+            <h3>{item.name}</h3>
+            <p>{item.desc}</p>
+          </a>
+        ))}
+      </div>
+    </section>
+  </main>
+
+  <aside class="firefly-side firefly-side--right">
+    <article class="ff-card ff-stats">
+      <h3>{stats.title}</h3>
+      <ul>
+        {stats.items.map(([label, value]) => (
+          <li>
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </li>
+        ))}
+      </ul>
+    </article>
+
+    <article class="ff-card ff-stats">
+      <h3>{siteInfo.title}</h3>
+      <ul>
+        {siteInfo.items.map(([label, value]) => (
+          <li>
+            <span>{label}</span>
+            <strong>{value}</strong>
+          </li>
+        ))}
+      </ul>
+    </article>
+
+    <article class={`ff-card ff-visual ${visuals.right.portrait ? 'ff-visual--portrait' : ''}`}>
+      <img src={visuals.right.image} alt={visuals.right.title} loading="lazy" />
+      <div class="ff-visual__body">
+        <h3>{visuals.right.title}</h3>
+        <p>{visuals.right.caption}</p>
+      </div>
+    </article>
+
+    <article id="lab" class="ff-card ff-panel">
+      <h3>{lab.title}</h3>
+      <ul>
+        {lab.lines.map((line) => (
+          <li>{line}</li>
+        ))}
+      </ul>
+    </article>
+  </aside>
+</section>

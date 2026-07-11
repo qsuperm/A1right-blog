@@ -1,0 +1,320 @@
+---
+import { CMS, SITE } from '../../config';
+
+export const prerender = true;
+
+const stats = [
+  {
+    label: '线上地址',
+    value: SITE.provisionalUrl,
+    note: 'Cloudflare Pages 默认域名，可直接作为首发地址。',
+  },
+  {
+    label: 'GitHub 仓库',
+    value: CMS.repo,
+    note: `当前后台会把文章提交到 ${CMS.branch} 分支。`,
+  },
+  {
+    label: '图片目录',
+    value: CMS.mediaFolder,
+    note: '封面图和正文图片都会统一进入这里。',
+  },
+  {
+    label: '本地联调',
+    value: 'pnpm dev:cms',
+    note: '会同时启动 Astro 开发站和 Decap 本地代理。',
+  },
+];
+
+const quickLinks = [
+  { label: '打开中文前台', href: '/', external: false },
+  { label: '打开英文前台', href: '/en', external: false },
+  { label: '打开 GitHub 主页', href: SITE.githubUrl, external: true },
+  { label: '查看线上域名', href: SITE.provisionalUrl, external: true },
+];
+
+const launchSteps = [
+  `1. 在 GitHub 创建仓库 ${CMS.repo}`,
+  `2. 把本地代码推到 ${CMS.branch} 分支`,
+  '3. 在 Cloudflare Pages 里选择 Connect to Git 连接这个仓库',
+  '4. 添加 GITHUB_CLIENT_ID 和 GITHUB_CLIENT_SECRET 环境变量',
+  `5. GitHub OAuth App 回调地址填 ${SITE.provisionalUrl}/api/callback`,
+];
+
+const writingNotes = [
+  '中文文章保存到 src/content/articles/zh-cn',
+  '英文文章保存到 src/content/articles/en',
+  '中英文同一篇文章要共用同一个 translationKey',
+  'SEO 标题 / SEO 描述可以留空，不填时会自动回退到标题与摘要',
+];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>{SITE.name} 后台发文</title>
+    <link rel="stylesheet" href="/admin/custom.css" />
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: "Noto Sans SC", "Segoe UI", sans-serif;
+        background: #0f1320;
+        color: #eff4ff;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background:
+          radial-gradient(circle at top, rgba(125, 223, 199, 0.16), transparent 30%),
+          radial-gradient(circle at right top, rgba(242, 167, 209, 0.18), transparent 32%),
+          linear-gradient(180deg, #111727, #0f1320 50%, #0b1019);
+      }
+
+      .admin-loading {
+        min-height: 100vh;
+        padding: 40px 20px 56px;
+      }
+
+      .admin-loading__shell {
+        width: min(1120px, 100%);
+        margin: 0 auto;
+        display: grid;
+        gap: 20px;
+      }
+
+      .admin-loading__card {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 24px;
+        background: rgba(19, 25, 41, 0.84);
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(14px);
+      }
+
+      .admin-loading__hero {
+        padding: 28px;
+      }
+
+      .admin-loading__badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 34px;
+        padding: 0 14px;
+        border-radius: 999px;
+        background: rgba(125, 223, 199, 0.12);
+        color: #aef3df;
+        font-size: 0.9rem;
+        font-weight: 700;
+      }
+
+      .admin-loading__hero h1 {
+        margin: 16px 0 0;
+        font-size: clamp(2rem, 4vw, 2.8rem);
+        line-height: 1.12;
+      }
+
+      .admin-loading__hero p {
+        max-width: 760px;
+        margin: 16px 0 0;
+        line-height: 1.8;
+        color: rgba(239, 244, 255, 0.82);
+      }
+
+      .admin-loading__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+      }
+
+      .admin-loading__button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 44px;
+        padding: 0 16px;
+        border-radius: 999px;
+        background: rgba(126, 164, 255, 0.14);
+        color: #f7faff;
+        font-weight: 700;
+        text-decoration: none;
+        transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+        border: 1px solid rgba(126, 164, 255, 0.18);
+      }
+
+      .admin-loading__button:hover {
+        transform: translateY(-1px);
+        background: rgba(126, 164, 255, 0.22);
+        border-color: rgba(126, 164, 255, 0.32);
+      }
+
+      .admin-loading__grid {
+        display: grid;
+        gap: 20px;
+      }
+
+      .admin-loading__grid--stats {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .admin-loading__grid--details {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .admin-loading__stat {
+        padding: 18px;
+      }
+
+      .admin-loading__stat span {
+        display: block;
+        color: rgba(239, 244, 255, 0.64);
+        font-size: 0.92rem;
+      }
+
+      .admin-loading__stat strong {
+        display: block;
+        margin-top: 12px;
+        font-size: 1.04rem;
+        line-height: 1.5;
+        word-break: break-word;
+      }
+
+      .admin-loading__stat p,
+      .admin-loading__panel p {
+        margin: 12px 0 0;
+        line-height: 1.72;
+        color: rgba(239, 244, 255, 0.78);
+      }
+
+      .admin-loading__panel {
+        padding: 22px;
+      }
+
+      .admin-loading__panel h2 {
+        margin: 0;
+        font-size: 1.14rem;
+      }
+
+      .admin-loading__panel ul {
+        margin: 14px 0 0;
+        padding-left: 1.25rem;
+        color: rgba(239, 244, 255, 0.78);
+      }
+
+      .admin-loading__panel li + li {
+        margin-top: 10px;
+      }
+
+      .admin-loading code {
+        padding: 0.18rem 0.45rem;
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.08);
+        font-family: "Cascadia Code", "JetBrains Mono", monospace;
+        font-size: 0.95em;
+      }
+
+      .admin-loading__tip {
+        margin-top: 18px;
+        padding: 14px 16px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.05);
+        color: rgba(239, 244, 255, 0.82);
+      }
+
+      @media (max-width: 920px) {
+        .admin-loading__grid--stats,
+        .admin-loading__grid--details {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .admin-loading {
+          padding: 24px 14px 40px;
+        }
+
+        .admin-loading__hero,
+        .admin-loading__panel,
+        .admin-loading__stat {
+          padding: 18px;
+        }
+
+        .admin-loading__grid--stats,
+        .admin-loading__grid--details {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="admin-loading">
+      <div class="admin-loading__shell">
+        <section class="admin-loading__card admin-loading__hero">
+          <div class="admin-loading__badge">Decap CMS · 中文后台</div>
+          <h1>{SITE.name} 后台发文台</h1>
+          <p>
+            现在这里已经是一个可直接发文的中英双语后台：本地可用 <code>pnpm dev:cms</code> 联调，线上部署后可通过
+            GitHub 登录写文章、上传图片、管理栏目与标签。
+          </p>
+          <div class="admin-loading__actions">
+            {quickLinks.map((item) => (
+              <a
+                class="admin-loading__button"
+                href={item.href}
+                target={item.external ? '_blank' : undefined}
+                rel={item.external ? 'noreferrer' : undefined}
+              >
+                {item.label}
+              </a>
+            ))}
+          </div>
+          <div class="admin-loading__tip">
+            当前后台目标仓库：<code>{CMS.repo}</code> · 默认分支：<code>{CMS.branch}</code> · OAuth 回调：
+            <code>{SITE.provisionalUrl}/api/callback</code>
+          </div>
+        </section>
+
+        <section class="admin-loading__grid admin-loading__grid--stats">
+          {stats.map((item) => (
+            <article class="admin-loading__card admin-loading__stat">
+              <span>{item.label}</span>
+              <strong>{item.value}</strong>
+              <p>{item.note}</p>
+            </article>
+          ))}
+        </section>
+
+        <section class="admin-loading__grid admin-loading__grid--details">
+          <article class="admin-loading__card admin-loading__panel">
+            <h2>首次上线 Checklist</h2>
+            <ul>
+              {launchSteps.map((item) => (
+                <li>{item}</li>
+              ))}
+            </ul>
+          </article>
+
+          <article class="admin-loading__card admin-loading__panel">
+            <h2>写作结构与字段约定</h2>
+            <ul>
+              {writingNotes.map((item) => (
+                <li>{item}</li>
+              ))}
+            </ul>
+            <p>
+              现在后台里已经补好了中文字段提示、分类筛选、年份分组，以及可选的 <code>SEO 标题</code> /
+              <code>SEO 描述</code> 字段。
+            </p>
+          </article>
+        </section>
+      </div>
+    </div>
+
+    <noscript>需要启用 JavaScript 才能使用后台发文页面。</noscript>
+    <script src="https://unpkg.com/decap-cms@3.1.12/dist/decap-cms.js"></script>
+  </body>
+</html>

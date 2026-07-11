@@ -1,0 +1,77 @@
+﻿---
+translationKey: web-token-refresh-trace
+locale: en
+routeSlug: web-token-refresh-trace
+title: "Token refresh trace notes: investigating 401 flaps and session drift"
+excerpt: When 401s appear intermittently and refresh logic is scattered, the best move is to compress request order, cookie changes, and replay conditions into one timeline.
+categoryKey: web-security
+category: Web Security
+tags:
+  - Session
+  - Token
+  - Web Security
+publishedAt: 2026-07-07
+cover: /images/anime-sunny-bedroom.jpg
+coverAlt: Sunny anime bedroom illustration
+---
+
+## First confirm who owns refresh
+
+Session drift becomes messy because a 401 does not tell you which layer is responsible for recovery:
+
+- the front-end interceptor,
+- an SDK,
+- the gateway,
+- or a server-side silent renewal flow.
+
+Until that responsibility is pinned down, extra traffic captures mostly add noise.
+
+## Build one shortest timeline
+
+I try to keep only four event types at first:
+
+1. the original business request,
+2. the 401 response,
+3. the refresh request,
+4. any change to cookies or the `Authorization` header.
+
+Once the timeline is clean, many “random” failures start showing a pattern.
+
+## Watch for two common misalignments
+
+### Refresh succeeds, but the old request is not replayed correctly
+
+This often looks like “refresh did not work,” while the real issue is that the original request already died and never re-entered the flow with the new token.
+
+### The token changes, but the browser state does not stay in sync
+
+If memory state, cookies, and local storage all exist, verify which one the next request actually reads. Many 401 flaps come from inconsistent sources, not a failed refresh endpoint.
+
+```ts
+if (response.status === 401 && !request.meta?.retried) {
+  await refreshToken();
+  request.meta = { ...request.meta, retried: true };
+  return http(request);
+}
+```
+
+This looks standard, but it still fails if `refreshToken()` updates only one state store or if the retry quietly reuses the old header.
+
+## Evidence worth preserving
+
+I try to keep these points explicit:
+
+- which resource saw the first 401,
+- what changed in cookies around the refresh request,
+- whether the replayed request really sent a different header,
+- whether the second failure had the same cause.
+
+That evidence is much more reusable than saying “the token is broken.”
+
+## The conclusion I want to keep
+
+I prefer ending with something like this:
+
+> The root cause is not the refresh endpoint itself, but the fact that post-refresh state sync and original-request replay do not form one stable chain.
+
+That wording keeps the next debugging discussion concrete.

@@ -1,0 +1,48 @@
+﻿---
+import type { Locale } from '../config';
+import { UI } from '../config';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+---
+
+<button class="theme-toggle" type="button" data-theme-toggle aria-label={UI[locale].themeLabel} title={UI[locale].themeLabel}>
+  <span class="theme-toggle__label theme-toggle__label--sun">☀</span>
+  <span class="theme-toggle__slider"></span>
+  <span class="theme-toggle__label theme-toggle__label--moon">☾</span>
+</button>
+
+<script>
+  const syncToggleState = () => {
+    const isDark = document.documentElement.dataset.theme === 'dark';
+    document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]').forEach((button) => {
+      button.setAttribute('aria-pressed', isDark ? 'true' : 'false');
+    });
+  };
+
+  const applyTheme = (theme: 'light' | 'dark') => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+    localStorage.setItem('theme', theme);
+    syncToggleState();
+  };
+
+  const bindThemeToggle = () => {
+    document.querySelectorAll<HTMLButtonElement>('[data-theme-toggle]').forEach((button) => {
+      if (button.dataset.bound === 'true') return;
+      button.dataset.bound = 'true';
+      button.addEventListener('click', () => {
+        const nextTheme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+        applyTheme(nextTheme);
+      });
+    });
+
+    syncToggleState();
+  };
+
+  bindThemeToggle();
+  document.addEventListener('astro:page-load', bindThemeToggle);
+</script>

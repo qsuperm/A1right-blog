@@ -1,0 +1,85 @@
+---
+import TaxonomyArticleCard from '../../../components/TaxonomyArticleCard.astro';
+import TaxonomyTermCard from '../../../components/TaxonomyTermCard.astro';
+import TaxonomyLayout from '../../../layouts/TaxonomyLayout.astro';
+import { collectTags, getArticlesByLocale, getTagsIndexUrl, getTagUrl } from '../../../utils/articles';
+import { buildCollectionPageJsonLd } from '../../../utils/seo';
+
+export async function getStaticPaths() {
+  const tags = collectTags(await getArticlesByLocale('en'));
+  return tags.map((tag) => ({
+    params: { slug: tag.slug },
+    props: { tagName: tag.name },
+  }));
+}
+
+const locale = 'en';
+const { tagName } = Astro.props;
+const allArticles = await getArticlesByLocale(locale);
+const articles = allArticles.filter((entry) => entry.data.tags.includes(tagName));
+const relatedTags = collectTags(articles).filter((tag) => tag.name !== tagName).slice(0, 6);
+const siblingTags = collectTags(allArticles).filter((tag) => tag.name !== tagName).slice(0, 4);
+
+const title = `#${tagName} Tag`;
+const description = `View every post connected to “${tagName}”, currently ${articles.length} posts, with ${relatedTags.length} related tags to keep exploring.`;
+const pagePath = getTagUrl(locale, tagName);
+const breadcrumbs = [
+  { label: 'Home', href: '/en' },
+  { label: 'Tags', href: getTagsIndexUrl(locale) },
+  { label: `#${tagName}`, href: pagePath },
+];
+const keywords = [tagName, 'tag page', 'web security blog', ...relatedTags.slice(0, 3).map((tag) => tag.name)];
+const structuredData = buildCollectionPageJsonLd({
+  title,
+  description,
+  path: pagePath,
+  locale,
+});
+---
+
+<TaxonomyLayout
+  locale={locale}
+  title={title}
+  description={description}
+  eyebrow="Tag"
+  stats={[`${articles.length} posts`, `${relatedTags.length} related tags`]}
+  backHref={getTagsIndexUrl(locale)}
+  backLabel="Back to tags"
+  alternatePath={null}
+  breadcrumbs={breadcrumbs}
+  keywords={keywords}
+  structuredData={structuredData}
+>
+  <div class="taxonomy-detail">
+    <div class="taxonomy-posts taxonomy-posts--single">
+      {articles.map((entry, index) => (
+        <TaxonomyArticleCard entry={entry} locale={locale} headingTag={index === 0 ? 'h2' : 'h3'} />
+      ))}
+    </div>
+
+    <aside class="taxonomy-aside">
+      <section class="ff-card taxonomy-panel">
+        <h2>Related tags</h2>
+        <div class="taxonomy-panel__chips">
+          {relatedTags.map((tag) => (
+            <a href={getTagUrl(locale, tag.name)}>#{tag.name}</a>
+          ))}
+        </div>
+      </section>
+
+      <section class="ff-card taxonomy-panel">
+        <h2>Keep browsing</h2>
+        <div class="taxonomy-panel__list">
+          {siblingTags.map((tag) => (
+            <TaxonomyTermCard
+              href={getTagUrl(locale, tag.name)}
+              title={tag.name}
+              description={`Appears in ${tag.count} posts`}
+              count={tag.count}
+            />
+          ))}
+        </div>
+      </section>
+    </aside>
+  </div>
+</TaxonomyLayout>

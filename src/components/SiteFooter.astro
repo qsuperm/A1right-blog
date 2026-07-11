@@ -1,0 +1,26 @@
+---
+import { SITE, UI, type Locale } from '../config';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const currentYear = new Date().getFullYear();
+const hasGithub = SITE.githubUrl.trim().length > 0;
+---
+
+<footer class="site-footer">
+  <div class="site-footer__inner">
+    <div class="site-footer__brand">
+      <p class="site-footer__title">{locale === 'en' ? SITE.englishName : SITE.name}</p>
+      <p class="site-footer__copy">{UI[locale].footerNote}</p>
+    </div>
+
+    <div class="site-footer__meta">
+      <span>© 2026-{currentYear}</span>
+      <span>{SITE.author}</span>
+      {hasGithub && <a href={SITE.githubUrl} target="_blank" rel="noreferrer">GitHub</a>}
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,51 @@
+﻿---
+import SearchOverlay from './SearchOverlay.astro';
+import ThemeToggle from './ThemeToggle.astro';
+import { SITE, UI, type Locale } from '../config';
+import { getCategoriesIndexUrl, getPostsIndexUrl, getTagsIndexUrl } from '../utils/articles';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const homeHref = locale === 'en' ? '/en' : '/';
+const switchHref = locale === 'en' ? '/' : '/en';
+const postsHref = getPostsIndexUrl(locale);
+const hasGithub = SITE.githubUrl.trim().length > 0;
+
+const nav = [
+  { href: homeHref, label: UI[locale].home },
+  { href: postsHref, label: UI[locale].posts },
+  { href: getCategoriesIndexUrl(locale), label: UI[locale].categories },
+  { href: getTagsIndexUrl(locale), label: UI[locale].tags },
+];
+---
+
+<header class="site-header">
+  <div class="site-header__inner">
+    <a class="site-logo" href={homeHref} aria-label={SITE.author}>
+      <span class="site-logo__mark">A1</span>
+      <span class="site-logo__text">{locale === 'en' ? SITE.englishName : SITE.name}</span>
+    </a>
+
+    <nav class="site-nav" aria-label="Primary navigation">
+      {nav.map((item) => (
+        <a href={item.href}>{item.label}</a>
+      ))}
+    </nav>
+
+    <div class="site-header__actions">
+      <SearchOverlay locale={locale} />
+      {hasGithub && (
+        <a class="site-header__link" href={SITE.githubUrl} target="_blank" rel="noreferrer">
+          {UI[locale].github}
+        </a>
+      )}
+      <a class="site-header__link" href={switchHref} aria-label={UI[locale].switchLanguageLabel}>
+        {UI[locale].switchLanguage}
+      </a>
+      <ThemeToggle locale={locale} />
+    </div>
+  </div>
+</header>

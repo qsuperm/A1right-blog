@@ -1,0 +1,376 @@
+﻿---
+import { UI, type Locale } from '../config';
+import { formatDate, getArticlesByLocale, stripMarkdown } from '../utils/articles';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const articles = await getArticlesByLocale(locale);
+const searchData = articles.map((entry) => ({
+  bodyText: stripMarkdown(entry.body ?? ''),
+  title: entry.data.title,
+  excerpt: entry.data.excerpt,
+  category: entry.data.category,
+  tags: entry.data.tags,
+  url: locale === 'en' ? `/en/posts/${entry.data.routeSlug}` : `/posts/${entry.data.routeSlug}`,
+  cover: entry.data.cover,
+  published: formatDate(entry.data.publishedAt, locale),
+  publishedAt: entry.data.publishedAt.toISOString(),
+  searchText: [
+    entry.data.title,
+    entry.data.excerpt,
+    entry.data.category,
+    ...entry.data.tags,
+    stripMarkdown(entry.body ?? ''),
+  ]
+    .join(' ')
+    .toLowerCase(),
+}));
+const searchDataId = `search-data-${locale}`;
+const dialogId = `site-search-${locale}`;
+---
+
+<button
+  class="search-trigger"
+  type="button"
+  data-search-open={dialogId}
+  aria-haspopup="dialog"
+  aria-controls={dialogId}
+  aria-label={UI[locale].search}
+>
+  <span class="search-trigger__icon">⌕</span>
+  <span>{UI[locale].searchShort}</span>
+  <kbd>Ctrl K</kbd>
+</button>
+
+<div
+  class="search-modal"
+  id={dialogId}
+  data-search-root
+  data-search-label={UI[locale].search}
+  data-search-results-label={locale === 'en' ? 'Search results' : '搜索结果'}
+  data-search-empty={UI[locale].searchEmpty}
+  data-search-quick={UI[locale].searchRecent}
+  data-search-command-hint={UI[locale].searchHint}
+  data-search-nav-hint={locale === 'en' ? '↑ ↓ to switch' : '↑ ↓ 切换'}
+  data-search-enter-hint={locale === 'en' ? 'Enter to open' : 'Enter 直达'}
+  data-search-escape-hint={locale === 'en' ? 'Esc to close' : 'Esc 关闭'}
+  hidden
+>
+  <div class="search-modal__backdrop" data-search-close></div>
+  <div class="ff-card search-modal__panel" role="dialog" aria-modal="true" aria-label={UI[locale].search}>
+    <div class="search-modal__top">
+      <input
+        class="search-modal__input"
+        type="search"
+        data-search-input
+        placeholder={UI[locale].searchPlaceholder}
+        aria-label={UI[locale].searchPlaceholder}
+      />
+      <button class="search-modal__close" type="button" data-search-close>{UI[locale].close}</button>
+    </div>
+    <p class="search-modal__hint">{UI[locale].searchHint}</p>
+    <div class="search-modal__results" data-search-results></div>
+  </div>
+  <script is:inline type="application/json" id={searchDataId} set:html={JSON.stringify(searchData)}></script>
+</div>
+
+<script is:inline>
+  const escapeSearchHtml = (value) =>
+    `${value ?? ''}`
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+
+  const escapeSearchRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  const tokenizeSearchQuery = (value = '') =>
+    [...new Set(value.toLowerCase().split(/\s+/).map((item) => item.trim()).filter(Boolean))];
+
+  const highlightSearchText = (value, query) => {
+    const source = `${value ?? ''}`;
+    const tokens = tokenizeSearchQuery(query);
+
+    if (!tokens.length) return escapeSearchHtml(source);
+
+    const pattern = new RegExp(
+      `(${tokens
+        .map((token) => escapeSearchRegExp(token))
+        .sort((left, right) => right.length - left.length)
+        .join('|')})`,
+      'ig',
+    );
+
+    return source
+      .split(pattern)
+      .map((segment) =>
+        tokens.includes(segment.toLowerCase())
+          ? `<mark>${escapeSearchHtml(segment)}</mark>`
+          : escapeSearchHtml(segment),
+      )
+      .join('');
+  };
+
+  const buildSearchSnippet = (doc, query) => {
+    const normalized = query.trim().toLowerCase();
+    const excerpt = `${doc.excerpt ?? ''}`.replace(/\s+/g, ' ').trim();
+
+    if (!normalized) return escapeSearchHtml(excerpt);
+
+    const tokens = tokenizeSearchQuery(normalized);
+    if (tokens.some((token) => excerpt.toLowerCase().includes(token))) {
+      return highlightSearchText(excerpt, normalized);
+    }
+
+    const body = `${doc.bodyText ?? ''}`.replace(/\s+/g, ' ').trim();
+    if (!body) return highlightSearchText(excerpt, normalized);
+
+    const lowerBody = body.toLowerCase();
+    const matchedToken = tokens.find((token) => lowerBody.includes(token));
+    if (!matchedToken) return highlightSearchText(excerpt, normalized);
+
+    const start = Math.max(0, lowerBody.indexOf(matchedToken) - 34);
+    const end = Math.min(body.length, lowerBody.indexOf(matchedToken) + matchedToken.length + 82);
+    const snippet = `${start > 0 ? '…' : ''}${body.slice(start, end).trim()}${end < body.length ? '…' : ''}`;
+
+    return highlightSearchText(snippet, normalized);
+  };
+
+  const initSearchOverlay = () => {
+    document.querySelectorAll('[data-search-root]').forEach((root) => {
+      if (root.dataset.bound === 'true') return;
+      root.dataset.bound = 'true';
+
+      const dataScript = root.querySelector('script[type="application/json"]');
+      const input = root.querySelector('[data-search-input]');
+      const results = root.querySelector('[data-search-results]');
+      const closeButtons = root.querySelectorAll('[data-search-close]');
+      const openButtons = document.querySelectorAll(`[data-search-open="${root.id}"]`);
+      const docs = JSON.parse(dataScript?.textContent || '[]');
+      const fallbackTitle = root.dataset.searchLabel || 'Search';
+      const resultLabel = root.dataset.searchResultsLabel || fallbackTitle;
+      const emptyLabel = root.dataset.searchEmpty || 'No matching content yet.';
+      const quickLabel = root.dataset.searchQuick || 'Quick picks';
+      const commandHint = root.dataset.searchCommandHint || 'Ctrl/⌘ + K';
+      const navHint = root.dataset.searchNavHint || '↑ ↓';
+      const enterHint = root.dataset.searchEnterHint || 'Enter';
+      const escapeHint = root.dataset.searchEscapeHint || 'Esc';
+      let activeIndex = -1;
+      let currentMatches = [];
+      let lastFocusedElement = null;
+
+      const scoreDoc = (query, doc) => {
+        if (!query) return 1;
+        const tokens = query.toLowerCase().split(/\s+/).filter(Boolean);
+        let score = 0;
+
+        if (doc.title.toLowerCase().includes(query)) score += 3;
+        if (doc.excerpt.toLowerCase().includes(query)) score += 2;
+
+        for (const token of tokens) {
+          if (doc.title.toLowerCase().includes(token)) score += 6;
+          else if (doc.tags.join(' ').toLowerCase().includes(token)) score += 4;
+          else if (doc.category.toLowerCase().includes(token)) score += 3;
+          else if (doc.excerpt.toLowerCase().includes(token)) score += 2;
+          else if (doc.searchText.includes(token)) score += 1;
+          else return -1;
+        }
+        return score;
+      };
+
+      const getResultLinks = () => [...results.querySelectorAll('[data-search-result]')];
+
+      const syncActiveResult = () => {
+        const links = getResultLinks();
+
+        links.forEach((link, index) => {
+          const isActive = index === activeIndex;
+          link.classList.toggle('is-active', isActive);
+          link.setAttribute('aria-selected', String(isActive));
+
+          if (isActive) {
+            link.scrollIntoView({ block: 'nearest' });
+          }
+        });
+      };
+
+      const setActiveIndex = (nextIndex) => {
+        if (!currentMatches.length) {
+          activeIndex = -1;
+          return;
+        }
+
+        const maxIndex = currentMatches.length - 1;
+        if (nextIndex < 0) activeIndex = maxIndex;
+        else if (nextIndex > maxIndex) activeIndex = 0;
+        else activeIndex = nextIndex;
+
+        syncActiveResult();
+      };
+
+      const openActiveResult = () => {
+        const target = currentMatches[activeIndex] || currentMatches[0];
+        if (!target?.url) return;
+
+        close();
+        window.location.href = target.url;
+      };
+
+      const render = (query = '') => {
+        const normalized = query.trim().toLowerCase();
+        const matched = docs
+          .map((doc) => ({ doc, score: scoreDoc(normalized, doc) }))
+          .filter((item) => item.score >= 0)
+          .sort((a, b) => b.score - a.score || b.doc.publishedAt.localeCompare(a.doc.publishedAt))
+          .slice(0, normalized ? 8 : 6);
+
+        currentMatches = matched.map(({ doc }) => doc);
+        activeIndex = currentMatches.length ? 0 : -1;
+
+        if (!matched.length) {
+          results.innerHTML = `<div class="search-empty">${escapeSearchHtml(emptyLabel)}</div>`;
+          return;
+        }
+
+        const title = normalized ? `${escapeSearchHtml(resultLabel)} · ${matched.length}` : escapeSearchHtml(quickLabel);
+        results.innerHTML = `
+          <div class="search-results__title">${title}</div>
+          <div class="search-results__list" role="listbox" aria-label="${escapeSearchHtml(resultLabel)}">
+            ${matched
+              .map(({ doc }, index) => {
+                const tags = doc.tags
+                  .map((tag) => `<span>#${highlightSearchText(tag, normalized)}</span>`)
+                  .join('');
+                return `
+                  <a
+                    class="search-result${index === activeIndex ? ' is-active' : ''}"
+                    href="${encodeURI(doc.url)}"
+                    data-search-result
+                    data-search-index="${index}"
+                    role="option"
+                    aria-selected="${index === activeIndex ? 'true' : 'false'}"
+                  >
+                    <img class="search-result__cover" src="${encodeURI(doc.cover)}" alt="${escapeSearchHtml(doc.title)}" />
+                    <div class="search-result__body">
+                      <div class="search-result__meta">
+                        <span>${highlightSearchText(doc.category, normalized)}</span>
+                        <small>${escapeSearchHtml(doc.published)}</small>
+                      </div>
+                      <strong>${highlightSearchText(doc.title, normalized)}</strong>
+                      <p>${buildSearchSnippet(doc, normalized)}</p>
+                      <div class="search-result__tags">${tags}</div>
+                    </div>
+                  </a>
+                `;
+              })
+              .join('')}
+          </div>
+          <div class="search-results__footer">
+            <span>${escapeSearchHtml(commandHint)}</span>
+            <span>${escapeSearchHtml(navHint)}</span>
+            <span>${escapeSearchHtml(enterHint)}</span>
+            <span>${escapeSearchHtml(escapeHint)}</span>
+          </div>
+        `;
+
+        syncActiveResult();
+      };
+
+      const open = () => {
+        lastFocusedElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+        root.hidden = false;
+        document.body.classList.add('search-open');
+        render(input?.value || '');
+        window.setTimeout(() => input?.focus(), 0);
+      };
+
+      const close = () => {
+        root.hidden = true;
+        document.body.classList.remove('search-open');
+        activeIndex = -1;
+        if (lastFocusedElement instanceof HTMLElement) {
+          lastFocusedElement.focus();
+        }
+      };
+
+      openButtons.forEach((button) => button.addEventListener('click', open));
+      closeButtons.forEach((button) => button.addEventListener('click', close));
+      input?.addEventListener('input', (event) => render(event.currentTarget.value || ''));
+      input?.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown') {
+          event.preventDefault();
+          setActiveIndex(activeIndex + 1);
+          return;
+        }
+
+        if (event.key === 'ArrowUp') {
+          event.preventDefault();
+          setActiveIndex(activeIndex - 1);
+          return;
+        }
+
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          openActiveResult();
+          return;
+        }
+
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          close();
+        }
+      });
+      root.addEventListener('click', (event) => {
+        if (event.target === root.querySelector('.search-modal__backdrop')) close();
+      });
+      root.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') close();
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+          event.preventDefault();
+          open();
+        }
+
+        if (event.key === 'Escape' && !root.hidden) {
+          close();
+        }
+      });
+
+      results.addEventListener('click', (event) => {
+        if (!(event.target instanceof Element)) return;
+        if (event.target.closest('a')) close();
+      });
+      results.addEventListener('mousemove', (event) => {
+        if (!(event.target instanceof Element)) return;
+        const link = event.target.closest('[data-search-result]');
+        if (!link) return;
+
+        const nextIndex = Number(link.dataset.searchIndex);
+        if (Number.isNaN(nextIndex) || nextIndex === activeIndex) return;
+        activeIndex = nextIndex;
+        syncActiveResult();
+      });
+      results.addEventListener('focusin', (event) => {
+        if (!(event.target instanceof Element)) return;
+        const link = event.target.closest('[data-search-result]');
+        if (!link) return;
+
+        const nextIndex = Number(link.dataset.searchIndex);
+        if (Number.isNaN(nextIndex)) return;
+        activeIndex = nextIndex;
+        syncActiveResult();
+      });
+
+      render('');
+    });
+  };
+
+  initSearchOverlay();
+  document.addEventListener('astro:page-load', initSearchOverlay);
+</script>

@@ -1,0 +1,79 @@
+﻿---
+translationKey: agent-browser-chain-notes
+locale: en
+routeSlug: agent-browser-chain-notes
+title: "Agent pentest notes: from browser toolchains to reproducible checkpoints"
+excerpt: When a target relies on browser automation, tool calls, and MCP seams, the key is to reduce each observation into a replayable sequence.
+categoryKey: agent-pentest
+category: Agent Pentest
+tags:
+  - Agent Pentest
+  - Browser Automation
+  - MCP
+publishedAt: 2026-07-08
+updatedAt: 2026-07-11
+cover: /images/anime-night-sky.jpg
+coverAlt: Anime night sky with glowing particles
+---
+
+## Start with the toolchain, not the “intelligence” story
+
+Agent-focused targets make it easy to over-focus on prompts and model output. In practice, many decisive risk boundaries live in simpler places:
+
+- which domains the browser tool may reach,
+- where file read and write boundaries sit,
+- which actions an MCP server exposes,
+- whether raw tool output is fed back into later reasoning without re-checks.
+
+Mapping those boundaries gives a firmer starting point than abstract arguments about whether the model can be fooled.
+
+## I like to record one shortest call chain first
+
+A typical flow might look like this:
+
+```text
+user input -> planner step list -> browser opens a page -> tool returns text -> agent chooses the next action
+```
+
+The useful questions are:
+
+1. which step first receives untrusted data,
+2. which step later treats that data as trusted context,
+3. which step owns meaningful side effects like clicks, downloads, or file writes.
+
+## What matters inside browser automation
+
+Three checkpoints come up repeatedly.
+
+### The boundary between page text and instruction
+
+Is the page text only content, or can it leak into later action selection as if it were guidance? Whenever tool output is stitched back into the next prompt, this line matters.
+
+### Scope changes after navigation
+
+Moving inside the same site and being bounced to a third-party page are very different situations. Domain transitions should usually trigger a fresh scope decision.
+
+### Download and local handling
+
+As soon as the chain can do “see content -> download file -> process it locally”, the source, naming, landing path, and follow-up parsing logic all deserve evidence.
+
+## What I want to preserve in the replay notes
+
+I prefer short, replayable observation sequences like this:
+
+```text
+1. ask the agent to open a controlled page
+2. return misleading text from that page
+3. capture the raw browser/tool result
+4. compare whether the next action changes
+```
+
+If that sequence repeats cleanly, the experiment becomes useful for both offense-minded analysis and defensive review.
+
+## A clearer way to write the conclusion
+
+Instead of making the story mystical, I prefer wording like this:
+
+> The decisive point was not “what the model understood,” but which tool result became a decision input for the next action without being re-validated.
+
+That framing stays close to system behavior and scales better to later experiments.

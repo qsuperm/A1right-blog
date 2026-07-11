@@ -1,0 +1,95 @@
+---
+import TaxonomyArticleCard from '../../../components/TaxonomyArticleCard.astro';
+import TaxonomyTermCard from '../../../components/TaxonomyTermCard.astro';
+import TaxonomyLayout from '../../../layouts/TaxonomyLayout.astro';
+import {
+  CATEGORY_META,
+  collectTags,
+  getArticlesByLocale,
+  getCategoriesIndexUrl,
+  getCategoryUrl,
+  getTagUrl,
+} from '../../../utils/articles';
+import { buildCollectionPageJsonLd } from '../../../utils/seo';
+
+export async function getStaticPaths() {
+  return (Object.keys(CATEGORY_META) as (keyof typeof CATEGORY_META)[]).map((slug) => ({
+    params: { slug },
+    props: { slug },
+  }));
+}
+
+const locale = 'en';
+const { slug } = Astro.props;
+const key = slug as keyof typeof CATEGORY_META;
+const category = CATEGORY_META[key][locale];
+const allArticles = await getArticlesByLocale(locale);
+const articles = allArticles.filter((entry) => entry.data.categoryKey === key);
+const tagCloud = collectTags(articles).slice(0, 6);
+const siblingCards = (Object.keys(CATEGORY_META) as (keyof typeof CATEGORY_META)[])
+  .filter((item) => item !== key)
+  .map((item) => ({
+    href: getCategoryUrl(locale, item),
+    title: CATEGORY_META[item][locale].name,
+    description: CATEGORY_META[item][locale].desc,
+    count: allArticles.filter((entry) => entry.data.categoryKey === item).length,
+  }));
+
+const title = `${category.name} Category`;
+const description = `${category.desc} This section currently contains ${articles.length} posts and ${tagCloud.length} frequent tag entry points.`;
+const pagePath = getCategoryUrl(locale, key);
+const breadcrumbs = [
+  { label: 'Home', href: '/en' },
+  { label: 'Categories', href: getCategoriesIndexUrl(locale) },
+  { label: category.name, href: pagePath },
+];
+const keywords = [category.name, 'category page', 'web security blog', ...tagCloud.slice(0, 3).map((tag) => tag.name)];
+const structuredData = buildCollectionPageJsonLd({
+  title,
+  description,
+  path: pagePath,
+  locale,
+});
+---
+
+<TaxonomyLayout
+  locale={locale}
+  title={title}
+  description={description}
+  eyebrow="Category"
+  stats={[`${articles.length} posts`, `${tagCloud.length} frequent tags`]}
+  backHref={getCategoriesIndexUrl(locale)}
+  backLabel="Back to categories"
+  alternatePath={`/categories/${key}`}
+  breadcrumbs={breadcrumbs}
+  keywords={keywords}
+  structuredData={structuredData}
+>
+  <div class="taxonomy-detail">
+    <div class="taxonomy-posts taxonomy-posts--single">
+      {articles.map((entry, index) => (
+        <TaxonomyArticleCard entry={entry} locale={locale} headingTag={index === 0 ? 'h2' : 'h3'} />
+      ))}
+    </div>
+
+    <aside class="taxonomy-aside">
+      <section class="ff-card taxonomy-panel">
+        <h2>Frequent tags</h2>
+        <div class="taxonomy-panel__chips">
+          {tagCloud.map((tag) => (
+            <a href={getTagUrl(locale, tag.name)}>#{tag.name}</a>
+          ))}
+        </div>
+      </section>
+
+      <section class="ff-card taxonomy-panel">
+        <h2>Other categories</h2>
+        <div class="taxonomy-panel__list">
+          {siblingCards.map((item) => (
+            <TaxonomyTermCard href={item.href} title={item.title} description={item.description} count={item.count} />
+          ))}
+        </div>
+      </section>
+    </aside>
+  </div>
+</TaxonomyLayout>

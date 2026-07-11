@@ -1,0 +1,85 @@
+---
+import type { Locale } from '../config';
+
+interface Props {
+  locale: Locale;
+  baseUrl: string;
+  currentPage: number;
+  totalPages: number;
+}
+
+const { locale, baseUrl, currentPage, totalPages } = Astro.props;
+const isEnglish = locale === 'en';
+
+function getPageHref(page: number) {
+  return page <= 1 ? baseUrl : `${baseUrl}/page/${page}`;
+}
+
+function getVisiblePages() {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, index) => index + 1);
+
+  const pages = new Set<number>([1, 2, totalPages - 1, totalPages, currentPage - 1, currentPage, currentPage + 1]);
+  return Array.from(pages)
+    .filter((page) => page >= 1 && page <= totalPages)
+    .sort((left, right) => left - right);
+}
+
+const visiblePages = getVisiblePages();
+---
+
+{
+  totalPages > 1 && (
+    <nav
+      class="pagination-nav ff-card"
+      aria-label={isEnglish ? 'Post archive pagination' : '文章归档分页'}
+    >
+      <div class="pagination-nav__summary">
+        {isEnglish ? `Page ${currentPage} of ${totalPages}` : `第 ${currentPage} / ${totalPages} 页`}
+      </div>
+
+      <div class="pagination-nav__actions">
+        {currentPage > 1 ? (
+          <a class="pagination-nav__button" href={getPageHref(currentPage - 1)}>
+            {isEnglish ? '← Previous' : '← 上一页'}
+          </a>
+        ) : (
+          <span class="pagination-nav__button pagination-nav__button--disabled">
+            {isEnglish ? '← Previous' : '← 上一页'}
+          </span>
+        )}
+
+        <div class="pagination-nav__pages">
+          {visiblePages.map((page, index) => {
+            const previous = visiblePages[index - 1];
+            const gapBefore = previous && page - previous > 1;
+
+            return (
+              <>
+                {gapBefore && <span class="pagination-nav__ellipsis">…</span>}
+                {page === currentPage ? (
+                  <span class="pagination-nav__page pagination-nav__page--current" aria-current="page">
+                    {page}
+                  </span>
+                ) : (
+                  <a class="pagination-nav__page" href={getPageHref(page)}>
+                    {page}
+                  </a>
+                )}
+              </>
+            );
+          })}
+        </div>
+
+        {currentPage < totalPages ? (
+          <a class="pagination-nav__button" href={getPageHref(currentPage + 1)}>
+            {isEnglish ? 'Next →' : '下一页 →'}
+          </a>
+        ) : (
+          <span class="pagination-nav__button pagination-nav__button--disabled">
+            {isEnglish ? 'Next →' : '下一页 →'}
+          </span>
+        )}
+      </div>
+    </nav>
+  )
+}

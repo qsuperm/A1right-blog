@@ -1,0 +1,68 @@
+---
+import TaxonomyArticleCard from '../../../components/TaxonomyArticleCard.astro';
+import TaxonomyTermCard from '../../../components/TaxonomyTermCard.astro';
+import TaxonomyLayout from '../../../layouts/TaxonomyLayout.astro';
+import { collectTags, getArticlesByLocale, getTagUrl } from '../../../utils/articles';
+import { buildCollectionPageJsonLd } from '../../../utils/seo';
+
+const locale = 'en';
+const articles = await getArticlesByLocale(locale);
+const tags = collectTags(articles).map((tag) => ({
+  ...tag,
+  href: getTagUrl(locale, tag.name),
+  chips: [...new Set(tag.entries.map((entry) => entry.data.category))].slice(0, 3),
+}));
+const latest = articles.slice(0, 3);
+
+const title = 'Tag Index';
+const description = `Jump across ${articles.length} posts by keyword through ${tags.length} tags, instead of browsing only by category.`;
+const breadcrumbs = [
+  { label: 'Home', href: '/en' },
+  { label: 'Tags', href: '/en/tags' },
+];
+const keywords = ['tag index', 'web security blog', 'ctf writeups', 'agent pentest', 'Astro blog'];
+const structuredData = buildCollectionPageJsonLd({
+  title,
+  description,
+  path: '/en/tags',
+  locale,
+});
+---
+
+<TaxonomyLayout
+  locale={locale}
+  title={title}
+  description={description}
+  eyebrow="Tags"
+  stats={[`${tags.length} tags`, `${articles.length} posts`]}
+  alternatePath="/tags"
+  breadcrumbs={breadcrumbs}
+  keywords={keywords}
+  structuredData={structuredData}
+>
+  <div class="taxonomy-grid taxonomy-grid--dense">
+    {tags.map((item) => (
+      <TaxonomyTermCard
+        href={item.href}
+        title={item.name}
+        description={`Appears in ${item.count} posts`}
+        count={item.count}
+        chips={item.chips}
+      />
+    ))}
+  </div>
+
+  <section class="taxonomy-section">
+    <div class="taxonomy-section__head">
+      <div>
+        <p>Latest</p>
+        <h2>Newest searchable posts</h2>
+      </div>
+    </div>
+    <div class="taxonomy-posts">
+      {latest.map((entry) => (
+        <TaxonomyArticleCard entry={entry} locale={locale} />
+      ))}
+    </div>
+  </section>
+</TaxonomyLayout>

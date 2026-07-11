@@ -1,0 +1,201 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { SITE, type Locale } from '../config';
+import {
+  formatDate,
+  getArticleUrl,
+  getCategoryUrl,
+  getLocaleHome,
+  getTagUrl,
+  type ArticleEntry,
+} from '../utils/articles';
+import { buildBreadcrumbJsonLd, getSchemaLanguage, toAbsoluteUrl } from '../utils/seo';
+
+interface HeadingItem {
+  depth: number;
+  slug: string;
+  text: string;
+}
+
+interface Props {
+  entry: ArticleEntry;
+  locale: Locale;
+  headings: HeadingItem[];
+  Content: any;
+  readingMinutes: number;
+  previous?: ArticleEntry;
+  next?: ArticleEntry;
+  alternatePath?: string;
+}
+
+const { entry, locale, headings, Content, readingMinutes, previous, next, alternatePath } = Astro.props;
+const homeHref = getLocaleHome(locale);
+const backHref = `${homeHref}#posts`;
+const postsHref = locale === 'en' ? '/en/posts' : '/posts';
+const toc = headings.filter((heading) => heading.depth >= 2 && heading.depth <= 3);
+const seoTitle = entry.data.seoTitle ?? entry.data.title;
+const seoDescription = entry.data.seoDescription ?? entry.data.excerpt;
+const authorName = entry.data.author ?? SITE.author;
+const articleUrl = getArticleUrl(entry);
+const publishedLabel = locale === 'en' ? 'Published' : '发布';
+const updatedLabel = locale === 'en' ? 'Updated' : '更新';
+const readingLabel = locale === 'en' ? `${readingMinutes} min read` : `${readingMinutes} 分钟阅读`;
+const tocLabel = locale === 'en' ? 'On this page' : '本页目录';
+const metaLabel = locale === 'en' ? 'Article meta' : '文章信息';
+const languageLabel = locale === 'en' ? 'Language' : '语言切换';
+const previousLabel = locale === 'en' ? 'Previous post' : '上一篇';
+const nextLabel = locale === 'en' ? 'Next post' : '下一篇';
+const backLabel = locale === 'en' ? 'Back to homepage feed' : '返回首页文章流';
+const switchLabel = locale === 'en' ? 'Read the Chinese version' : '查看英文版本';
+const authorLabel = locale === 'en' ? 'Author' : '作者';
+
+const articleStructuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'BlogPosting',
+  headline: seoTitle,
+  description: seoDescription,
+  image: [toAbsoluteUrl(entry.data.cover)],
+  datePublished: entry.data.publishedAt.toISOString(),
+  ...(entry.data.updatedAt ? { dateModified: entry.data.updatedAt.toISOString() } : {}),
+  author: {
+    '@type': 'Person',
+    name: authorName,
+  },
+  publisher: {
+    '@type': 'Person',
+    name: SITE.author,
+  },
+  mainEntityOfPage: toAbsoluteUrl(articleUrl),
+  url: toAbsoluteUrl(articleUrl),
+  articleSection: entry.data.category,
+  keywords: entry.data.tags.join(', '),
+  inLanguage: getSchemaLanguage(locale),
+};
+
+const breadcrumbStructuredData = buildBreadcrumbJsonLd([
+  { label: locale === 'en' ? 'Home' : '首页', href: homeHref },
+  { label: locale === 'en' ? 'Posts' : '文章流', href: postsHref },
+  { label: entry.data.category, href: getCategoryUrl(locale, entry.data.categoryKey) },
+  { label: entry.data.title, href: articleUrl },
+]);
+---
+
+<BaseLayout
+  locale={locale}
+  title={seoTitle}
+  description={seoDescription}
+  alternatePath={alternatePath}
+  socialImage={entry.data.cover}
+  type="article"
+  keywords={entry.data.tags}
+  structuredData={[articleStructuredData, breadcrumbStructuredData]}
+>
+  <section class="article-shell">
+    <a class="article-back" href={backHref}>← {backLabel}</a>
+
+    <article class="ff-card article-hero">
+      <div class="article-hero__content">
+        <div class="article-hero__meta">
+          <a class="article-hero__chip" href={getCategoryUrl(locale, entry.data.categoryKey)}>{entry.data.category}</a>
+          <time datetime={entry.data.publishedAt.toISOString()}>{publishedLabel}: {formatDate(entry.data.publishedAt, locale)}</time>
+          <span>{readingLabel}</span>
+          <span>{authorLabel}: {authorName}</span>
+          {entry.data.updatedAt && (
+            <time datetime={entry.data.updatedAt.toISOString()}>{updatedLabel}: {formatDate(entry.data.updatedAt, locale)}</time>
+          )}
+        </div>
+
+        <h1>{entry.data.title}</h1>
+        <p class="article-hero__excerpt">{entry.data.excerpt}</p>
+
+        <div class="article-hero__tags">
+          {entry.data.tags.map((tag) => (
+            <a href={getTagUrl(locale, tag)}>#{tag}</a>
+          ))}
+        </div>
+      </div>
+
+      <div class="article-cover">
+        <img src={entry.data.cover} alt={entry.data.coverAlt} loading="eager" />
+      </div>
+    </article>
+
+    <div class="article-layout">
+      <article class="ff-card article-content-card">
+        <div class="article-content">
+          <Content />
+        </div>
+
+        <div class="article-nav">
+          {previous ? (
+            <a class="ff-card article-nav__card" href={getArticleUrl(previous)}>
+              <small>{previousLabel}</small>
+              <strong>{previous.data.title}</strong>
+            </a>
+          ) : (
+            <div class="ff-card article-nav__card article-nav__card--empty"></div>
+          )}
+
+          {next ? (
+            <a class="ff-card article-nav__card" href={getArticleUrl(next)}>
+              <small>{nextLabel}</small>
+              <strong>{next.data.title}</strong>
+            </a>
+          ) : (
+            <div class="ff-card article-nav__card article-nav__card--empty"></div>
+          )}
+        </div>
+      </article>
+
+      <aside class="article-aside">
+        {toc.length > 0 && (
+          <section class="ff-card article-panel">
+            <h2>{tocLabel}</h2>
+            <ul class="article-toc">
+              {toc.map((heading) => (
+                <li class={`article-toc__item article-toc__item--depth-${heading.depth}`}>
+                  <a href={`#${heading.slug}`}>{heading.text}</a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        <section class="ff-card article-panel">
+          <h2>{metaLabel}</h2>
+          <dl class="article-meta-list">
+            <div>
+              <dt>{authorLabel}</dt>
+              <dd>{authorName}</dd>
+            </div>
+            <div>
+              <dt>{publishedLabel}</dt>
+              <dd>{formatDate(entry.data.publishedAt, locale)}</dd>
+            </div>
+            {entry.data.updatedAt && (
+              <div>
+                <dt>{updatedLabel}</dt>
+                <dd>{formatDate(entry.data.updatedAt, locale)}</dd>
+              </div>
+            )}
+            <div>
+              <dt>{locale === 'en' ? 'Category' : '栏目'}</dt>
+              <dd>{entry.data.category}</dd>
+            </div>
+            <div>
+              <dt>{locale === 'en' ? 'Tags' : '标签'}</dt>
+              <dd>{entry.data.tags.join(' / ')}</dd>
+            </div>
+          </dl>
+        </section>
+
+        {alternatePath && (
+          <section class="ff-card article-panel">
+            <h2>{languageLabel}</h2>
+            <a class="article-switch" href={alternatePath}>{switchLabel}</a>
+          </section>
+        )}
+      </aside>
+    </div>
+  </section>
+</BaseLayout>

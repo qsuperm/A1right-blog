@@ -1,0 +1,92 @@
+:root {
+  color-scheme: dark;
+  --admin-bg: #0f1320;
+  --admin-surface: rgba(18, 24, 39, 0.92);
+  --admin-surface-soft: rgba(255, 255, 255, 0.06);
+  --admin-border: rgba(126, 164, 255, 0.16);
+  --admin-text: #eff4ff;
+  --admin-text-soft: rgba(239, 244, 255, 0.74);
+  --admin-link: #8fdcff;
+}
+
+html,
+body,
+input,
+textarea,
+button,
+select {
+  font-family: "Noto Sans SC", "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif !important;
+}
+
+html,
+body {
+  background: var(--admin-bg);
+  color: var(--admin-text);
+}
+
+body {
+  text-rendering: optimizeLegibility;
+}
+
+a {
+  color: var(--admin-link);
+}
+
+::selection {
+  background: rgba(143, 220, 255, 0.28);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(143, 220, 255, 0.28) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(143, 220, 255, 0.22);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+code,
+pre {
+  font-family: "Cascadia Code", "JetBrains Mono", "Fira Code", monospace !important;
+}
+
+button,
+[role='button'] {
+  border-radius: 14px !important;
+}
+
+input:not([type='checkbox']):not([type='radio']),
+textarea,
+select {
+  border-radius: 12px !important;
+  background: rgba(9, 13, 22, 0.88) !important;
+  color: var(--admin-text) !important;
+  border-color: var(--admin-border) !important;
+  box-shadow: none !important;
+}
+
+img[src='/favicon.svg'] {
+  border-radius: 14px;
+  box-shadow: 0 10px 24px rgba(38, 52, 74, 0.16);
+}
+
+#nc-root,
+#nc-root * {
+  box-sizing: border-box;
+}
+
+#nc-root main,
+#nc-root aside,
+#nc-root section {
+  scrollbar-color: rgba(143, 220, 255, 0.28) transparent;
+}

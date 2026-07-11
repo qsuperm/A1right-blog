@@ -1,0 +1,80 @@
+---
+import TaxonomyArticleCard from '../../../components/TaxonomyArticleCard.astro';
+import TaxonomyTermCard from '../../../components/TaxonomyTermCard.astro';
+import TaxonomyLayout from '../../../layouts/TaxonomyLayout.astro';
+import { CATEGORY_META, collectTags, getArticlesByLocale, getCategoryUrl } from '../../../utils/articles';
+import { buildCollectionPageJsonLd } from '../../../utils/seo';
+
+const locale = 'en';
+const articles = await getArticlesByLocale(locale);
+const categoryKeys = Object.keys(CATEGORY_META) as (keyof typeof CATEGORY_META)[];
+const categories = categoryKeys.map((key) => {
+  const entries = articles.filter((entry) => entry.data.categoryKey === key);
+  return {
+    key,
+    name: CATEGORY_META[key][locale].name,
+    description: CATEGORY_META[key][locale].desc,
+    count: entries.length,
+    href: getCategoryUrl(locale, key),
+    tags: collectTags(entries).slice(0, 3).map((tag) => `#${tag.name}`),
+    entries: entries.slice(0, 2),
+  };
+});
+
+const title = 'Category Directory';
+const description = `Browse ${articles.length} security posts by topic across ${categories.length} categories, including Web Security, CTF Writeups, and Agent Pentest.`;
+const breadcrumbs = [
+  { label: 'Home', href: '/en' },
+  { label: 'Categories', href: '/en/categories' },
+];
+const keywords = ['category directory', 'web security blog', 'ctf writeups', 'agent pentest', 'Astro blog'];
+const structuredData = buildCollectionPageJsonLd({
+  title,
+  description,
+  path: '/en/categories',
+  locale,
+});
+---
+
+<TaxonomyLayout
+  locale={locale}
+  title={title}
+  description={description}
+  eyebrow="Taxonomy"
+  stats={[`${articles.length} posts`, `${categories.length} categories`]}
+  alternatePath="/categories"
+  breadcrumbs={breadcrumbs}
+  keywords={keywords}
+  structuredData={structuredData}
+>
+  <div class="taxonomy-grid">
+    {categories.map((item) => (
+      <TaxonomyTermCard
+        href={item.href}
+        title={item.name}
+        description={item.description}
+        count={item.count}
+        chips={item.tags}
+      />
+    ))}
+  </div>
+
+  <div class="taxonomy-sections">
+    {categories.map((item) => (
+      <section class="taxonomy-section">
+        <div class="taxonomy-section__head">
+          <div>
+            <p>{item.count} posts</p>
+            <h2>{item.name}</h2>
+          </div>
+          <a class="taxonomy-section__link" href={item.href}>View all →</a>
+        </div>
+        <div class="taxonomy-posts">
+          {item.entries.map((entry) => (
+            <TaxonomyArticleCard entry={entry} locale={locale} />
+          ))}
+        </div>
+      </section>
+    ))}
+  </div>
+</TaxonomyLayout>

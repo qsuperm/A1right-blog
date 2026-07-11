@@ -1,0 +1,81 @@
+---
+import '../styles/global.css';
+import { SITE, type Locale } from '../config';
+import SiteFooter from '../components/SiteFooter.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+
+interface Props {
+  locale?: Locale;
+  title?: string;
+  description?: string;
+  alternatePath?: string | null;
+  socialImage?: string;
+  type?: 'website' | 'article';
+  keywords?: string[];
+  structuredData?: Record<string, unknown> | Array<Record<string, unknown>>;
+}
+
+const {
+  locale = 'zh-cn',
+  title,
+  description = SITE.descriptions[locale],
+  alternatePath,
+  socialImage = SITE.socialImage,
+  type = 'website',
+  keywords = [],
+  structuredData,
+} = Astro.props;
+
+const siteName = locale === 'en' ? SITE.englishName : SITE.name;
+const pageTitle = title ? `${title} | ${siteName}` : siteName;
+const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
+const resolvedAlternatePath = alternatePath === undefined ? (locale === 'en' ? '/' : '/en') : alternatePath;
+const alternateUrl = resolvedAlternatePath ? new URL(resolvedAlternatePath, Astro.site) : null;
+const socialImageUrl = new URL(socialImage, Astro.site);
+const structuredDataItems = Array.isArray(structuredData)
+  ? structuredData
+  : structuredData
+    ? [structuredData]
+    : [];
+---
+
+<!doctype html>
+<html lang={locale} data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    {keywords.length > 0 && <meta name="keywords" content={keywords.join(', ')} />}
+    <meta name="theme-color" content="#091218" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f4efe6" media="(prefers-color-scheme: light)" />
+    <meta property="og:type" content={type} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:site_name" content={siteName} />
+    <meta property="og:image" content={socialImageUrl} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={socialImageUrl} />
+    <link rel="canonical" href={canonicalUrl} />
+    {alternateUrl && <link rel="alternate" hreflang={locale === 'en' ? 'zh-CN' : 'en'} href={alternateUrl} />}
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    {
+      structuredDataItems.map((item) => (
+        <script is:inline type="application/ld+json" set:html={JSON.stringify(item)} />
+      ))
+    }
+    <script is:inline src="/theme-init.js"></script>
+    <title>{pageTitle}</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to content</a>
+    <SiteHeader locale={locale} />
+    <main id="main-content" data-pagefind-body>
+      <slot />
+    </main>
+    <SiteFooter locale={locale} />
+  </body>
+</html>

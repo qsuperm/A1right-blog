@@ -1,0 +1,34 @@
+﻿---
+import type { Locale } from '../config';
+import { formatDate, getArticleUrl, getCategoryUrl, getTagUrl, type ArticleEntry } from '../utils/articles';
+
+interface Props {
+  entry: ArticleEntry;
+  locale: Locale;
+  headingTag?: 'h2' | 'h3';
+}
+
+const { entry, locale, headingTag = 'h3' } = Astro.props;
+const HeadingTag = headingTag;
+---
+
+<article class="ff-card taxonomy-post">
+  <a class="taxonomy-post__media" href={getArticleUrl(entry)}>
+    <img src={entry.data.cover} alt={entry.data.coverAlt} loading="lazy" />
+  </a>
+  <div class="taxonomy-post__body">
+    <div class="taxonomy-post__meta">
+      <a class="taxonomy-post__chip" href={getCategoryUrl(locale, entry.data.categoryKey)}>{entry.data.category}</a>
+      <time datetime={entry.data.publishedAt.toISOString()}>{formatDate(entry.data.publishedAt, locale)}</time>
+    </div>
+    <HeadingTag class="taxonomy-post__title">
+      <a href={getArticleUrl(entry)}>{entry.data.title}</a>
+    </HeadingTag>
+    <p>{entry.data.excerpt}</p>
+    <div class="taxonomy-post__tags">
+      {entry.data.tags.map((tag) => (
+        <a href={getTagUrl(locale, tag)}>#{tag}</a>
+      ))}
+    </div>
+  </div>
+</article>

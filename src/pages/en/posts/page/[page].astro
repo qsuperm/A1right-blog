@@ -1,0 +1,33 @@
+---
+import PostsArchivePage from '../../../../components/PostsArchivePage.astro';
+import { getArticlesByLocale, getPaginatedArticleChunks } from '../../../../utils/articles';
+
+export async function getStaticPaths() {
+  const locale = 'en';
+  const allArticles = await getArticlesByLocale(locale);
+  const pages = getPaginatedArticleChunks(allArticles);
+
+  return pages
+    .filter((page) => page.currentPage > 1)
+    .map((page) => ({
+      params: { page: String(page.currentPage) },
+      props: {
+        currentPage: page.currentPage,
+        totalPages: page.totalPages,
+        articles: page.items,
+        allArticles,
+      },
+    }));
+}
+
+const locale = 'en';
+const { currentPage, totalPages, articles, allArticles } = Astro.props;
+---
+
+<PostsArchivePage
+  locale={locale}
+  currentPage={currentPage}
+  totalPages={totalPages}
+  articles={articles}
+  allArticles={allArticles}
+/>

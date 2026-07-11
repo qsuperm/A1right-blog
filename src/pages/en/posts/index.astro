@@ -1,0 +1,16 @@
+---
+import PostsArchivePage from '../../../components/PostsArchivePage.astro';
+import { getArticlesByLocale, getPaginatedArticleChunks } from '../../../utils/articles';
+
+const locale = 'en';
+const allArticles = await getArticlesByLocale(locale);
+const [firstPage] = getPaginatedArticleChunks(allArticles);
+---
+
+<PostsArchivePage
+  locale={locale}
+  currentPage={firstPage.currentPage}
+  totalPages={firstPage.totalPages}
+  articles={firstPage.items}
+  allArticles={allArticles}
+/>

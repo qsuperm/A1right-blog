@@ -1,0 +1,71 @@
+---
+import Breadcrumbs from '../components/Breadcrumbs.astro';
+import type { Locale } from '../config';
+import { buildBreadcrumbJsonLd, type BreadcrumbItem } from '../utils/seo';
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  locale: Locale;
+  title: string;
+  description: string;
+  eyebrow: string;
+  stats?: string[];
+  backHref?: string;
+  backLabel?: string;
+  alternatePath?: string | null;
+  breadcrumbs?: BreadcrumbItem[];
+  keywords?: string[];
+  structuredData?: Record<string, unknown> | Array<Record<string, unknown>>;
+}
+
+const {
+  locale,
+  title,
+  description,
+  eyebrow,
+  stats = [],
+  backHref,
+  backLabel,
+  alternatePath,
+  breadcrumbs = [],
+  keywords = [],
+  structuredData,
+} = Astro.props;
+
+const structuredDataItems = [
+  ...(breadcrumbs.length > 0 ? [buildBreadcrumbJsonLd(breadcrumbs)] : []),
+  ...(Array.isArray(structuredData) ? structuredData : structuredData ? [structuredData] : []),
+];
+---
+
+<BaseLayout
+  locale={locale}
+  title={title}
+  description={description}
+  alternatePath={alternatePath}
+  keywords={keywords}
+  structuredData={structuredDataItems}
+>
+  <section class="taxonomy-shell">
+    {breadcrumbs.length > 0 && <Breadcrumbs items={breadcrumbs} />}
+
+    {backHref && backLabel && (
+      <a class="taxonomy-back" href={backHref}>← {backLabel}</a>
+    )}
+
+    <article class="ff-card taxonomy-hero">
+      <p class="taxonomy-hero__eyebrow">{eyebrow}</p>
+      <h1>{title}</h1>
+      <p class="taxonomy-hero__description">{description}</p>
+      {stats.length > 0 && (
+        <div class="taxonomy-hero__stats">
+          {stats.map((item) => (
+            <span>{item}</span>
+          ))}
+        </div>
+      )}
+    </article>
+
+    <slot />
+  </section>
+</BaseLayout>

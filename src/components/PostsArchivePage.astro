@@ -1,0 +1,117 @@
+---
+import type { Locale } from '../config';
+import PaginationNav from './PaginationNav.astro';
+import TaxonomyArticleCard from './TaxonomyArticleCard.astro';
+import TaxonomyTermCard from './TaxonomyTermCard.astro';
+import TaxonomyLayout from '../layouts/TaxonomyLayout.astro';
+import {
+  CATEGORY_META,
+  collectTags,
+  getCategoryUrl,
+  getPostsIndexUrl,
+  getPostsPageUrl,
+  getTagUrl,
+  type ArticleEntry,
+} from '../utils/articles';
+import { buildCollectionPageJsonLd } from '../utils/seo';
+
+interface Props {
+  locale: Locale;
+  currentPage: number;
+  totalPages: number;
+  articles: ArticleEntry[];
+  allArticles: ArticleEntry[];
+}
+
+const { locale, currentPage, totalPages, articles, allArticles } = Astro.props;
+const isEnglish = locale === 'en';
+const homeHref = locale === 'en' ? '/en' : '/';
+const archiveHref = getPostsIndexUrl(locale);
+const pageHref = getPostsPageUrl(locale, currentPage);
+const alternatePath = getPostsPageUrl(locale === 'en' ? 'zh-cn' : 'en', currentPage);
+const totalArticles = allArticles.length;
+const title = isEnglish
+  ? currentPage === 1
+    ? 'Post Archive'
+    : `Post Archive · Page ${currentPage}`
+  : currentPage === 1
+    ? '文章归档'
+    : `文章归档 · 第 ${currentPage} 页`;
+const description = isEnglish
+  ? `Browse all ${totalArticles} posts across web security, CTF writeups, and agent pentest notes. You are on page ${currentPage} of ${totalPages}.`
+  : `按时间浏览当前全部 ${totalArticles} 篇文章，涵盖 Web 安全、CTF 题解和 Agent 渗透。当前是第 ${currentPage} / ${totalPages} 页。`;
+const breadcrumbs =
+  currentPage === 1
+    ? [
+        { label: isEnglish ? 'Home' : '首页', href: homeHref },
+        { label: isEnglish ? 'Posts' : '文章流', href: archiveHref },
+      ]
+    : [
+        { label: isEnglish ? 'Home' : '首页', href: homeHref },
+        { label: isEnglish ? 'Posts' : '文章流', href: archiveHref },
+        { label: isEnglish ? `Page ${currentPage}` : `第 ${currentPage} 页`, href: pageHref },
+      ];
+const stats = isEnglish
+  ? [`${totalArticles} posts`, `${articles.length} on this page`, `Page ${currentPage} / ${totalPages}`]
+  : [`${totalArticles} 篇文章`, `本页 ${articles.length} 篇`, `第 ${currentPage} / ${totalPages} 页`];
+const keywords = isEnglish
+  ? ['post archive', 'web security blog', 'ctf writeups', 'agent pentest', 'Astro blog']
+  : ['文章归档', '网络安全博客', 'Web 安全', 'CTF 题解', 'Agent 渗透'];
+const categoryCards = (Object.keys(CATEGORY_META) as (keyof typeof CATEGORY_META)[]).map((key) => ({
+  href: getCategoryUrl(locale, key),
+  title: CATEGORY_META[key][locale].name,
+  description: CATEGORY_META[key][locale].desc,
+  count: allArticles.filter((entry) => entry.data.categoryKey === key).length,
+}));
+const popularTags = collectTags(allArticles).slice(0, 8);
+const structuredData = buildCollectionPageJsonLd({
+  title,
+  description,
+  path: pageHref,
+  locale,
+});
+---
+
+<TaxonomyLayout
+  locale={locale}
+  title={title}
+  description={description}
+  eyebrow={isEnglish ? 'Archive' : 'Archive'}
+  stats={stats}
+  alternatePath={alternatePath}
+  breadcrumbs={breadcrumbs}
+  keywords={keywords}
+  structuredData={structuredData}
+>
+  <div class="taxonomy-detail">
+    <div class="archive-main">
+      <div class="taxonomy-posts taxonomy-posts--single">
+        {articles.map((entry, index) => (
+          <TaxonomyArticleCard entry={entry} locale={locale} headingTag={index === 0 ? 'h2' : 'h3'} />
+        ))}
+      </div>
+
+      <PaginationNav locale={locale} baseUrl={archiveHref} currentPage={currentPage} totalPages={totalPages} />
+    </div>
+
+    <aside class="taxonomy-aside">
+      <section class="ff-card taxonomy-panel">
+        <h2>{isEnglish ? 'Browse by category' : '按分类浏览'}</h2>
+        <div class="taxonomy-panel__list">
+          {categoryCards.map((item) => (
+            <TaxonomyTermCard href={item.href} title={item.title} description={item.description} count={item.count} />
+          ))}
+        </div>
+      </section>
+
+      <section class="ff-card taxonomy-panel">
+        <h2>{isEnglish ? 'Popular tags' : '常用标签'}</h2>
+        <div class="taxonomy-panel__chips">
+          {popularTags.map((tag) => (
+            <a href={getTagUrl(locale, tag.name)}>#{tag.name}</a>
+          ))}
+        </div>
+      </section>
+    </aside>
+  </div>
+</TaxonomyLayout>

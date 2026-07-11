@@ -1,0 +1,26 @@
+﻿---
+import { padCount } from '../utils/articles';
+
+interface Props {
+  href: string;
+  title: string;
+  description: string;
+  count: number;
+  chips?: string[];
+}
+
+const { href, title, description, count, chips = [] } = Astro.props;
+---
+
+<a class="ff-card taxonomy-card" href={href}>
+  <div class="taxonomy-card__count">{padCount(count)}</div>
+  <h2>{title}</h2>
+  <p>{description}</p>
+  {chips.length > 0 && (
+    <div class="taxonomy-card__chips">
+      {chips.map((chip) => (
+        <span>{chip}</span>
+      ))}
+    </div>
+  )}
+</a>
