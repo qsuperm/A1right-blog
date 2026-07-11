@@ -7,7 +7,7 @@ const branchMatch = configText.match(/branch:\s*'([^']+)'/);
 const siteMatch = configText.match(/provisionalUrl:\s*'([^']+)'/);
 const githubMatch = configText.match(/githubUrl:\s*'([^']+)'/);
 
-const repo = repoMatch?.[1] ?? 'qsuperm/a1right-blog';
+const repo = repoMatch?.[1] ?? 'qsuperm/A1right-blog';
 const branch = branchMatch?.[1] ?? 'master';
 const siteUrl = siteMatch?.[1] ?? 'https://a1right-blog.pages.dev';
 const githubUrl = githubMatch?.[1] ?? 'https://github.com/qsuperm';

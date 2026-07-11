@@ -17,7 +17,7 @@ export const SITE = {
 } as const;
 
 export const CMS = {
-  repo: 'qsuperm/a1right-blog',
+  repo: 'qsuperm/A1right-blog',
   branch: 'master',
   locale: 'zh_Hans',
   mediaFolder: 'public/images/uploads',

@@ -50,7 +50,7 @@ pnpm setup:publish
 
 当前本地已经预设远程仓库：
 
-- `https://github.com/qsuperm/a1right-blog.git`
+- `https://github.com/qsuperm/A1right-blog.git`
 
 如果你还没创建仓库，最省事的方式是直接打开这个 GitHub 预填链接：
 
@@ -82,7 +82,7 @@ git -C "D:\ctftools\blog" push -u origin master
 根据 Cloudflare Pages 当前的 Git 集成流程，建议在控制台中这样创建项目：
 
 - Workers & Pages → Create application → Pages → Connect to Git
-- 选择仓库：`qsuperm/a1right-blog`
+- 选择仓库：`qsuperm/A1right-blog`
 - Framework preset：`Astro`
 - Production branch：`master`
 - Build command：`pnpm build`

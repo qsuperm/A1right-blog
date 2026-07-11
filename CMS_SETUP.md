@@ -38,7 +38,7 @@ pnpm dev:cms
 我已经按你真实 GitHub 用户名配置成：
 
 - GitHub 用户名：`qsuperm`
-- 默认仓库：`qsuperm/a1right-blog`
+- 默认仓库：`qsuperm/A1right-blog`
 - 默认分支：`master`
 
 配置位置：
