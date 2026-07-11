@@ -3,7 +3,7 @@ export const SITE = {
   englishName: "A1right's Corner",
   author: 'A1right',
   githubUrl: 'https://github.com/qsuperm',
-  provisionalUrl: 'https://a1right-blog.pages.dev',
+  provisionalUrl: 'https://a1right-blog.3223771807.workers.dev',
   avatarText: 'A1',
   socialImage: '/images/anime-hero-city.jpg',
   subtitles: {
@@ -75,6 +75,6 @@ export const UI = {
     switchLanguage: '中文',
     switchLanguageLabel: 'Switch to Chinese',
     themeLabel: 'Toggle color theme',
-    footerNote: 'Astro + Pagefind + Cloudflare Pages, shaping this cyber notebook into a cleaner Firefly-style home.',
+    footerNote: 'Astro + Pagefind + Cloudflare Workers, shaping this cyber notebook into a cleaner Firefly-style home.',
   },
 } as const;

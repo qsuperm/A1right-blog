@@ -9,7 +9,7 @@ const githubMatch = configText.match(/githubUrl:\s*'([^']+)'/);
 
 const repo = repoMatch?.[1] ?? 'qsuperm/A1right-blog';
 const branch = branchMatch?.[1] ?? 'master';
-const siteUrl = siteMatch?.[1] ?? 'https://a1right-blog.pages.dev';
+const siteUrl = siteMatch?.[1] ?? 'https://a1right-blog.3223771807.workers.dev';
 const githubUrl = githubMatch?.[1] ?? 'https://github.com/qsuperm';
 const [owner, repoName] = repo.split('/');
 const description = encodeURIComponent("A1right's bilingual cybersecurity blog built with Astro and Decap CMS");

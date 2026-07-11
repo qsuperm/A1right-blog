@@ -5,7 +5,7 @@ import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
-  site: 'https://a1right-blog.pages.dev',
+  site: 'https://a1right-blog.3223771807.workers.dev',
   output: 'static',
   trailingSlash: 'never',
   i18n: {
