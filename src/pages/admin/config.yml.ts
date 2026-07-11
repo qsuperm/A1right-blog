@@ -66,8 +66,8 @@ const createCollection = ({
   const titleLabel = locale === 'en' ? '英文标题' : '文章标题';
   const excerptLabel = locale === 'en' ? '英文摘要' : '文章摘要';
   const authorLabel = '作者 / 网名';
-  const seoTitleLabel = 'SEO 标题（可选）';
-  const seoDescriptionLabel = 'SEO 描述（可选）';
+  const seoTitleLabel = 'SEO 标题';
+  const seoDescriptionLabel = 'SEO 描述';
   const categoryKeyLabel = '分类 Key';
   const categoryLabel = locale === 'en' ? '英文分类显示名' : '分类显示名';
   const tagsLabel = locale === 'en' ? '英文标签' : '标签';
@@ -307,7 +307,7 @@ ${createCollection({
 `;
 
 export const GET: APIRoute = async () =>
-  new Response(config, {
+  new Response(`\uFEFF${config}`, {
     headers: {
       'Content-Type': 'text/yaml; charset=utf-8',
       'Cache-Control': 'public, max-age=0, must-revalidate',
