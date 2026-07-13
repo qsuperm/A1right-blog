@@ -14,7 +14,7 @@ const HeadingTag = headingTag;
 
 <article class="ff-card taxonomy-post">
   <a class="taxonomy-post__media" href={getArticleUrl(entry)}>
-    <img src={entry.data.cover} alt={entry.data.coverAlt} loading="lazy" />
+    <img src={entry.data.cover} alt={entry.data.coverAlt || entry.data.title} loading="lazy" />
   </a>
   <div class="taxonomy-post__body">
     <div class="taxonomy-post__meta">

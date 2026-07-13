@@ -75,14 +75,12 @@ const createCollection = ({
   const tagItemLabel = locale === 'en' ? 'Tag' : '标签';
   const tagSingularLabel = locale === 'en' ? 'Tag' : '标签';
   const coverLabel = '封面图';
-  const coverAltLabel = locale === 'en' ? '英文封面描述' : '封面描述';
+  const coverAltLabel = locale === 'en' ? '英文封面描述（可选）' : '封面描述（可选）';
   const publishedLabel = '发布日期';
   const updatedLabel = '更新日期';
   const pinnedLabel = '是否置顶';
   const draftLabel = '是否草稿';
   const bodyLabel = locale === 'en' ? '英文正文' : '正文';
-  const defaultCoverAlt = locale === 'en' ? 'Anime room illustration at night' : '夜间房间中的二次元场景';
-
   const categoryOptions = categories
     .map((item) => `          - label: ${quote(item.label)}\n            value: ${quote(item.value)}`)
     .join('\n');
@@ -212,7 +210,8 @@ ${categoryTextOptions}
       - label: ${quote(coverAltLabel)}
         name: "coverAlt"
         widget: "string"
-        default: ${quote(defaultCoverAlt)}
+        required: false
+        default: ""
         hint: ${quote(contentHints.coverAlt)}
       - label: ${quote(pinnedLabel)}
         name: "pinned"
@@ -272,7 +271,7 @@ ${createCollection({
     title: '建议直接写发布标题，首页卡片、文章详情页和 SEO 标题都会默认复用它。',
     excerpt: '建议 1~2 句话，首页摘要、搜索结果和 SEO 描述都会优先复用它。',
     body: '支持 Markdown / MDX。代码块、表格、列表、引用和图片都可以直接写。',
-    coverAlt: '写给搜索引擎和无障碍设备的图片描述，例如“夜幕城市里的二次元角色插画”。',
+    coverAlt: '可选。写给搜索引擎和无障碍设备的图片描述，例如“夜幕城市里的二次元角色插画”。不填时前台会回退到文章标题。',
   },
   categories: [
     { label: 'Web 安全', value: 'web-security' },
@@ -302,7 +301,7 @@ ${createCollection({
     title: '这里填写英文标题；建议和中文版使用同一个 translationKey。',
     excerpt: '这里填写英文摘要，搜索结果和 SEO 描述会优先复用它。',
     body: '这里填写英文正文内容，支持 Markdown / MDX。',
-    coverAlt: '这里填写英文封面描述，例如 “Anime character in a neon-lit city at dusk”.',
+    coverAlt: 'Optional. Add an English image description here, for example “Anime character in a neon-lit city at dusk”. If left blank, the post title will be used as fallback.',
   },
   categories: [
     { label: 'Web Security', value: 'web-security' },

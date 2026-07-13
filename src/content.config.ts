@@ -23,7 +23,7 @@ const articles = defineCollection({
     publishedAt: z.coerce.date(),
     updatedAt: z.coerce.date().optional(),
     cover: z.string().transform(normalizeMediaPath),
-    coverAlt: z.string(),
+    coverAlt: z.string().optional().default(''),
     pinned: z.boolean().default(false),
     draft: z.boolean().default(false),
   }),

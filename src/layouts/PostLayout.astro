@@ -116,7 +116,7 @@ const breadcrumbStructuredData = buildBreadcrumbJsonLd([
       </div>
 
       <div class="article-cover">
-        <img src={entry.data.cover} alt={entry.data.coverAlt} loading="eager" />
+        <img src={entry.data.cover} alt={entry.data.coverAlt || entry.data.title} loading="eager" />
       </div>
     </article>
 

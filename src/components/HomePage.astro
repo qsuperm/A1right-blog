@@ -156,7 +156,7 @@ const totalWords = articles.reduce((sum, entry) => sum + (entry.body ?? '').spli
             <div class="fo-post-card__tags">{post.data.tags.map((tag) => <a href={getTagUrl(locale, tag)}>#{tag}</a>)}</div>
           </div>
           <a class="fo-post-card__cover" href={getArticleUrl(post)} aria-label={post.data.title}>
-            <img src={post.data.cover} alt={post.data.coverAlt} loading="lazy" /><span>›</span>
+            <img src={post.data.cover} alt={post.data.coverAlt || post.data.title} loading="lazy" /><span>›</span>
           </a>
         </article>
       ))}
