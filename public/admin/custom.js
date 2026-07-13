@@ -31,6 +31,10 @@
     dropTargetClearTimer: 0,
     activeDropTarget: null,
   };
+  const markdownPreviewState = {
+    refreshRaf: 0,
+    lastSignature: '',
+  };
   const editorState = {
     lastMarkdownRoot: null,
     lastMarkdownEditable: null,
@@ -177,6 +181,44 @@
       lines,
       readingMinutes: estimateReadingTime(normalized),
     };
+  };
+
+  const getMarkedEngine = () => {
+    if (window.marked?.parse) return window.marked;
+    if (window.marked?.marked?.parse) return window.marked.marked;
+    return null;
+  };
+
+  const sanitizeMarkdownSource = (source = '') =>
+    `${source || ''}`
+      .replace(/^\s*import\s.+$/gm, '')
+      .replace(/^\s*export\s.+$/gm, '')
+      .replace(/^\s*<{3}.+$/gm, '');
+
+  const renderMarkdownSourceToHtml = (source = '') => {
+    const markedEngine = getMarkedEngine();
+    if (!markedEngine) return '';
+
+    try {
+      return markedEngine.parse(sanitizeMarkdownSource(source), {
+        async: false,
+        gfm: true,
+        breaks: true,
+      });
+    } catch (error) {
+      console.error('[a1right-admin] failed to render markdown preview', error);
+      return '';
+    }
+  };
+
+  const sanitizePreviewHtml = (html = '') => {
+    if (window.DOMPurify?.sanitize) {
+      return window.DOMPurify.sanitize(html, {
+        USE_PROFILES: { html: true },
+      });
+    }
+
+    return html;
   };
 
   const normalizeAssetUrl = (value = '') => {
@@ -626,6 +668,7 @@
     scheduleRichTextCodeRefresh();
     scheduleToolbarCodeRefresh();
     scheduleEditorWorkflowRefresh();
+    scheduleMarkdownPreviewRefresh();
     scheduleManagedFieldAssistRefresh();
     scheduleAutoDraftSave();
     showToast('本地草稿已恢复。', 'success', 2400);
@@ -771,6 +814,191 @@
     }
 
     renderRecentUploadsRail();
+  };
+
+  const formatPreviewCodeLanguage = (value = '') => {
+    const key = `${value || ''}`.trim().toLowerCase();
+    if (!key) return 'TEXT';
+
+    const aliases = {
+      js: 'JavaScript',
+      jsx: 'JSX',
+      ts: 'TypeScript',
+      tsx: 'TSX',
+      py: 'Python',
+      sh: 'Shell',
+      bash: 'Bash',
+      zsh: 'Zsh',
+      yml: 'YAML',
+      md: 'Markdown',
+      plaintext: 'Text',
+      txt: 'Text',
+    };
+
+    return aliases[key] || key.replace(/^[a-z]/, (char) => char.toUpperCase());
+  };
+
+  const normalizePreviewLink = (value = '') => {
+    const trimmed = `${value || ''}`.trim();
+    if (!trimmed) return '';
+    if (/^(https?:|mailto:|tel:|#)/i.test(trimmed)) return trimmed;
+    return normalizeAssetUrl(trimmed);
+  };
+
+  const ensureMarkdownPreviewPanel = () => {
+    const container = getBodyFieldContainer();
+    if (!(container instanceof Element)) return null;
+
+    container.classList.add('a1right-admin-body-control');
+
+    let panel = container.querySelector('.a1right-admin-markdown-preview');
+    if (panel) return panel;
+
+    panel = document.createElement('aside');
+    panel.className = 'a1right-admin-markdown-preview';
+    panel.innerHTML = `
+      <div class="a1right-admin-markdown-preview__chrome">
+        <div>
+          <span class="a1right-admin-markdown-preview__eyebrow">实时 Markdown 预览</span>
+          <strong class="a1right-admin-markdown-preview__heading">标题、图片、代码块会跟随正文同步</strong>
+        </div>
+        <span class="a1right-admin-markdown-preview__badge">AUTO</span>
+      </div>
+      <article class="a1right-admin-markdown-preview__article">
+        <div class="a1right-admin-markdown-preview__meta" data-preview-meta>正在准备预览面板…</div>
+        <div class="a1right-admin-markdown-preview__cover" data-preview-cover hidden>
+          <img class="a1right-admin-markdown-preview__cover-image" data-preview-cover-image alt="" />
+          <div class="a1right-admin-markdown-preview__cover-empty">封面预览</div>
+        </div>
+        <header class="a1right-admin-markdown-preview__header">
+          <h1 class="a1right-admin-markdown-preview__title" data-preview-title>未命名文章</h1>
+          <p class="a1right-admin-markdown-preview__excerpt" data-preview-excerpt hidden></p>
+        </header>
+        <div class="a1right-admin-markdown-preview__body a1right-admin-md-preview" data-preview-body>
+          <div class="a1right-admin-markdown-preview__placeholder">开始输入正文后，这里会实时显示标题、图片、代码块和排版效果。</div>
+        </div>
+      </article>
+    `;
+
+    container.append(panel);
+    return panel;
+  };
+
+  const decorateMarkdownPreviewBody = (root) => {
+    if (!(root instanceof HTMLElement)) return;
+
+    root.querySelectorAll('img').forEach((image) => {
+      const source = image.getAttribute('src') || image.currentSrc || '';
+      const normalized = normalizePreviewLink(source);
+      if (normalized) image.setAttribute('src', normalized);
+      image.setAttribute('loading', 'lazy');
+      image.setAttribute('decoding', 'async');
+      if (!image.getAttribute('alt')) image.setAttribute('alt', 'article image');
+    });
+
+    root.querySelectorAll('a[href]').forEach((link) => {
+      const href = normalizePreviewLink(link.getAttribute('href') || '');
+      if (href) link.setAttribute('href', href);
+      if (/^https?:\/\//i.test(href)) {
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noreferrer');
+      }
+    });
+
+    root.querySelectorAll('pre').forEach((pre) => {
+      const code = pre.querySelector('code');
+      const className = code?.className || '';
+      const matched = className.match(/language-([a-z0-9_+-]+)/i);
+      pre.dataset.lang = formatPreviewCodeLanguage(matched?.[1] || 'text');
+    });
+  };
+
+  const renderMarkdownPreview = () => {
+    const panel = ensureMarkdownPreviewPanel();
+    if (!(panel instanceof HTMLElement)) return;
+
+    const inputs = getEditorManagedInputs();
+    const bodyText = getBodyPlainText();
+    const stats = countBodyStats(bodyText);
+    const title = `${inputs.title?.value || ''}`.trim() || '未命名文章';
+    const excerpt = `${inputs.excerpt?.value || ''}`.trim();
+    const cover = normalizeAssetUrl(inputs.cover?.value || '');
+    const coverAlt = `${inputs.coverAlt?.value || ''}`.trim() || `${title} 封面图`;
+    const engineReady = Boolean(getMarkedEngine());
+    const signature = JSON.stringify({
+      engineReady,
+      title,
+      excerpt,
+      cover,
+      coverAlt,
+      bodyText,
+    });
+
+    if (signature === markdownPreviewState.lastSignature) return;
+    markdownPreviewState.lastSignature = signature;
+
+    const metaNode = panel.querySelector('[data-preview-meta]');
+    const titleNode = panel.querySelector('[data-preview-title]');
+    const excerptNode = panel.querySelector('[data-preview-excerpt]');
+    const bodyNode = panel.querySelector('[data-preview-body]');
+    const coverNode = panel.querySelector('[data-preview-cover]');
+    const coverImage = panel.querySelector('[data-preview-cover-image]');
+
+    if (metaNode instanceof HTMLElement) {
+      metaNode.textContent = `${stats.words} 字 · ${stats.lines} 行 · 约 ${stats.readingMinutes} 分钟 · 自动刷新`;
+    }
+
+    if (titleNode instanceof HTMLElement) {
+      titleNode.textContent = title;
+    }
+
+    if (excerptNode instanceof HTMLElement) {
+      excerptNode.textContent = excerpt;
+      excerptNode.hidden = !excerpt;
+    }
+
+    if (coverNode instanceof HTMLElement && coverImage instanceof HTMLImageElement) {
+      if (cover) {
+        coverNode.hidden = false;
+        coverImage.src = cover;
+        coverImage.alt = coverAlt;
+      } else {
+        coverNode.hidden = true;
+        coverImage.removeAttribute('src');
+      }
+    }
+
+    if (!(bodyNode instanceof HTMLElement)) return;
+
+    if (!engineReady) {
+      bodyNode.innerHTML = `
+        <div class="a1right-admin-markdown-preview__placeholder">
+          Markdown 预览引擎加载中，稍等几秒后会自动显示实时预览。
+        </div>
+      `;
+      return;
+    }
+
+    const renderedHtml = renderMarkdownSourceToHtml(bodyText);
+    if (!renderedHtml.trim()) {
+      bodyNode.innerHTML = `
+        <div class="a1right-admin-markdown-preview__placeholder">
+          正文还没有可预览的内容。继续输入 Markdown / MDX 后，这里会立即显示图片、标题层级和代码块样式。
+        </div>
+      `;
+      return;
+    }
+
+    bodyNode.innerHTML = sanitizePreviewHtml(renderedHtml);
+    decorateMarkdownPreviewBody(bodyNode);
+  };
+
+  const scheduleMarkdownPreviewRefresh = () => {
+    if (markdownPreviewState.refreshRaf) return;
+    markdownPreviewState.refreshRaf = window.requestAnimationFrame(() => {
+      markdownPreviewState.refreshRaf = 0;
+      renderMarkdownPreview();
+    });
   };
 
   const scheduleEditorWorkflowRefresh = () => {
@@ -985,6 +1213,7 @@
     setDirtyState(true);
     scheduleAutoDraftSave();
     scheduleEditorWorkflowRefresh();
+    scheduleMarkdownPreviewRefresh();
     scheduleManagedFieldAssistRefresh();
   };
 
@@ -2557,6 +2786,7 @@
   document.addEventListener('focusin', (event) => {
     syncMarkdownEditorState(event.target);
     syncImageEditorState(event.target);
+    scheduleMarkdownPreviewRefresh();
     scheduleRichTextCodeRefresh();
     scheduleToolbarCodeRefresh();
   }, true);
@@ -2564,6 +2794,7 @@
   document.addEventListener('click', (event) => {
     syncMarkdownEditorState(event.target);
     syncImageEditorState(event.target);
+    scheduleMarkdownPreviewRefresh();
     scheduleRichTextCodeRefresh();
     scheduleToolbarCodeRefresh();
     handlePossibleSaveAction(event.target);
@@ -2572,6 +2803,7 @@
   document.addEventListener('keyup', (event) => {
     syncMarkdownEditorState(event.target);
     syncImageEditorState(event.target);
+    scheduleMarkdownPreviewRefresh();
     scheduleRichTextCodeRefresh();
     scheduleToolbarCodeRefresh();
   }, true);
@@ -2579,6 +2811,7 @@
   document.addEventListener('mouseup', (event) => {
     syncMarkdownEditorState(event.target);
     syncImageEditorState(event.target);
+    scheduleMarkdownPreviewRefresh();
     scheduleRichTextCodeRefresh();
     scheduleToolbarCodeRefresh();
   }, true);
@@ -2591,12 +2824,14 @@
     const imageRoot = getImageRootFromElement(event.target);
     if (imageRoot) {
       renderImageFieldPreview(imageRoot);
+      scheduleMarkdownPreviewRefresh();
       return;
     }
 
     if (getControlContainerByLabel([/封面描述/, /cover description/i])) {
       scheduleImageFieldPreviewRefresh();
     }
+    scheduleMarkdownPreviewRefresh();
     scheduleRichTextCodeRefresh();
     scheduleToolbarCodeRefresh();
   }, true);
@@ -2610,6 +2845,7 @@
         setDirtyState(true);
         scheduleAutoDraftSave();
         scheduleEditorWorkflowRefresh();
+        scheduleMarkdownPreviewRefresh();
         return;
       }
     }
@@ -2619,10 +2855,12 @@
     const imageRoot = getImageRootFromElement(event.target);
     if (imageRoot) {
       renderImageFieldPreview(imageRoot);
+      scheduleMarkdownPreviewRefresh();
       return;
     }
 
     scheduleImageFieldPreviewRefresh();
+    scheduleMarkdownPreviewRefresh();
     scheduleRichTextCodeRefresh();
     scheduleToolbarCodeRefresh();
   }, true);
@@ -2682,10 +2920,12 @@
   window.addEventListener('hashchange', () => {
     workflowState.activeDraftKey = getCurrentEditorRouteKey();
     workflowState.restoreBannerDismissed = false;
+    markdownPreviewState.lastSignature = '';
     window.setTimeout(scheduleImageFieldPreviewRefresh, 140);
     window.setTimeout(scheduleRichTextCodeRefresh, 140);
     window.setTimeout(scheduleToolbarCodeRefresh, 140);
     window.setTimeout(scheduleEditorWorkflowRefresh, 140);
+    window.setTimeout(scheduleMarkdownPreviewRefresh, 140);
     window.setTimeout(scheduleManagedFieldAssistRefresh, 140);
   });
 
@@ -2705,6 +2945,7 @@
       scheduleImageFieldPreviewRefresh();
       scheduleRichTextCodeRefresh();
       scheduleToolbarCodeRefresh();
+      scheduleMarkdownPreviewRefresh();
       scheduleManagedFieldAssistRefresh();
     }).observe(cmsRoot, { childList: true, subtree: true });
   }
@@ -2714,5 +2955,6 @@
   scheduleToolbarCodeRefresh();
   workflowState.activeDraftKey = getCurrentEditorRouteKey();
   scheduleEditorWorkflowRefresh();
+  scheduleMarkdownPreviewRefresh();
   scheduleManagedFieldAssistRefresh();
 })();

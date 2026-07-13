@@ -37,6 +37,8 @@ const adminRuntime = JSON.stringify({
     <script is:inline define:vars={{ adminRuntime }}>
       window.__A1RIGHT_ADMIN__ = JSON.parse(adminRuntime);
     </script>
+    <script is:inline src="/admin/vendor/marked.umd.js" defer></script>
+    <script is:inline src="/admin/vendor/purify.min.js" defer></script>
     <script is:inline src="/admin/custom.js" defer></script>
     <style>
       :root {
