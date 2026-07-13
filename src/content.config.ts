@@ -1,6 +1,7 @@
 import { defineCollection } from 'astro:content';
 import { z } from 'astro/zod';
 import { glob } from 'astro/loaders';
+import { normalizeMediaPath } from './utils/media';
 
 const articles = defineCollection({
   loader: glob({
@@ -21,7 +22,7 @@ const articles = defineCollection({
     tags: z.array(z.string()).min(1).max(6),
     publishedAt: z.coerce.date(),
     updatedAt: z.coerce.date().optional(),
-    cover: z.string(),
+    cover: z.string().transform(normalizeMediaPath),
     coverAlt: z.string(),
     pinned: z.boolean().default(false),
     draft: z.boolean().default(false),

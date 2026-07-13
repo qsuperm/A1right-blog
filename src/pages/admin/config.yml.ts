@@ -41,7 +41,7 @@ const categoryDisplayHint = '这里是前台显示文案，请和上面的分类
 const seoTitleHint = '留空时默认使用文章标题。建议控制在 60 字以内。';
 const seoDescriptionHint = '留空时默认使用文章摘要。建议 70~120 字，便于搜索结果和社交分享复用。';
 const authorHint = '默认写入 A1right；如果以后想写 guest post，再改成其他名字即可。';
-const defaultCover = '/images/uploads/cover-anime-hero-room.jpg';
+const defaultCover = 'images/uploads/cover-anime-hero-room.jpg';
 
 const createCollection = ({
   name,
