@@ -35,7 +35,7 @@ interface CollectionMeta {
   };
 }
 
-const tagHint = '建议 2~5 个标签，每个标签单独一项；不要写成一个 #misc#CTF#LitCTF2026 这样的长字符串。';
+const tagHint = '建议 2~5 个标签，每个标签单独一项；先填写一个标签，再点下方“添加标签 / Add tag”。不要写成一个 #misc#CTF#LitCTF2026 这样的长字符串。';
 const coverHint = '推荐使用 1200×630 横图，适合首页卡片、Open Graph 和社交分享。';
 const categoryDisplayHint = '这里是前台显示文案，请和上面的分类 Key 选项保持一致。';
 const seoTitleHint = '留空时默认使用文章标题。建议控制在 60 字以内。';
@@ -72,6 +72,8 @@ const createCollection = ({
   const categoryKeyLabel = '分类 Key';
   const categoryLabel = locale === 'en' ? '英文分类显示名' : '分类显示名';
   const tagsLabel = locale === 'en' ? '英文标签' : '标签';
+  const tagItemLabel = locale === 'en' ? 'Tag' : '标签';
+  const tagSingularLabel = locale === 'en' ? 'Tag' : '标签';
   const coverLabel = '封面图';
   const coverAltLabel = locale === 'en' ? '英文封面描述' : '封面描述';
   const publishedLabel = '发布日期';
@@ -177,8 +179,18 @@ ${categoryTextOptions}
       - label: ${quote(tagsLabel)}
         name: "tags"
         widget: "list"
+        label_singular: ${quote(tagSingularLabel)}
+        min: 1
+        max: 6
+        allow_add: true
+        allow_remove: true
+        allow_reorder: true
         collapsed: false
         hint: ${quote(tagHint)}
+        field:
+          label: ${quote(tagItemLabel)}
+          name: "tag"
+          widget: "string"
       - label: ${quote(publishedLabel)}
         name: "publishedAt"
         widget: "datetime"
