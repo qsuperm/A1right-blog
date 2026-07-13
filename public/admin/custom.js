@@ -8,6 +8,9 @@
     objectUrls: new Set(),
     imageFieldState: new WeakMap(),
   };
+  const decoratorState = {
+    richTextCodeRefreshRaf: 0,
+  };
   const editorState = {
     lastMarkdownRoot: null,
     lastMarkdownEditable: null,
@@ -832,6 +835,119 @@
     };
   })();
 
+  const readCodeLineText = (element) => {
+    if (!(element instanceof HTMLElement)) return '';
+    if (element.matches('pre')) return `${element.textContent || ''}`;
+
+    const codeChild = element.firstElementChild;
+    if (codeChild instanceof HTMLElement && codeChild.tagName === 'CODE') {
+      return `${codeChild.textContent || ''}`;
+    }
+
+    return `${element.textContent || ''}`;
+  };
+
+  const isRichTextCodeLine = (element) => {
+    if (!(element instanceof HTMLElement)) return false;
+    if (element.matches('pre')) return true;
+    if (element.childElementCount !== 1) return false;
+
+    const first = element.firstElementChild;
+    if (!(first instanceof HTMLElement) || first.tagName !== 'CODE') return false;
+
+    const hasOtherMeaningfulNodes = [...element.childNodes].some((node) => {
+      if (node === first) return false;
+      if (node.nodeType === Node.TEXT_NODE) return `${node.textContent || ''}`.trim().length > 0;
+      if (node.nodeType === Node.ELEMENT_NODE) return true;
+      return false;
+    });
+
+    return !hasOtherMeaningfulNodes;
+  };
+
+  const inferCodeLanguage = (lines) => {
+    const joined = lines.join('\n').trim();
+    const lower = joined.toLowerCase();
+    const firstLine = `${lines[0] || ''}`.trim().toLowerCase();
+
+    if (/python/.test(firstLine) || /\bdef\b|\bimport\s+\w+|\belif\b|print\(|__name__/.test(lower)) return 'Python';
+    if (/bash|sh/.test(firstLine) || /^\$ /.test(joined) || /\b(curl|grep|chmod|sudo|apt|export)\b/.test(lower)) return 'Bash';
+    if (/\b(console\.log|function|const |let |=>|import .* from )\b/.test(lower)) return 'JavaScript';
+    if (/\binterface |type |enum |implements |readonly /.test(lower)) return 'TypeScript';
+    if (/<[a-z][\s\S]*?>/i.test(joined) || /<\/[a-z]+>/i.test(joined)) return 'HTML';
+    if (/\bselect\b[\s\S]*\bfrom\b|\binsert into\b|\bupdate\b.+\bset\b|\bdelete from\b/.test(lower)) return 'SQL';
+    if (/^#include\b|std::|cout\s*<</m.test(joined)) return 'C++';
+    if (/\bpackage main\b|\bfmt\./.test(lower)) return 'Go';
+    if (/\bpublic class\b|\bsystem\.out\.println\b|\bstring\[\]\s+args\b/.test(lower)) return 'Java';
+    if (/^#!/.test(firstLine)) return firstLine.includes('python') ? 'Python' : 'Shell';
+    return 'Code';
+  };
+
+  const decorateRichTextCodeBlocks = (editable) => {
+    if (!(editable instanceof HTMLElement)) return;
+
+    const blocks = [...editable.children].filter((item) => item instanceof HTMLElement);
+    blocks.forEach((block) => {
+      block.classList.remove(
+        'a1right-admin-code-line',
+        'is-code-start',
+        'is-code-middle',
+        'is-code-end',
+        'is-code-single',
+        'is-code-empty',
+      );
+      block.removeAttribute('data-code-lang');
+    });
+
+    let group = [];
+    const flush = () => {
+      if (!group.length) return;
+      const language = inferCodeLanguage(group.map((item) => readCodeLineText(item)));
+
+      group.forEach((item, index) => {
+        item.classList.add('a1right-admin-code-line');
+        if (!readCodeLineText(item).trim()) item.classList.add('is-code-empty');
+
+        if (group.length === 1) {
+          item.classList.add('is-code-single', 'is-code-start', 'is-code-end');
+        } else if (index === 0) {
+          item.classList.add('is-code-start');
+        } else if (index === group.length - 1) {
+          item.classList.add('is-code-end');
+        } else {
+          item.classList.add('is-code-middle');
+        }
+      });
+
+      group[0].setAttribute('data-code-lang', language);
+      group = [];
+    };
+
+    for (const block of blocks) {
+      if (isRichTextCodeLine(block)) {
+        group.push(block);
+      } else {
+        flush();
+      }
+    }
+
+    flush();
+  };
+
+  const refreshAllRichTextCodeBlocks = () => {
+    document.querySelectorAll('#nc-root [class*="EditorControl"] [contenteditable="true"]').forEach((editable) => {
+      decorateRichTextCodeBlocks(editable);
+    });
+  };
+
+  const scheduleRichTextCodeRefresh = () => {
+    if (decoratorState.richTextCodeRefreshRaf) return;
+    decoratorState.richTextCodeRefreshRaf = window.requestAnimationFrame(() => {
+      decoratorState.richTextCodeRefreshRaf = 0;
+      refreshAllRichTextCodeBlocks();
+    });
+  };
+
   const resolveMarkdownRoot = (root) => {
     if (root instanceof Element && root.isConnected) return root;
     if (editorState.lastMarkdownRoot instanceof Element && editorState.lastMarkdownRoot.isConnected) {
@@ -1267,21 +1383,25 @@
   document.addEventListener('focusin', (event) => {
     syncMarkdownEditorState(event.target);
     syncImageEditorState(event.target);
+    scheduleRichTextCodeRefresh();
   }, true);
 
   document.addEventListener('click', (event) => {
     syncMarkdownEditorState(event.target);
     syncImageEditorState(event.target);
+    scheduleRichTextCodeRefresh();
   }, true);
 
   document.addEventListener('keyup', (event) => {
     syncMarkdownEditorState(event.target);
     syncImageEditorState(event.target);
+    scheduleRichTextCodeRefresh();
   }, true);
 
   document.addEventListener('mouseup', (event) => {
     syncMarkdownEditorState(event.target);
     syncImageEditorState(event.target);
+    scheduleRichTextCodeRefresh();
   }, true);
 
   document.addEventListener('input', (event) => {
@@ -1296,6 +1416,7 @@
     if (getControlContainerByLabel([/封面描述/, /cover description/i])) {
       scheduleImageFieldPreviewRefresh();
     }
+    scheduleRichTextCodeRefresh();
   }, true);
 
   document.addEventListener('change', (event) => {
@@ -1313,10 +1434,12 @@
     }
 
     scheduleImageFieldPreviewRefresh();
+    scheduleRichTextCodeRefresh();
   }, true);
 
   window.addEventListener('hashchange', () => {
     window.setTimeout(scheduleImageFieldPreviewRefresh, 140);
+    window.setTimeout(scheduleRichTextCodeRefresh, 140);
   });
 
   window.addEventListener('beforeunload', () => {
@@ -1327,8 +1450,10 @@
   if (cmsRoot) {
     new MutationObserver(() => {
       scheduleImageFieldPreviewRefresh();
+      scheduleRichTextCodeRefresh();
     }).observe(cmsRoot, { childList: true, subtree: true });
   }
 
   scheduleImageFieldPreviewRefresh();
+  scheduleRichTextCodeRefresh();
 })();
