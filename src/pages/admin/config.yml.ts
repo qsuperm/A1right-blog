@@ -219,7 +219,7 @@ locale: ${quote(CMS.locale)}
 show_preview_links: true
 publish_mode: "simple"
 logo:
-  src: "/images/a1right-avatar-icon.png"
+  src: "/images/a1right-avatar-icon.png?v=20260713-avatar"
   show_in_header: true
 backend:
   name: "github"

@@ -23,8 +23,8 @@ const notes = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>{SITE.name} · 后台管理</title>
-    <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="icon" type="image/png" sizes="256x256" href="/images/a1right-avatar-icon.png" />
+    <link rel="icon" href="/favicon.ico?v=20260713-avatar" sizes="any" />
+    <link rel="icon" type="image/png" sizes="256x256" href="/images/a1right-avatar-icon.png?v=20260713-avatar" />
     <link href="/admin/config.yml" type="text/yaml" rel="cms-config-url" />
     <link rel="stylesheet" href="/admin/custom.css" />
     <style>
@@ -111,7 +111,7 @@ const notes = [
   <body>
     <div class="admin-login" id="admin-login-shell">
       <header class="admin-login__navbar">
-        <div class="admin-login__brand"><img src="/images/a1right-avatar-icon.png" alt="" aria-hidden="true" /><span>{SITE.name}</span></div>
+        <div class="admin-login__brand"><img src="/images/a1right-avatar-icon.png?v=20260713-avatar" alt="" aria-hidden="true" /><span>{SITE.name}</span></div>
         <nav class="admin-login__navlinks">
           {quickLinks.map((item) => <a href={item.href} target={item.external ? '_blank' : undefined} rel={item.external ? 'noreferrer' : undefined}>{item.label}</a>)}
         </nav>
