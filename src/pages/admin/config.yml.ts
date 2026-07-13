@@ -35,12 +35,13 @@ interface CollectionMeta {
   };
 }
 
-const tagHint = '建议 2~5 个标签，方便首页搜索、标签页和相关文章跳转。';
+const tagHint = '建议 2~5 个标签，每个标签单独一项；不要写成一个 #misc#CTF#LitCTF2026 这样的长字符串。';
 const coverHint = '推荐使用 1200×630 横图，适合首页卡片、Open Graph 和社交分享。';
 const categoryDisplayHint = '这里是前台显示文案，请和上面的分类 Key 选项保持一致。';
 const seoTitleHint = '留空时默认使用文章标题。建议控制在 60 字以内。';
 const seoDescriptionHint = '留空时默认使用文章摘要。建议 70~120 字，便于搜索结果和社交分享复用。';
 const authorHint = '默认写入 A1right；如果以后想写 guest post，再改成其他名字即可。';
+const defaultCover = '/images/uploads/cover-anime-hero-room.jpg';
 
 const createCollection = ({
   name,
@@ -78,6 +79,7 @@ const createCollection = ({
   const pinnedLabel = '是否置顶';
   const draftLabel = '是否草稿';
   const bodyLabel = locale === 'en' ? '英文正文' : '正文';
+  const defaultCoverAlt = locale === 'en' ? 'Anime room illustration at night' : '夜间房间中的二次元场景';
 
   const categoryOptions = categories
     .map((item) => `          - label: ${quote(item.label)}\n            value: ${quote(item.value)}`)
@@ -193,10 +195,12 @@ ${categoryTextOptions}
       - label: ${quote(coverLabel)}
         name: "cover"
         widget: "image"
+        default: ${quote(defaultCover)}
         hint: ${quote(coverHint)}
       - label: ${quote(coverAltLabel)}
         name: "coverAlt"
         widget: "string"
+        default: ${quote(defaultCoverAlt)}
         hint: ${quote(contentHints.coverAlt)}
       - label: ${quote(pinnedLabel)}
         name: "pinned"
