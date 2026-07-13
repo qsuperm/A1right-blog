@@ -81,6 +81,25 @@
     return trimmed.startsWith('/') ? trimmed : `/${trimmed.replace(/^\/+/, '')}`;
   };
 
+  const isLocalFileValue = (value = '') => /^[a-z]:\\(?:fakepath\\)?/i.test(`${value || ''}`.trim());
+
+  const normalizeFieldPath = (value = '') => {
+    const trimmed = `${value || ''}`.trim();
+    if (!trimmed || isLocalFileValue(trimmed)) return '';
+    if (/^(blob:|data:)/i.test(trimmed)) return '';
+    if (/^(https?:)?\/\//i.test(trimmed)) {
+      try {
+        const url = new URL(trimmed, window.location.origin);
+        if (url.origin !== window.location.origin) return trimmed;
+        return url.pathname.replace(/^\/+/, '');
+      } catch {
+        return trimmed;
+      }
+    }
+
+    return trimmed.replace(/^\/+/, '');
+  };
+
   const rememberObjectUrl = (source) => {
     if (!(source instanceof Blob)) return '';
 
@@ -436,15 +455,41 @@
 
     const directInput = root.querySelector('input:not([type="file"]), textarea');
     if (directInput instanceof HTMLInputElement || directInput instanceof HTMLTextAreaElement) {
-      const value = `${directInput.value || ''}`.trim();
+      const value = normalizeFieldPath(directInput.value || '');
       if (value) return value;
     }
 
     const fallback = [...root.querySelectorAll('input, textarea')]
-      .map((input) => `${input.value || ''}`.trim())
+      .map((input) => normalizeFieldPath(input.value || ''))
       .find(Boolean);
 
     return fallback || '';
+  };
+
+  const getImageFieldDomPreview = (root) => {
+    if (!(root instanceof Element)) return null;
+
+    const image = [...root.querySelectorAll('img')]
+      .find((item) => !item.closest('.a1right-admin-cover-preview') && item.getAttribute('src'));
+
+    if (image instanceof HTMLImageElement) {
+      return {
+        previewUrl: image.currentSrc || image.src || '',
+        alt: cleanDisplayText(image.alt || ''),
+      };
+    }
+
+    const link = [...root.querySelectorAll('a[href]')]
+      .find((item) => !item.closest('.a1right-admin-cover-preview') && /\.(png|jpe?g|gif|webp|svg|bmp)(?:$|\?)/i.test(item.getAttribute('href') || ''));
+
+    if (link instanceof HTMLAnchorElement) {
+      return {
+        previewUrl: link.href,
+        fieldPath: normalizeFieldPath(link.getAttribute('href') || ''),
+      };
+    }
+
+    return null;
   };
 
   const getStoredImageFieldPreview = (root) => {
@@ -566,6 +611,32 @@
     return true;
   };
 
+  const previewSelectedImageFile = (input) => {
+    if (!(input instanceof HTMLInputElement) || input.type !== 'file') return false;
+    const root = getImageRootFromElement(input);
+    if (!(root instanceof Element)) return false;
+
+    const file = input.files?.[0];
+    if (!(file instanceof File)) return false;
+
+    const fieldPath = getImageFieldValue(root);
+    const previewUrl = rememberObjectUrl(file);
+    const coverAlt = buildAltText({ filename: file.name, kind: 'cover' });
+
+    setImageFieldPreviewState(root, {
+      fieldPath,
+      filename: file.name,
+      previewUrl,
+      alt: coverAlt,
+      size: file.size,
+      description: '封面图已选择，正在同步上传结果与最终路径。',
+    });
+
+    maybeFillCoverAlt(coverAlt);
+    pulseField(root);
+    return true;
+  };
+
   const ensureImageFieldPreviewCard = (root) => {
     if (!(root instanceof Element)) return null;
 
@@ -664,9 +735,10 @@
     if (!(card instanceof Element)) return;
 
     const state = override || getStoredImageFieldPreview(root) || {};
-    const fieldPath = state.fieldPath || getImageFieldValue(root);
-    const previewUrl = state.previewUrl || normalizeAssetUrl(fieldPath);
-    const alt = state.alt || getCoverAltFieldValue() || buildAltText({ filename: fieldPath, kind: 'cover' });
+    const domPreview = getImageFieldDomPreview(root) || {};
+    const fieldPath = state.fieldPath || getImageFieldValue(root) || domPreview.fieldPath || '';
+    const previewUrl = state.previewUrl || domPreview.previewUrl || normalizeAssetUrl(fieldPath);
+    const alt = state.alt || domPreview.alt || getCoverAltFieldValue() || buildAltText({ filename: fieldPath, kind: 'cover' });
 
     const image = card.querySelector('.a1right-admin-cover-preview__image');
     const title = card.querySelector('.a1right-admin-cover-preview__title');
@@ -695,9 +767,14 @@
     }
 
     if (description instanceof HTMLElement) {
+      const syncedDescription =
+        state.description && fieldPath && /同步|上传/.test(state.description)
+          ? '封面图已同步完成，现在会自动显示预览效果。'
+          : state.description;
+
       description.textContent = hasImage
-        ? state.description || '已自动同步当前封面字段，可以直接检查构图和裁切效果。'
-        : '先点一下封面图区，再 Ctrl + V，这里会立即显示缩略预览。';
+        ? syncedDescription || '已自动同步当前封面字段，可以直接检查构图和裁切效果。'
+        : '选择封面图片后，这里会自动出现预览效果，也支持直接 Ctrl + V 粘贴。';
     }
 
     if (path instanceof HTMLElement) {
@@ -1223,6 +1300,11 @@
 
   document.addEventListener('change', (event) => {
     if (!(event.target instanceof Element)) return;
+
+    if (event.target instanceof HTMLInputElement && event.target.type === 'file') {
+      const previewed = previewSelectedImageFile(event.target);
+      if (previewed) return;
+    }
 
     const imageRoot = getImageRootFromElement(event.target);
     if (imageRoot) {

@@ -887,6 +887,62 @@ body.admin-shell--cms-active::before {
   background: #f7faf9 !important;
 }
 
+/* Rich text code block polish */
+#nc-root [class*="EditorControl"] [contenteditable="true"] p:has(> code:only-child),
+#nc-root [class*="EditorControl"] [contenteditable="true"] div:has(> code:only-child),
+#nc-root [class*="EditorControl"] [contenteditable="true"] li:has(> code:only-child),
+#nc-root [class*="EditorControl"] [contenteditable="true"] pre {
+  margin: .28rem 0 !important;
+  padding: .22rem 1rem .22rem 1.08rem !important;
+  border: 1px solid rgba(32, 189, 145, .09);
+  border-left: 3px solid rgba(32, 189, 145, .34);
+  border-radius: 0 14px 14px 0 !important;
+  background:
+    linear-gradient(90deg, rgba(32, 189, 145, .08), rgba(247, 250, 249, .96) 18%, rgba(247, 250, 249, .96)) !important;
+  box-shadow: inset 0 1px rgba(255, 255, 255, .66);
+}
+
+#nc-root [class*="EditorControl"] [contenteditable="true"] p:has(> code:only-child:empty),
+#nc-root [class*="EditorControl"] [contenteditable="true"] div:has(> code:only-child:empty),
+#nc-root [class*="EditorControl"] [contenteditable="true"] li:has(> code:only-child:empty) {
+  min-height: 1.35rem;
+  padding-top: .1rem !important;
+  padding-bottom: .1rem !important;
+  background: rgba(32, 189, 145, .035) !important;
+}
+
+#nc-root [class*="EditorControl"] [contenteditable="true"] p > code:only-child,
+#nc-root [class*="EditorControl"] [contenteditable="true"] div > code:only-child,
+#nc-root [class*="EditorControl"] [contenteditable="true"] li > code:only-child,
+#nc-root [class*="EditorControl"] [contenteditable="true"] pre code {
+  display: block;
+  padding: .14rem 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  color: #1f3340 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  font-size: .95rem !important;
+  line-height: 1.82 !important;
+  white-space: pre-wrap !important;
+  word-break: break-word;
+}
+
+#nc-root [class*="EditorControl"] [contenteditable="true"] code:empty {
+  min-height: 1.2rem;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+#nc-root [class*="EditorControl"] [contenteditable="true"] :not(pre) > code:not(:only-child) {
+  padding: .12rem .45rem !important;
+  border: 1px solid rgba(32, 189, 145, .12);
+  border-radius: 9px !important;
+  color: #185d4a !important;
+  background: rgba(32, 189, 145, .08) !important;
+  box-shadow: none !important;
+}
+
 #nc-root [role="menu"],
 #nc-root [role="listbox"],
 #nc-root [class*="DropdownList"],
