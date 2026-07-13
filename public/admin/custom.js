@@ -111,6 +111,8 @@
     description = '',
     imageUrl = '',
     badge = '',
+    actionLabel = '',
+    onClick = null,
     type = 'success',
     duration = 4200,
   } = {}) => {
@@ -154,6 +156,33 @@
       detail.className = 'a1right-admin-toast__description';
       detail.textContent = description;
       body.append(detail);
+    }
+
+    if (typeof onClick === 'function') {
+      toast.classList.add('is-actionable');
+      toast.tabIndex = 0;
+      toast.setAttribute('role', 'button');
+
+      const action = document.createElement('span');
+      action.className = 'a1right-admin-toast__action';
+      action.textContent = actionLabel || '点击定位';
+      body.append(action);
+
+      const activate = () => {
+        try {
+          onClick();
+          toast.classList.add('is-activated');
+        } catch (error) {
+          console.error('[a1right-admin] preview toast action failed', error);
+        }
+      };
+
+      toast.addEventListener('click', activate);
+      toast.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        activate();
+      });
     }
 
     toast.append(figure, body);
@@ -434,6 +463,109 @@
     return stored;
   };
 
+  const pulseField = (root, className = 'a1right-admin-field-guided') => {
+    if (!(root instanceof Element)) return;
+    root.classList.remove(className);
+    void root.offsetWidth;
+    root.classList.add(className);
+    window.setTimeout(() => root.classList.remove(className), 1600);
+  };
+
+  const resolveImageFieldRoot = (root) =>
+    (root instanceof Element && root.isConnected ? root : null) ||
+    (editorState.lastImageRoot instanceof Element && editorState.lastImageRoot.isConnected
+      ? editorState.lastImageRoot
+      : null);
+
+  const findImageFieldTextInput = (root) => {
+    if (!(root instanceof Element)) return null;
+    return root.querySelector('input:not([type="hidden"]):not([type="file"]), textarea');
+  };
+
+  const revealImageFieldTextInput = async (root) => {
+    const resolvedRoot = resolveImageFieldRoot(root);
+    if (!(resolvedRoot instanceof Element)) return null;
+
+    let input = findImageFieldTextInput(resolvedRoot);
+    if (input) return input;
+
+    const switchButton = [...resolvedRoot.querySelectorAll('button')].find((button) =>
+      /url|替代|链接|link/i.test(button.textContent || ''),
+    );
+
+    switchButton?.click();
+    await sleep(80);
+    input = findImageFieldTextInput(resolvedRoot);
+    return input;
+  };
+
+  const focusImageFieldForReplacement = async (root) => {
+    const resolvedRoot = resolveImageFieldRoot(root);
+    if (!(resolvedRoot instanceof Element)) return false;
+
+    markLastContext('image', resolvedRoot);
+    resolvedRoot.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    pulseField(resolvedRoot);
+
+    const input = await revealImageFieldTextInput(resolvedRoot);
+    if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
+      input.focus();
+      input.select?.();
+      return true;
+    }
+
+    const fallbackButton = resolvedRoot.querySelector('button');
+    if (fallbackButton instanceof HTMLButtonElement) {
+      fallbackButton.focus();
+      return true;
+    }
+
+    resolvedRoot.focus?.();
+    return true;
+  };
+
+  const clearImageFieldPreviewState = (root) => {
+    const resolvedRoot = resolveImageFieldRoot(root);
+    if (!(resolvedRoot instanceof Element)) return;
+
+    const previous = previewState.imageFieldState.get(resolvedRoot);
+    if (previous?.previewUrl) revokeObjectUrl(previous.previewUrl);
+    previewState.imageFieldState.delete(resolvedRoot);
+    renderImageFieldPreview(resolvedRoot, {});
+  };
+
+  const clearImageFieldValue = async (root) => {
+    const resolvedRoot = resolveImageFieldRoot(root);
+    if (!(resolvedRoot instanceof Element)) return false;
+
+    const previousValue = getImageFieldValue(resolvedRoot);
+    if (!previousValue) {
+      clearImageFieldPreviewState(resolvedRoot);
+      return false;
+    }
+
+    const applied = await applyImageFieldValue(resolvedRoot, '');
+    if (!applied) {
+      const removeButton = [...resolvedRoot.querySelectorAll('button')].find((button) =>
+        /remove|clear|delete|移除|删除|清空/i.test(button.textContent || ''),
+      );
+      removeButton?.click();
+      await sleep(120);
+    } else {
+      await sleep(80);
+    }
+
+    const currentValue = getImageFieldValue(resolvedRoot);
+    if (currentValue) {
+      renderImageFieldPreview(resolvedRoot);
+      return false;
+    }
+
+    clearImageFieldPreviewState(resolvedRoot);
+    pulseField(resolvedRoot);
+    return true;
+  };
+
   const ensureImageFieldPreviewCard = (root) => {
     if (!(root instanceof Element)) return null;
 
@@ -491,8 +623,35 @@
     open.textContent = '打开图片';
     open.hidden = true;
 
+    const actions = document.createElement('div');
+    actions.className = 'a1right-admin-cover-preview__actions';
+
+    const replaceButton = document.createElement('button');
+    replaceButton.type = 'button';
+    replaceButton.className = 'a1right-admin-cover-preview__action is-primary';
+    replaceButton.textContent = '替换图片';
+    replaceButton.addEventListener('click', async () => {
+      const focused = await focusImageFieldForReplacement(root);
+      if (!focused) {
+        showToast('暂时没有找到封面图输入框。', 'warn', 3200);
+        return;
+      }
+
+      showToast('已定位封面图，直接 Ctrl + V 就能替换。', 'info', 2800);
+    });
+
+    const clearButton = document.createElement('button');
+    clearButton.type = 'button';
+    clearButton.className = 'a1right-admin-cover-preview__action is-secondary';
+    clearButton.textContent = '清空图片';
+    clearButton.addEventListener('click', async () => {
+      const cleared = await clearImageFieldValue(root);
+      showToast(cleared ? '封面图已清空。' : '当前没有可清空的封面图。', cleared ? 'success' : 'info', 2800);
+    });
+
+    actions.append(replaceButton, clearButton);
     meta.append(path, open);
-    body.append(eyebrow, title, description, meta);
+    body.append(eyebrow, title, description, meta, actions);
     card.append(media, body);
     root.append(card);
     return card;
@@ -514,6 +673,7 @@
     const description = card.querySelector('.a1right-admin-cover-preview__description');
     const path = card.querySelector('.a1right-admin-cover-preview__path');
     const open = card.querySelector('.a1right-admin-cover-preview__open');
+    const clearButton = card.querySelector('.a1right-admin-cover-preview__action.is-secondary');
 
     const hasImage = Boolean(previewUrl);
     card.classList.toggle('is-empty', !hasImage);
@@ -548,6 +708,10 @@
       const href = normalizeAssetUrl(fieldPath) || previewUrl;
       open.hidden = !href;
       open.href = href || '#';
+    }
+
+    if (clearButton instanceof HTMLButtonElement) {
+      clearButton.disabled = !hasImage;
     }
   };
 
@@ -645,12 +809,19 @@
     return { leading, trailing };
   };
 
+  const scrollTextareaSelectionIntoView = (textarea, selectionStart = 0) => {
+    if (!(textarea instanceof HTMLTextAreaElement)) return;
+    const lineHeight = Number.parseFloat(window.getComputedStyle(textarea).lineHeight || '0') || 22;
+    const lineCount = textarea.value.slice(0, selectionStart).split('\n').length;
+    textarea.scrollTop = Math.max(0, (lineCount - 3) * lineHeight);
+  };
+
   const insertIntoContentEditable = (editable, snippet) => {
-    if (!(editable instanceof HTMLElement)) return false;
+    if (!(editable instanceof HTMLElement)) return { ok: false, locate: null };
 
     editable.focus();
     const selection = window.getSelection();
-    if (!selection) return false;
+    if (!selection) return { ok: false, locate: null };
 
     if (!selection.rangeCount) {
       const range = document.createRange();
@@ -671,7 +842,21 @@
 
     editable.dispatchEvent(new InputEvent('input', { bubbles: true, data: snippet, inputType: 'insertText' }));
     editable.dispatchEvent(new Event('change', { bubbles: true }));
-    return true;
+
+    const locate = () => {
+      if (!textNode.isConnected) return;
+      editable.focus();
+      const nextSelection = window.getSelection();
+      if (!nextSelection) return;
+      const nextRange = document.createRange();
+      nextRange.selectNodeContents(textNode);
+      nextSelection.removeAllRanges();
+      nextSelection.addRange(nextRange);
+      textNode.parentElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      pulseField(resolveMarkdownRoot(editable), 'a1right-admin-field-guided');
+    };
+
+    return { ok: true, locate };
   };
 
   const insertMarkdownSnippet = (root, snippet) => {
@@ -685,10 +870,21 @@
       const end = doc.indexFromPos(to);
       const { leading, trailing } = getSurroundingSpacing(content.slice(0, start), content.slice(end));
       const payload = `${leading}${snippet.trim()}${trailing}`;
+      const insertFrom = doc.posFromIndex(start);
+      const insertTo = doc.posFromIndex(start + payload.length);
 
       doc.replaceSelection(payload);
+      doc.setCursor(insertTo);
       codeMirror.focus();
-      return true;
+
+      const locate = () => {
+        codeMirror.focus();
+        doc.setSelection(insertFrom, insertTo);
+        codeMirror.scrollIntoView({ from: insertFrom, to: insertTo }, 120);
+        pulseField(resolveMarkdownRoot(root), 'a1right-admin-field-guided');
+      };
+
+      return { ok: true, locate };
     }
 
     const resolvedRoot = resolveMarkdownRoot(root);
@@ -700,13 +896,15 @@
     if (editable instanceof HTMLElement) {
       const currentText = editable.textContent || '';
       const { leading, trailing } = getSurroundingSpacing(currentText, '');
-      if (insertIntoContentEditable(editable, `${leading}${snippet.trim()}${trailing}`)) {
-        return true;
+      const inserted = insertIntoContentEditable(editable, `${leading}${snippet.trim()}${trailing}`);
+      if (inserted.ok) {
+        return inserted;
       }
     }
 
-    if (insertIntoContentEditable(editable, snippet)) {
-      return true;
+    const directInsert = insertIntoContentEditable(editable, snippet);
+    if (directInsert.ok) {
+      return directInsert;
     }
 
     const textarea =
@@ -714,7 +912,7 @@
       (editorState.lastMarkdownTextarea instanceof HTMLTextAreaElement ? editorState.lastMarkdownTextarea : null) ||
       (document.activeElement instanceof HTMLTextAreaElement ? document.activeElement : null);
 
-    if (!textarea) return false;
+    if (!textarea) return { ok: false, locate: null };
 
     const start =
       textarea.selectionStart ??
@@ -727,12 +925,23 @@
     const { leading, trailing } = getSurroundingSpacing(textarea.value.slice(0, start), textarea.value.slice(end));
     const payload = `${leading}${snippet.trim()}${trailing}`;
     const nextValue = `${textarea.value.slice(0, start)}${payload}${textarea.value.slice(end)}`;
+    const insertedStart = start;
+    const insertedEnd = start + payload.length;
     setNativeValue(textarea, nextValue);
-    textarea.selectionStart = textarea.selectionEnd = start + payload.length;
+    textarea.selectionStart = textarea.selectionEnd = insertedEnd;
     textarea.dispatchEvent(new Event('input', { bubbles: true }));
     textarea.dispatchEvent(new Event('change', { bubbles: true }));
     textarea.focus();
-    return true;
+    scrollTextareaSelectionIntoView(textarea, insertedStart);
+
+    const locate = () => {
+      textarea.focus();
+      textarea.setSelectionRange(insertedStart, insertedEnd);
+      scrollTextareaSelectionIntoView(textarea, insertedStart);
+      pulseField(resolveMarkdownRoot(root), 'a1right-admin-field-guided');
+    };
+
+    return { ok: true, locate };
   };
 
   const applyImageFieldValue = async (root, nextValue) => {
@@ -949,7 +1158,7 @@
         .join('\n\n');
 
       const inserted = insertMarkdownSnippet(context.root, snippet);
-      if (!inserted) {
+      if (!inserted.ok) {
         await navigator.clipboard?.writeText(snippet).catch(() => {});
         showToast('图片已上传，但没找到正文光标位置；Markdown 已复制到剪贴板。', 'warn', 4600);
         return;
@@ -961,8 +1170,10 @@
         description: buildPreviewDescription(firstUpload, 'markdown'),
         imageUrl: firstUpload.previewUrl || firstUpload.publicPath,
         badge: uploads.length > 1 ? `+${uploads.length - 1}` : '',
+        actionLabel: '点击定位到刚插入的位置',
+        onClick: inserted.locate,
         type: 'success',
-        duration: 4600,
+        duration: 5600,
       });
     } catch (error) {
       console.error('[a1right-admin] clipboard upload failed', error);
