@@ -2377,3 +2377,38 @@ body {
 }
 :root[data-theme='dark'] .site-header__inner { background: rgba(34, 40, 59, .88); }
 :root[data-theme='dark'] .fo-banner__dim { background: rgba(16, 18, 34, .46); }
+
+html,
+body,
+body * {
+  cursor: url('/cursors/silver-arrow.svg') 4 3, auto;
+}
+
+a,
+button,
+[role='button'],
+summary,
+select,
+label[for],
+input[type='checkbox'],
+input[type='radio'],
+input[type='range'],
+.search-result a,
+.theme-toggle,
+.search-trigger {
+  cursor: url('/cursors/silver-pointer.svg') 9 3, pointer;
+}
+
+input:not([type='checkbox']):not([type='radio']):not([type='range']),
+textarea,
+[contenteditable='true'] {
+  cursor: url('/cursors/silver-beam.svg') 12 12, text;
+}
+
+@media (pointer: coarse) {
+  html,
+  body,
+  body * {
+    cursor: auto;
+  }
+}

@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import { SITE, type Locale } from '../config';
+import CursorFx from '../components/CursorFx.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 
@@ -79,5 +80,6 @@ const structuredDataItems = Array.isArray(structuredData)
       <slot />
     </main>
     <SiteFooter locale={locale} />
+    <CursorFx />
   </body>
 </html>

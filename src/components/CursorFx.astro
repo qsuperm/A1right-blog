@@ -1,0 +1,59 @@
+<script>
+  import { BAClickFX } from 'ba-click-fx';
+
+  const globalWindow = window as Window & {
+    __A1RIGHT_BA_CURSOR__?: BAClickFX | null;
+  };
+
+  const initCursorFx = () => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+
+    globalWindow.__A1RIGHT_BA_CURSOR__?.destroy?.();
+
+    const fx = new BAClickFX({
+      color: [224, 232, 244],
+      scale: 0.92,
+      opacity: 0.62,
+      trailEnabled: true,
+      trailAlways: true,
+      clickEnabled: true,
+      touchAction: 'auto',
+    });
+
+    fx.setGlow(false);
+    fx.setFakeGlow(true);
+    fx.setClickFakeGlow(true);
+    fx.setTrailBrightness(1);
+    fx.setTrailWhiteMix(0.92);
+    fx.setRingWhiteMix(0.96);
+    fx.setRingColorEndWhiteMix(1);
+    fx.setTrailWidth(2.2, 1.35);
+    fx.setTrailCoreWidth(0.34, 0.56);
+    fx.setTrailHotWidth(0.14, 0.24);
+    fx.setTrailGlowAlpha(0.12);
+    fx.setTrailSoftGlowAlpha(0.05);
+    fx.setTrailCoreAlpha(0.74);
+    fx.setTrailHotAlpha(0.38);
+    fx.setTrailRailAlpha(0.035);
+    fx.setRingGlowAlpha(0.12);
+    fx.setRingSoftGlowAlpha(0.07);
+
+    globalWindow.__A1RIGHT_BA_CURSOR__ = fx;
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initCursorFx, { once: true });
+  } else {
+    initCursorFx();
+  }
+
+  window.addEventListener(
+    'pagehide',
+    () => {
+      globalWindow.__A1RIGHT_BA_CURSOR__?.destroy?.();
+      globalWindow.__A1RIGHT_BA_CURSOR__ = null;
+    },
+    { once: true },
+  );
+</script>

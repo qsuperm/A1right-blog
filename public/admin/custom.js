@@ -10,7 +10,9 @@
   };
   const decoratorState = {
     richTextCodeRefreshRaf: 0,
+    toolbarRefreshRaf: 0,
     codeGroupCounter: 0,
+    boundToolbarCodeButtons: new WeakSet(),
   };
   const workflowState = {
     dirty: false,
@@ -77,6 +79,18 @@
     toast.textContent = message;
     return mountToast(toast, duration);
   };
+
+  const getElementUiText = (element) =>
+    [
+      element?.getAttribute?.('aria-label') || '',
+      element?.getAttribute?.('title') || '',
+      element?.textContent || '',
+    ]
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const normalizeUiText = (value = '') => `${value}`.replace(/\s+/g, ' ').trim().toLowerCase();
 
   const hasCjk = (value = '') => /[\u3400-\u9fff]/.test(value);
 
@@ -610,6 +624,7 @@
     workflowState.dirty = true;
     workflowState.restoreBannerDismissed = true;
     scheduleRichTextCodeRefresh();
+    scheduleToolbarCodeRefresh();
     scheduleEditorWorkflowRefresh();
     scheduleManagedFieldAssistRefresh();
     scheduleAutoDraftSave();
@@ -636,7 +651,7 @@
     panel.innerHTML = `
       <div class="a1right-admin-editor-panel__stats"></div>
       <div class="a1right-admin-editor-panel__actions">
-        <button type="button" class="a1right-admin-chip-button" data-action="insert-code">插入代码模板</button>
+        <button type="button" class="a1right-admin-chip-button" data-action="insert-code">插入 Code Block</button>
       </div>
       <div class="a1right-admin-editor-panel__status"></div>
       <div class="a1right-admin-editor-panel__restore" hidden></div>
@@ -1907,6 +1922,95 @@
     });
   };
 
+  const isElementVisible = (element) =>
+    element instanceof HTMLElement && Boolean(element.offsetWidth || element.offsetHeight || element.getClientRects().length);
+
+  const isInlineCodeToolbarButton = (button) => {
+    if (!(button instanceof HTMLButtonElement)) return false;
+    const text = normalizeUiText(getElementUiText(button));
+    if (!text) return false;
+    if (/code block|代码块/.test(text)) return false;
+    return /\bcode\b/.test(text) || text === '代码';
+  };
+
+  const findToolbarMenuTrigger = (toolbar, excludeButton = null) => {
+    if (!(toolbar instanceof Element)) return null;
+    return [...toolbar.querySelectorAll('button')]
+      .find((button) => {
+        if (button === excludeButton) return false;
+        const text = normalizeUiText(getElementUiText(button));
+        return (
+          button.getAttribute('aria-haspopup') === 'menu' ||
+          button.getAttribute('aria-haspopup') === 'true' ||
+          /insert|add|more|\+|plus|块|插入/.test(text)
+        );
+      }) || null;
+  };
+
+  const findVisibleCodeBlockMenuItem = (scope = document) =>
+    [...scope.querySelectorAll('[role="menuitem"], [role="option"], button')]
+      .find((element) => {
+        const text = normalizeUiText(element.textContent || '');
+        return isElementVisible(element) && /^(code block|代码块)$/.test(text);
+      }) || null;
+
+  const triggerBuiltInCodeBlockEntry = async (triggerButton = null) => {
+    const existingItem = findVisibleCodeBlockMenuItem(document);
+    if (existingItem instanceof HTMLElement) {
+      existingItem.click();
+      return true;
+    }
+
+    const toolbar =
+      (triggerButton instanceof Element ? triggerButton.closest('[class*="EditorToolbar"]') : null) ||
+      document.querySelector('#nc-root [class*="EditorToolbar"]');
+
+    const menuTrigger = findToolbarMenuTrigger(toolbar, triggerButton);
+    if (!(menuTrigger instanceof HTMLButtonElement)) return false;
+
+    menuTrigger.click();
+    await sleep(70);
+
+    const menuItem = findVisibleCodeBlockMenuItem(document);
+    if (!(menuItem instanceof HTMLElement)) return false;
+
+    menuItem.click();
+    return true;
+  };
+
+  const decorateToolbarCodeButtons = () => {
+    document.querySelectorAll('#nc-root [class*="EditorToolbar"] button').forEach((button) => {
+      if (!(button instanceof HTMLButtonElement)) return;
+      if (!isInlineCodeToolbarButton(button)) return;
+
+      button.dataset.a1rightCodeMerged = 'true';
+      button.setAttribute('aria-label', 'Code Block');
+      button.setAttribute('title', 'Code Block');
+      button.classList.add('a1right-admin-toolbar-code-main');
+
+      if (decoratorState.boundToolbarCodeButtons.has(button)) return;
+      decoratorState.boundToolbarCodeButtons.add(button);
+
+      button.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+      });
+
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        void insertCodeTemplateSnippet({ preferCodeBlockWidget: true, triggerButton: button });
+      });
+    });
+  };
+
+  const scheduleToolbarCodeRefresh = () => {
+    if (decoratorState.toolbarRefreshRaf) return;
+    decoratorState.toolbarRefreshRaf = window.requestAnimationFrame(() => {
+      decoratorState.toolbarRefreshRaf = 0;
+      decorateToolbarCodeButtons();
+    });
+  };
+
   const resolveMarkdownRoot = (root) => {
     if (root instanceof Element && root.isConnected) return root;
     if (editorState.lastMarkdownRoot instanceof Element && editorState.lastMarkdownRoot.isConnected) {
@@ -2119,17 +2223,23 @@
     editable.dispatchEvent(new Event('change', { bubbles: true }));
     editable.focus();
     scheduleRichTextCodeRefresh();
+    scheduleToolbarCodeRefresh();
     return true;
   };
 
-  const insertCodeTemplateSnippet = async () => {
+  const insertCodeTemplateSnippet = async ({ preferCodeBlockWidget = true, triggerButton = null } = {}) => {
+    if (preferCodeBlockWidget) {
+      const openedCodeBlock = await triggerBuiltInCodeBlockEntry(triggerButton);
+      if (openedCodeBlock) return true;
+    }
+
     const markdownSnippet = ['```python', '# code block', '', 'print("hello world")', '```'].join('\n');
     const inserted = insertMarkdownSnippet(getBodyFieldContainer(), markdownSnippet);
     if (inserted.ok) {
       inserted.locate?.();
       setDirtyState(true);
       scheduleAutoDraftSave();
-      showToast('代码模板已插入正文。', 'success', 2200);
+      showToast('没有找到 Code Block 组件入口，已回退为 Markdown 代码模板。', 'warn', 2600);
       return true;
     }
 
@@ -2137,7 +2247,7 @@
     if (richInserted) {
       setDirtyState(true);
       scheduleAutoDraftSave();
-      showToast('代码模板已插入正文。', 'success', 2200);
+      showToast('没有找到 Code Block 组件入口，已回退为 Markdown 代码模板。', 'warn', 2600);
       return true;
     }
 
@@ -2448,12 +2558,14 @@
     syncMarkdownEditorState(event.target);
     syncImageEditorState(event.target);
     scheduleRichTextCodeRefresh();
+    scheduleToolbarCodeRefresh();
   }, true);
 
   document.addEventListener('click', (event) => {
     syncMarkdownEditorState(event.target);
     syncImageEditorState(event.target);
     scheduleRichTextCodeRefresh();
+    scheduleToolbarCodeRefresh();
     handlePossibleSaveAction(event.target);
   }, true);
 
@@ -2461,12 +2573,14 @@
     syncMarkdownEditorState(event.target);
     syncImageEditorState(event.target);
     scheduleRichTextCodeRefresh();
+    scheduleToolbarCodeRefresh();
   }, true);
 
   document.addEventListener('mouseup', (event) => {
     syncMarkdownEditorState(event.target);
     syncImageEditorState(event.target);
     scheduleRichTextCodeRefresh();
+    scheduleToolbarCodeRefresh();
   }, true);
 
   document.addEventListener('input', (event) => {
@@ -2484,6 +2598,7 @@
       scheduleImageFieldPreviewRefresh();
     }
     scheduleRichTextCodeRefresh();
+    scheduleToolbarCodeRefresh();
   }, true);
 
   document.addEventListener('change', (event) => {
@@ -2509,6 +2624,7 @@
 
     scheduleImageFieldPreviewRefresh();
     scheduleRichTextCodeRefresh();
+    scheduleToolbarCodeRefresh();
   }, true);
 
   document.addEventListener('dragover', (event) => {
@@ -2568,6 +2684,7 @@
     workflowState.restoreBannerDismissed = false;
     window.setTimeout(scheduleImageFieldPreviewRefresh, 140);
     window.setTimeout(scheduleRichTextCodeRefresh, 140);
+    window.setTimeout(scheduleToolbarCodeRefresh, 140);
     window.setTimeout(scheduleEditorWorkflowRefresh, 140);
     window.setTimeout(scheduleManagedFieldAssistRefresh, 140);
   });
@@ -2587,12 +2704,14 @@
     new MutationObserver(() => {
       scheduleImageFieldPreviewRefresh();
       scheduleRichTextCodeRefresh();
+      scheduleToolbarCodeRefresh();
       scheduleManagedFieldAssistRefresh();
     }).observe(cmsRoot, { childList: true, subtree: true });
   }
 
   scheduleImageFieldPreviewRefresh();
   scheduleRichTextCodeRefresh();
+  scheduleToolbarCodeRefresh();
   workflowState.activeDraftKey = getCurrentEditorRouteKey();
   scheduleEditorWorkflowRefresh();
   scheduleManagedFieldAssistRefresh();

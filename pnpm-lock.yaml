@@ -23,6 +23,9 @@ importers:
       astro:
         specifier: ^7.0.7
         version: 7.0.7(@astrojs/markdown-remark@7.2.1)(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.2)(@types/node@24.13.3)(jiti@2.7.0)(yaml@2.9.0)
+      ba-click-fx:
+        specifier: 1.1.6
+        version: 1.1.6
       pagefind:
         specifier: ^1.5.2
         version: 1.5.2
@@ -1325,6 +1328,10 @@ packages:
   axobject-query@4.1.0:
     resolution: {integrity: sha512-qIj0G9wZbMGNLjLmg1PT6v2mE9AH2zlnADJD/2tC6E00hgmhUOfEB6greHPAfLRSufHqROIUTkw6E+M3lH0PTQ==}
     engines: {node: '>= 0.4'}
+
+  ba-click-fx@1.1.6:
+    resolution: {integrity: sha512-1SOd+G316F7ix/xa3gryJNxDTNSfjz/5gmSfH94PcUSJ8hzcztSA25unzp6ot7xRJV6uqcS6JIaUTOD6UB++kQ==}
+    engines: {node: '>=18'}
 
   bail@2.0.2:
     resolution: {integrity: sha512-0xO6mYd7JB2YesxDKplafRpsiOzPt9V02ddPCLbY1xYGPOX24NTyN50qnUxgCPcSoYMhKpAuBTjQoRZCAkUDRw==}
@@ -4268,6 +4275,8 @@ snapshots:
   async@3.2.6: {}
 
   axobject-query@4.1.0: {}
+
+  ba-click-fx@1.1.6: {}
 
   bail@2.0.2: {}
 

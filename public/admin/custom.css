@@ -880,6 +880,12 @@ body.admin-shell--cms-active::before {
   background: #eef6f2 !important;
 }
 
+#nc-root [class*="EditorToolbar"] .a1right-admin-toolbar-code-main {
+  border-color: rgba(32, 189, 145, .26) !important;
+  color: #176751 !important;
+  background: rgba(32, 189, 145, .1) !important;
+}
+
 #nc-root [class*="CodeMirror"],
 #nc-root [class*="CodeMirror"] pre,
 #nc-root [class*="CodeMirror"] textarea {
@@ -1197,6 +1203,30 @@ body.admin-shell--cms-active::before {
   color: var(--admin-text) !important;
   background: #fff !important;
   box-shadow: 0 20px 55px rgba(29, 68, 57, .16) !important;
+}
+
+#nc-root [class*="Modal"] {
+  overflow: visible !important;
+}
+
+#nc-root [class*="Modal"] [class$="-control"] {
+  padding-left: 10px !important;
+}
+
+#nc-root [class*="Modal"] [class*="valueContainer"] {
+  padding-left: 12px !important;
+}
+
+#nc-root [class*="Modal"] [class*="singleValue"],
+#nc-root [class*="Modal"] [class*="placeholder"],
+#nc-root [class*="Modal"] [class*="input"] {
+  margin-left: 10px !important;
+}
+
+#nc-root [class*="Modal"] input,
+#nc-root [class*="Modal"] textarea,
+#nc-root [class*="Modal"] select {
+  padding-left: 14px !important;
 }
 
 #nc-root [role="menuitem"]:hover,
