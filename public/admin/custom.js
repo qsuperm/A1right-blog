@@ -10,6 +10,24 @@
   };
   const decoratorState = {
     richTextCodeRefreshRaf: 0,
+    codeGroupCounter: 0,
+  };
+  const workflowState = {
+    dirty: false,
+    autoSaveTimer: 0,
+    lastAutoSavedAt: 0,
+    lastSavedAt: 0,
+    lastDraftToastAt: 0,
+    activeDraftKey: '',
+    restoreBannerDismissed: false,
+    statsRefreshRaf: 0,
+    assistRefreshRaf: 0,
+  };
+  const uiState = {
+    recentUploads: [],
+    uploadOverlayHideTimer: 0,
+    dropTargetClearTimer: 0,
+    activeDropTarget: null,
   };
   const editorState = {
     lastMarkdownRoot: null,
@@ -73,6 +91,79 @@
 
   const formatFileSize = (size = 0) =>
     size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(size / 1024))} KB`;
+
+  const formatClockTime = (value) => {
+    if (!value) return '';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleTimeString('zh-CN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const formatRelativeTime = (value) => {
+    if (!value) return '';
+    const diff = Date.now() - Number(value);
+    if (diff < 60_000) return '刚刚';
+    if (diff < 3_600_000) return `${Math.max(1, Math.round(diff / 60_000))} 分钟前`;
+    if (diff < 86_400_000) return `${Math.max(1, Math.round(diff / 3_600_000))} 小时前`;
+    return `${Math.max(1, Math.round(diff / 86_400_000))} 天前`;
+  };
+
+  const formatDateTime = (value) => {
+    if (!value) return '';
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleString('zh-CN', {
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const clampNumber = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
+
+  const slugifyText = (value = '') => {
+    const base = `${value || ''}`
+      .normalize('NFKD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/&/g, ' and ')
+      .replace(/[^a-z0-9\u4e00-\u9fff]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-');
+
+    const ascii = base
+      .replace(/[\u4e00-\u9fff]/g, '')
+      .replace(/^-+|-+$/g, '')
+      .replace(/-{2,}/g, '-');
+
+    if (ascii) return ascii.slice(0, 72);
+
+    const fallback = `a1right-post-${new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 12)}`;
+    return fallback;
+  };
+
+  const estimateReadingTime = (text = '') => {
+    const asciiWords = `${text || ''}`.match(/[A-Za-z0-9_]+/g)?.length || 0;
+    const cjkChars = (`${text || ''}`.match(/[\u3400-\u9fff]/g) || []).length;
+    const weightedWords = asciiWords + cjkChars;
+    return Math.max(1, Math.ceil(weightedWords / 260));
+  };
+
+  const countBodyStats = (text = '') => {
+    const normalized = `${text || ''}`.replace(/\r\n/g, '\n');
+    const asciiWords = normalized.match(/[A-Za-z0-9_]+/g)?.length || 0;
+    const cjkChars = (normalized.match(/[\u3400-\u9fff]/g) || []).length;
+    const lines = normalized ? normalized.split('\n').length : 0;
+    return {
+      words: asciiWords + cjkChars,
+      lines,
+      readingMinutes: estimateReadingTime(normalized),
+    };
+  };
 
   const normalizeAssetUrl = (value = '') => {
     const trimmed = `${value || ''}`.trim();
@@ -211,6 +302,46 @@
     return mountToast(toast, duration);
   };
 
+  const ensureUploadOverlay = () => {
+    let overlay = document.getElementById('a1right-admin-upload-overlay');
+    if (overlay) return overlay;
+
+    overlay = document.createElement('section');
+    overlay.id = 'a1right-admin-upload-overlay';
+    overlay.innerHTML = `
+      <div class="a1right-admin-upload-overlay__label">图片上传中</div>
+      <div class="a1right-admin-upload-overlay__meta">准备中…</div>
+      <div class="a1right-admin-upload-overlay__step"></div>
+      <div class="a1right-admin-upload-overlay__bar"><i></i></div>
+    `;
+    document.body.append(overlay);
+    return overlay;
+  };
+
+  const updateUploadOverlay = ({
+    label = '图片上传中',
+    meta = '准备中…',
+    step = '',
+    progress = 12,
+    visible = true,
+  } = {}) => {
+    const overlay = ensureUploadOverlay();
+    overlay.querySelector('.a1right-admin-upload-overlay__label').textContent = label;
+    overlay.querySelector('.a1right-admin-upload-overlay__meta').textContent = meta;
+    overlay.querySelector('.a1right-admin-upload-overlay__step').textContent = step;
+    overlay.querySelector('.a1right-admin-upload-overlay__bar i').style.width = `${clampNumber(progress)}%`;
+    overlay.classList.toggle('is-visible', visible);
+  };
+
+  const finishUploadOverlay = (meta = '图片已处理完成', label = '上传完成') => {
+    const overlay = ensureUploadOverlay();
+    window.clearTimeout(uiState.uploadOverlayHideTimer);
+    updateUploadOverlay({ label, meta, step: '', progress: 100, visible: true });
+    uiState.uploadOverlayHideTimer = window.setTimeout(() => {
+      overlay.classList.remove('is-visible');
+    }, 1400);
+  };
+
   const getStoredUser = () => {
     try {
       const raw = window.localStorage.getItem('decap-cms-user');
@@ -296,6 +427,562 @@
   const maybeFillCoverAlt = (value) => {
     const container = getControlContainerByLabel([/封面描述/, /cover description/i]);
     return setFieldValueInContainer(container, value, { onlyIfEmpty: true });
+  };
+
+  const getFieldInputByLabel = (patterns, fallbackPatterns = []) => {
+    const container = getControlContainerByLabel(patterns, fallbackPatterns);
+    const input = container?.querySelector('input:not([type="hidden"]), textarea, select');
+    return input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement || input instanceof HTMLSelectElement
+      ? input
+      : null;
+  };
+
+  const getBodyFieldContainer = () =>
+    getControlContainerByLabel([/正文/, /英文正文/, /(^|\s)body(\s|$)/i], [/seo/i]);
+
+  const getBodyEditable = () => {
+    const container = getBodyFieldContainer();
+    const editable = container?.querySelector('[contenteditable="true"]');
+    return editable instanceof HTMLElement ? editable : null;
+  };
+
+  const getBodyPlainText = () => {
+    const codeMirror = getCodeMirrorInstance(getBodyFieldContainer());
+    if (codeMirror) return codeMirror.getValue();
+
+    const bodyInput = getFieldInputByLabel([/正文/, /英文正文/, /(^|\s)body(\s|$)/i], [/seo/i]);
+    if (bodyInput instanceof HTMLTextAreaElement) return bodyInput.value || '';
+    if (bodyInput instanceof HTMLInputElement) return bodyInput.value || '';
+
+    const editable = getBodyEditable();
+    return editable?.innerText || '';
+  };
+
+  const getCurrentEditorRouteKey = () => {
+    const hash = `${window.location.hash || '#/'}`.replace(/\/+$/, '');
+    return `a1right-admin:draft:${hash || 'root'}`;
+  };
+
+  const getCurrentEditorIdentity = () => {
+    const routeSlug = getFieldInputByLabel([/路由 Slug/, /route slug/i])?.value?.trim() || '';
+    const title = getTitleFieldValue();
+    return routeSlug || title || `${window.location.hash || '#/'}`;
+  };
+
+  const getEditorManagedInputs = () => ({
+    title: getFieldInputByLabel([/文章标题/, /英文标题/, /(^|\s)title(\s|$)/i], [/seo/i]),
+    excerpt: getFieldInputByLabel([/文章摘要/, /英文摘要/, /(^|\s)excerpt(\s|$)/i], [/seo/i]),
+    routeSlug: getFieldInputByLabel([/路由 Slug/, /route slug/i]),
+    seoTitle: getFieldInputByLabel([/SEO 标题/, /seo title/i]),
+    seoDescription: getFieldInputByLabel([/SEO 描述/, /seo description/i]),
+    cover: getFieldInputByLabel([/封面图/, /cover image/i], [/描述/, /alt/i]),
+    coverAlt: getFieldInputByLabel([/封面描述/, /cover description/i]),
+  });
+
+  const getSanitizedEditableHtml = (editable) => {
+    if (!(editable instanceof HTMLElement)) return '';
+    const clone = editable.cloneNode(true);
+    clone
+      .querySelectorAll(
+        '.a1right-admin-code-copy, .a1right-admin-code-lineno, .a1right-admin-code-toggle, .a1right-admin-code-wrap-toggle, .a1right-admin-code-meta',
+      )
+      .forEach((node) => node.remove());
+    clone.querySelectorAll('.a1right-admin-code-line').forEach((node) => {
+      node.classList.remove(
+        'a1right-admin-code-line',
+        'is-code-start',
+        'is-code-middle',
+        'is-code-end',
+        'is-code-single',
+        'is-code-empty',
+        'is-code-collapsed',
+      );
+      node.removeAttribute('data-code-lang');
+      node.removeAttribute('data-code-lang-key');
+      node.removeAttribute('data-code-group');
+      node.removeAttribute('data-code-expanded');
+      node.removeAttribute('data-code-wrap');
+      node.style.removeProperty('--code-visible-lines');
+    });
+    return clone.innerHTML;
+  };
+
+  const serializeEditorSnapshot = () => {
+    const inputs = getEditorManagedInputs();
+    const bodyEditable = getBodyEditable();
+    const bodyText = getBodyPlainText();
+
+    return {
+      id: getCurrentEditorIdentity(),
+      route: `${window.location.hash || '#/'}`,
+      savedAt: Date.now(),
+      title: inputs.title?.value || '',
+      excerpt: inputs.excerpt?.value || '',
+      routeSlug: inputs.routeSlug?.value || '',
+      seoTitle: inputs.seoTitle?.value || '',
+      seoDescription: inputs.seoDescription?.value || '',
+      cover: inputs.cover?.value || '',
+      coverAlt: inputs.coverAlt?.value || '',
+      bodyText,
+      bodyHtml: getSanitizedEditableHtml(bodyEditable),
+    };
+  };
+
+  const hasMeaningfulSnapshot = (snapshot) =>
+    Boolean(
+      snapshot &&
+      [
+        snapshot.title,
+        snapshot.excerpt,
+        snapshot.routeSlug,
+        snapshot.seoTitle,
+        snapshot.seoDescription,
+        snapshot.cover,
+        snapshot.coverAlt,
+        snapshot.bodyText,
+      ].some((value) => `${value || ''}`.trim()),
+    );
+
+  const readStoredDraft = (key = getCurrentEditorRouteKey()) => {
+    try {
+      const raw = window.localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
+    } catch (error) {
+      console.error('[a1right-admin] failed to read local draft', error);
+      return null;
+    }
+  };
+
+  const removeStoredDraft = (key = workflowState.activeDraftKey || getCurrentEditorRouteKey()) => {
+    try {
+      window.localStorage.removeItem(key);
+    } catch (error) {
+      console.error('[a1right-admin] failed to remove local draft', error);
+    }
+  };
+
+  const writeStoredDraft = (snapshot, key = getCurrentEditorRouteKey()) => {
+    try {
+      window.localStorage.setItem(key, JSON.stringify(snapshot));
+      workflowState.lastAutoSavedAt = Date.now();
+      workflowState.activeDraftKey = key;
+    } catch (error) {
+      console.error('[a1right-admin] failed to persist local draft', error);
+    }
+  };
+
+  const applySnapshotValue = (input, value) => {
+    if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement || input instanceof HTMLSelectElement)) return;
+    setNativeValue(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  const restoreEditorSnapshot = (snapshot) => {
+    if (!snapshot) return false;
+
+    const inputs = getEditorManagedInputs();
+    applySnapshotValue(inputs.title, snapshot.title || '');
+    applySnapshotValue(inputs.excerpt, snapshot.excerpt || '');
+    applySnapshotValue(inputs.routeSlug, snapshot.routeSlug || '');
+    applySnapshotValue(inputs.seoTitle, snapshot.seoTitle || '');
+    applySnapshotValue(inputs.seoDescription, snapshot.seoDescription || '');
+    applySnapshotValue(inputs.cover, snapshot.cover || '');
+    applySnapshotValue(inputs.coverAlt, snapshot.coverAlt || '');
+
+    const codeMirror = getCodeMirrorInstance(getBodyFieldContainer());
+    if (codeMirror && typeof snapshot.bodyText === 'string') {
+      codeMirror.setValue(snapshot.bodyText);
+    } else {
+      const bodyInput = getFieldInputByLabel([/正文/, /英文正文/, /(^|\s)body(\s|$)/i], [/seo/i]);
+      if (bodyInput instanceof HTMLTextAreaElement || bodyInput instanceof HTMLInputElement) {
+        applySnapshotValue(bodyInput, snapshot.bodyText || '');
+      } else {
+        const editable = getBodyEditable();
+        if (editable instanceof HTMLElement) {
+          editable.innerHTML = snapshot.bodyHtml || '';
+          editable.dispatchEvent(new Event('input', { bubbles: true }));
+          editable.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    }
+
+    workflowState.dirty = true;
+    workflowState.restoreBannerDismissed = true;
+    scheduleRichTextCodeRefresh();
+    scheduleEditorWorkflowRefresh();
+    scheduleManagedFieldAssistRefresh();
+    scheduleAutoDraftSave();
+    showToast('本地草稿已恢复。', 'success', 2400);
+    return true;
+  };
+
+  const isSnapshotDifferentFromCurrent = (snapshot) => {
+    if (!snapshot) return false;
+    const current = serializeEditorSnapshot();
+    const keys = ['title', 'excerpt', 'routeSlug', 'seoTitle', 'seoDescription', 'cover', 'coverAlt', 'bodyText'];
+    return keys.some((key) => `${snapshot[key] || ''}` !== `${current[key] || ''}`);
+  };
+
+  const ensureEditorWorkflowPanel = () => {
+    const container = getBodyFieldContainer();
+    if (!(container instanceof Element)) return null;
+
+    let panel = container.querySelector('.a1right-admin-editor-panel');
+    if (panel) return panel;
+
+    panel = document.createElement('section');
+    panel.className = 'a1right-admin-editor-panel';
+    panel.innerHTML = `
+      <div class="a1right-admin-editor-panel__stats"></div>
+      <div class="a1right-admin-editor-panel__actions">
+        <button type="button" class="a1right-admin-chip-button" data-action="insert-code">插入代码模板</button>
+      </div>
+      <div class="a1right-admin-editor-panel__status"></div>
+      <div class="a1right-admin-editor-panel__restore" hidden></div>
+      <div class="a1right-admin-editor-panel__uploads"></div>
+    `;
+
+    panel.querySelector('[data-action="insert-code"]')?.addEventListener('click', () => {
+      void insertCodeTemplateSnippet();
+    });
+
+    container.append(panel);
+    return panel;
+  };
+
+  const renderRecentUploadsRail = () => {
+    const panel = ensureEditorWorkflowPanel();
+    const rail = panel?.querySelector('.a1right-admin-editor-panel__uploads');
+    if (!(rail instanceof HTMLElement)) return;
+
+    rail.innerHTML = '';
+    const items = uiState.recentUploads.slice(0, 6);
+    rail.hidden = items.length === 0;
+    if (!items.length) return;
+
+    items.forEach((item) => {
+      const card = document.createElement('article');
+      card.className = 'a1right-admin-upload-card';
+      card.innerHTML = `
+        <img src="${item.previewUrl || item.publicPath}" alt="${item.alt || 'image'}" />
+        <div class="a1right-admin-upload-card__body">
+          <strong>${item.filename}</strong>
+          <code>${item.fieldPath}</code>
+          <div class="a1right-admin-upload-card__actions">
+            <button type="button" data-action="copy-path">复制路径</button>
+            <button type="button" data-action="copy-md">复制 Markdown</button>
+          </div>
+        </div>
+      `;
+
+      card.querySelector('[data-action="copy-path"]')?.addEventListener('click', async () => {
+        const copied = await copyTextToClipboard(item.fieldPath);
+        showToast(copied ? '图片路径已复制。' : '复制失败，请重试。', copied ? 'success' : 'warn', 2200);
+      });
+
+      card.querySelector('[data-action="copy-md"]')?.addEventListener('click', async () => {
+        const snippet = `![${item.alt || 'image'}](${item.publicPath})`;
+        const copied = await copyTextToClipboard(snippet);
+        showToast(copied ? 'Markdown 已复制。' : '复制失败，请重试。', copied ? 'success' : 'warn', 2200);
+      });
+
+      rail.append(card);
+    });
+  };
+
+  const pushRecentUploads = (uploads) => {
+    uiState.recentUploads = [...uploads, ...uiState.recentUploads]
+      .filter((item) => item?.fieldPath)
+      .slice(0, 8);
+    renderRecentUploadsRail();
+  };
+
+  const renderEditorWorkflowPanel = () => {
+    const panel = ensureEditorWorkflowPanel();
+    if (!(panel instanceof HTMLElement)) return;
+
+    const statsNode = panel.querySelector('.a1right-admin-editor-panel__stats');
+    const statusNode = panel.querySelector('.a1right-admin-editor-panel__status');
+    const restoreNode = panel.querySelector('.a1right-admin-editor-panel__restore');
+    const stats = countBodyStats(getBodyPlainText());
+    const snapshot = readStoredDraft();
+
+    if (statsNode instanceof HTMLElement) {
+      statsNode.innerHTML = `
+        <span class="a1right-admin-stat-card"><small>字数</small><strong>${stats.words}</strong></span>
+        <span class="a1right-admin-stat-card"><small>行数</small><strong>${stats.lines}</strong></span>
+        <span class="a1right-admin-stat-card"><small>阅读</small><strong>${stats.readingMinutes} 分钟</strong></span>
+      `;
+    }
+
+    if (statusNode instanceof HTMLElement) {
+      const dirty = workflowState.dirty ? '未保存修改' : '编辑状态稳定';
+      const savedText = workflowState.lastAutoSavedAt
+        ? `本地草稿 ${formatRelativeTime(workflowState.lastAutoSavedAt)}`
+        : '尚未写入本地草稿';
+      const lastSynced = workflowState.lastSavedAt ? `最近同步 ${formatDateTime(workflowState.lastSavedAt)}` : '等待首次同步';
+      statusNode.innerHTML = `
+        <span class="a1right-admin-status-pill ${workflowState.dirty ? 'is-dirty' : 'is-clean'}">${dirty}</span>
+        <span class="a1right-admin-status-text">${savedText}</span>
+        <span class="a1right-admin-status-text">${lastSynced}</span>
+      `;
+    }
+
+    if (restoreNode instanceof HTMLElement) {
+      const shouldShowRestore =
+        !workflowState.restoreBannerDismissed &&
+        hasMeaningfulSnapshot(snapshot) &&
+        isSnapshotDifferentFromCurrent(snapshot);
+
+      restoreNode.hidden = !shouldShowRestore;
+      if (shouldShowRestore) {
+        restoreNode.innerHTML = `
+          <span>发现 ${formatClockTime(snapshot.savedAt)} 保存的本地草稿。</span>
+          <div>
+            <button type="button" data-action="restore">恢复草稿</button>
+            <button type="button" data-action="discard">忽略</button>
+          </div>
+        `;
+
+        restoreNode.querySelector('[data-action="restore"]')?.addEventListener('click', () => {
+          restoreEditorSnapshot(snapshot);
+        });
+        restoreNode.querySelector('[data-action="discard"]')?.addEventListener('click', () => {
+          workflowState.restoreBannerDismissed = true;
+          renderEditorWorkflowPanel();
+        });
+      }
+    }
+
+    renderRecentUploadsRail();
+  };
+
+  const scheduleEditorWorkflowRefresh = () => {
+    if (workflowState.statsRefreshRaf) return;
+    workflowState.statsRefreshRaf = window.requestAnimationFrame(() => {
+      workflowState.statsRefreshRaf = 0;
+      renderEditorWorkflowPanel();
+    });
+  };
+
+  const setDirtyState = (dirty = true) => {
+    workflowState.dirty = dirty;
+    scheduleEditorWorkflowRefresh();
+    scheduleManagedFieldAssistRefresh();
+  };
+
+  const announceDraftAutoSaved = (savedAt) => {
+    if (!savedAt) return;
+    const now = Date.now();
+    if (now - workflowState.lastDraftToastAt < 12_000) return;
+    workflowState.lastDraftToastAt = now;
+    showToast(`本地草稿已自动保存 · ${formatClockTime(savedAt)}`, 'success', 1800);
+  };
+
+  const scheduleAutoDraftSave = () => {
+    window.clearTimeout(workflowState.autoSaveTimer);
+    workflowState.autoSaveTimer = window.setTimeout(() => {
+      const snapshot = serializeEditorSnapshot();
+      if (!hasMeaningfulSnapshot(snapshot)) return;
+      writeStoredDraft(snapshot, getCurrentEditorRouteKey());
+      scheduleEditorWorkflowRefresh();
+      announceDraftAutoSaved(snapshot.savedAt);
+    }, 2600);
+  };
+
+  const markCleanAfterSync = () => {
+    workflowState.dirty = false;
+    workflowState.lastSavedAt = Date.now();
+    workflowState.lastAutoSavedAt = workflowState.lastSavedAt;
+    removeStoredDraft();
+    scheduleEditorWorkflowRefresh();
+    scheduleManagedFieldAssistRefresh();
+  };
+
+  const syncAutoField = (input, nextValue) => {
+    if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) || !nextValue) return false;
+    const current = `${input.value || ''}`.trim();
+    const lastAuto = input.dataset.a1rightLastAuto || '';
+    const autoManaged = !current || current === lastAuto || input.dataset.a1rightAutoManaged !== 'manual';
+    if (!autoManaged) return false;
+
+    if (current === nextValue) {
+      input.dataset.a1rightLastAuto = nextValue;
+      return false;
+    }
+
+    input.dataset.a1rightAutoManaged = 'auto';
+    input.dataset.a1rightLastAuto = nextValue;
+    applySnapshotValue(input, nextValue);
+    return true;
+  };
+
+  const syncDerivedMetadata = () => {
+    const inputs = getEditorManagedInputs();
+    const title = `${inputs.title?.value || ''}`.trim();
+    const excerpt = `${inputs.excerpt?.value || ''}`.trim();
+    if (title) {
+      syncAutoField(inputs.routeSlug, slugifyText(title));
+      syncAutoField(inputs.seoTitle, title.slice(0, 80));
+    }
+    if (excerpt) {
+      syncAutoField(inputs.seoDescription, excerpt.slice(0, 160));
+    }
+    scheduleManagedFieldAssistRefresh();
+  };
+
+  const noteManualOverride = (input) => {
+    if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement)) return;
+    const current = `${input.value || ''}`.trim();
+    const lastAuto = input.dataset.a1rightLastAuto || '';
+    input.dataset.a1rightAutoManaged = !current || current === lastAuto ? 'auto' : 'manual';
+  };
+
+  const getManagedFieldAssistConfig = (role) => {
+    if (role === 'routeSlug') {
+      return {
+        autoText: '跟随标题自动生成短链接',
+        manualText: '已手动锁定 Slug',
+        restoreText: '恢复自动',
+        restoredToast: '路由 Slug 已恢复自动生成。',
+      };
+    }
+
+    if (role === 'seoTitle') {
+      return {
+        autoText: '默认跟随文章标题',
+        manualText: '已手动设置 SEO 标题',
+        restoreText: '恢复跟随标题',
+        restoredToast: 'SEO 标题已恢复跟随文章标题。',
+      };
+    }
+
+    if (role === 'seoDescription') {
+      return {
+        autoText: '默认跟随文章摘要',
+        manualText: '已手动设置 SEO 描述',
+        restoreText: '恢复跟随摘要',
+        restoredToast: 'SEO 描述已恢复跟随文章摘要。',
+      };
+    }
+
+    return null;
+  };
+
+  const ensureManagedFieldAssist = (container) => {
+    if (!(container instanceof Element)) return null;
+    let assist = container.querySelector('.a1right-admin-field-assist');
+    if (assist) return assist;
+
+    assist = document.createElement('div');
+    assist.className = 'a1right-admin-field-assist';
+    assist.innerHTML = `
+      <span class="a1right-admin-field-assist__status"></span>
+      <div class="a1right-admin-field-assist__actions"></div>
+    `;
+    container.append(assist);
+    return assist;
+  };
+
+  const renderManagedFieldAssist = () => {
+    const inputs = getEditorManagedInputs();
+    ['routeSlug', 'seoTitle', 'seoDescription'].forEach((role) => {
+      const input = inputs[role];
+      const config = getManagedFieldAssistConfig(role);
+      const container = input?.closest('[class*="ControlContainer"]');
+      if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) || !config || !(container instanceof Element)) {
+        return;
+      }
+
+      const assist = ensureManagedFieldAssist(container);
+      if (!(assist instanceof HTMLElement)) return;
+
+      const statusNode = assist.querySelector('.a1right-admin-field-assist__status');
+      const actionsNode = assist.querySelector('.a1right-admin-field-assist__actions');
+      const current = `${input.value || ''}`.trim();
+      const lastAuto = input.dataset.a1rightLastAuto || '';
+      const autoManaged = !current || current === lastAuto || input.dataset.a1rightAutoManaged !== 'manual';
+
+      assist.classList.toggle('is-auto', autoManaged);
+      assist.classList.toggle('is-manual', !autoManaged);
+
+      if (statusNode instanceof HTMLElement) {
+        statusNode.textContent = autoManaged ? config.autoText : config.manualText;
+      }
+
+      if (actionsNode instanceof HTMLElement) {
+        actionsNode.innerHTML = '';
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'a1right-admin-field-assist__button';
+        button.textContent = autoManaged ? '自动联动中' : config.restoreText;
+        button.disabled = autoManaged;
+        button.addEventListener('click', () => {
+          input.dataset.a1rightAutoManaged = 'auto';
+          syncDerivedMetadata();
+          scheduleManagedFieldAssistRefresh();
+          setDirtyState(true);
+          scheduleAutoDraftSave();
+          showToast(config.restoredToast, 'success', 2200);
+        });
+        actionsNode.append(button);
+      }
+    });
+  };
+
+  const scheduleManagedFieldAssistRefresh = () => {
+    if (workflowState.assistRefreshRaf) return;
+    workflowState.assistRefreshRaf = window.requestAnimationFrame(() => {
+      workflowState.assistRefreshRaf = 0;
+      renderManagedFieldAssist();
+    });
+  };
+
+  const getManagedFieldRole = (target) => {
+    if (!(target instanceof Element)) return '';
+    const container = target.closest('[class*="ControlContainer"]');
+    const label = cleanDisplayText(container?.querySelector('label, [class*="ControlLabel"]')?.textContent || '').toLowerCase();
+    if (!label) return '';
+    if ((/title/.test(label) || /标题/.test(label)) && !/seo/.test(label)) return 'title';
+    if (/excerpt/.test(label) || /摘要/.test(label)) return 'excerpt';
+    if (/slug/.test(label)) return 'routeSlug';
+    if ((/seo/.test(label) && /标题/.test(label)) || /seo title/.test(label)) return 'seoTitle';
+    if ((/seo/.test(label) && /描述/.test(label)) || /seo description/.test(label)) return 'seoDescription';
+    if (/封面图/.test(label) || /cover image/.test(label)) return 'cover';
+    if (/封面描述/.test(label) || /cover description/.test(label)) return 'coverAlt';
+    if ((/正文/.test(label) || /body/.test(label)) && !/seo/.test(label)) return 'body';
+    return '';
+  };
+
+  const handleManagedFieldInput = (target) => {
+    const role = getManagedFieldRole(target);
+    if (!role) return;
+
+    if (['routeSlug', 'seoTitle', 'seoDescription'].includes(role)) {
+      noteManualOverride(target);
+    }
+
+    if (['title', 'excerpt'].includes(role)) {
+      syncDerivedMetadata();
+    }
+
+    setDirtyState(true);
+    scheduleAutoDraftSave();
+    scheduleEditorWorkflowRefresh();
+    scheduleManagedFieldAssistRefresh();
+  };
+
+  const handlePossibleSaveAction = (target) => {
+    const button = target instanceof Element ? target.closest('button, a') : null;
+    if (!(button instanceof HTMLElement)) return;
+    const text = `${button.textContent || ''}`.trim();
+    if (!/publish|save|发布|保存|同步/i.test(text)) return;
+
+    showToast('正在同步到仓库，请稍等…', 'info', 1800);
+    window.setTimeout(() => {
+      markCleanAfterSync();
+    }, 2600);
   };
 
   const getMarkdownRootFromElement = (element) => {
@@ -511,12 +1198,88 @@
     return stored;
   };
 
+  const formatImageDimensions = (width, height) =>
+    width && height ? `${Math.round(width)} × ${Math.round(height)}` : '';
+
+  const formatAspectRatio = (width, height) => {
+    if (!width || !height) return '';
+    const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+    const divisor = gcd(Math.round(width), Math.round(height)) || 1;
+    return `${Math.round(width / divisor)}:${Math.round(height / divisor)}`;
+  };
+
+  const readImageDimensions = (source) =>
+    new Promise((resolve) => {
+      if (!source) {
+        resolve(null);
+        return;
+      }
+
+      const image = new Image();
+      image.onload = () => {
+        resolve({
+          width: image.naturalWidth || image.width || 0,
+          height: image.naturalHeight || image.height || 0,
+        });
+      };
+      image.onerror = () => resolve(null);
+      image.src = source;
+    });
+
+  const ensureImageFieldMeta = async (root, preview = null) => {
+    const resolvedRoot = resolveImageFieldRoot(root);
+    if (!(resolvedRoot instanceof Element)) return;
+
+    const current = preview || getStoredImageFieldPreview(resolvedRoot) || {};
+    const metaSource = current.previewUrl || normalizeAssetUrl(current.fieldPath);
+    if (!metaSource) return;
+    if (current.metaSource === metaSource || current.metaLoadingSource === metaSource) return;
+
+    previewState.imageFieldState.set(resolvedRoot, {
+      ...(getStoredImageFieldPreview(resolvedRoot) || {}),
+      ...current,
+      metaLoadingSource: metaSource,
+    });
+
+    const dimensions = await readImageDimensions(metaSource);
+    const latest = getStoredImageFieldPreview(resolvedRoot) || {};
+    if (latest.metaLoadingSource !== metaSource) return;
+
+    setImageFieldPreviewState(resolvedRoot, {
+      width: dimensions?.width || 0,
+      height: dimensions?.height || 0,
+      aspectRatio: dimensions ? formatAspectRatio(dimensions.width, dimensions.height) : '',
+      metaSource,
+      metaLoadingSource: '',
+    });
+  };
+
   const pulseField = (root, className = 'a1right-admin-field-guided') => {
     if (!(root instanceof Element)) return;
     root.classList.remove(className);
     void root.offsetWidth;
     root.classList.add(className);
     window.setTimeout(() => root.classList.remove(className), 1600);
+  };
+
+  const setActiveDropTarget = (root = null) => {
+    const previous = uiState.activeDropTarget;
+    if (previous instanceof Element && previous !== root) {
+      previous.classList.remove('a1right-admin-drop-target', 'is-drop-active');
+    }
+
+    if (root instanceof Element) {
+      root.classList.add('a1right-admin-drop-target', 'is-drop-active');
+      uiState.activeDropTarget = root;
+      window.clearTimeout(uiState.dropTargetClearTimer);
+      uiState.dropTargetClearTimer = window.setTimeout(() => {
+        setActiveDropTarget(null);
+      }, 160);
+      return;
+    }
+
+    uiState.activeDropTarget = null;
+    window.clearTimeout(uiState.dropTargetClearTimer);
   };
 
   const resolveImageFieldRoot = (root) =>
@@ -682,6 +1445,9 @@
     description.className = 'a1right-admin-cover-preview__description';
     description.textContent = '先点一下封面图区，再 Ctrl + V，这里会立即显示缩略预览。';
 
+    const insights = document.createElement('div');
+    insights.className = 'a1right-admin-cover-preview__insights';
+
     const meta = document.createElement('div');
     meta.className = 'a1right-admin-cover-preview__meta';
 
@@ -723,9 +1489,19 @@
       showToast(cleared ? '封面图已清空。' : '当前没有可清空的封面图。', cleared ? 'success' : 'info', 2800);
     });
 
-    actions.append(replaceButton, clearButton);
+    const copyPathButton = document.createElement('button');
+    copyPathButton.type = 'button';
+    copyPathButton.className = 'a1right-admin-cover-preview__action is-ghost';
+    copyPathButton.textContent = '复制路径';
+    copyPathButton.addEventListener('click', async () => {
+      const fieldPath = getImageFieldValue(root);
+      const copied = fieldPath ? await copyTextToClipboard(fieldPath) : false;
+      showToast(copied ? '封面图路径已复制。' : '当前没有可复制的封面图路径。', copied ? 'success' : 'info', 2400);
+    });
+
+    actions.append(replaceButton, copyPathButton, clearButton);
     meta.append(path, open);
-    body.append(eyebrow, title, description, meta, actions);
+    body.append(eyebrow, title, description, insights, meta, actions);
     card.append(media, body);
     root.append(card);
     return card;
@@ -746,9 +1522,11 @@
     const image = card.querySelector('.a1right-admin-cover-preview__image');
     const title = card.querySelector('.a1right-admin-cover-preview__title');
     const description = card.querySelector('.a1right-admin-cover-preview__description');
+    const insights = card.querySelector('.a1right-admin-cover-preview__insights');
     const path = card.querySelector('.a1right-admin-cover-preview__path');
     const open = card.querySelector('.a1right-admin-cover-preview__open');
     const clearButton = card.querySelector('.a1right-admin-cover-preview__action.is-secondary');
+    const copyPathButton = card.querySelector('.a1right-admin-cover-preview__action.is-ghost');
 
     const hasImage = Boolean(previewUrl);
     card.classList.toggle('is-empty', !hasImage);
@@ -780,6 +1558,18 @@
         : '选择封面图片后，这里会自动出现预览效果，也支持直接 Ctrl + V 粘贴。';
     }
 
+    if (insights instanceof HTMLElement) {
+      const pills = [];
+      const dimensionsLabel = formatImageDimensions(state.width, state.height);
+      if (dimensionsLabel) pills.push(dimensionsLabel);
+      if (state.aspectRatio) pills.push(state.aspectRatio);
+      if (state.size) pills.push(formatFileSize(state.size));
+      pills.push(hasImage ? '已可检查裁切效果' : '支持粘贴 / 拖拽');
+      insights.innerHTML = pills
+        .map((item) => `<span class="a1right-admin-cover-preview__pill">${item}</span>`)
+        .join('');
+    }
+
     if (path instanceof HTMLElement) {
       path.textContent = fieldPath || '尚未设置图片路径';
     }
@@ -792,6 +1582,17 @@
 
     if (clearButton instanceof HTMLButtonElement) {
       clearButton.disabled = !hasImage;
+    }
+    if (copyPathButton instanceof HTMLButtonElement) {
+      copyPathButton.disabled = !fieldPath;
+    }
+
+    if (hasImage) {
+      void ensureImageFieldMeta(root, {
+        ...state,
+        fieldPath,
+        previewUrl,
+      });
     }
   };
 
@@ -809,8 +1610,21 @@
       revokeObjectUrl(previous.previewUrl);
     }
 
+    const nextPreviewSource = nextState.previewUrl || normalizeAssetUrl(nextState.fieldPath || '');
+    const previousPreviewSource = previous?.previewUrl || normalizeAssetUrl(previous?.fieldPath || '');
+    const previewChanged = nextPreviewSource && nextPreviewSource !== previousPreviewSource;
+
     previewState.imageFieldState.set(resolvedRoot, {
       ...previous,
+      ...(previewChanged
+        ? {
+            width: 0,
+            height: 0,
+            aspectRatio: '',
+            metaSource: '',
+            metaLoadingSource: '',
+          }
+        : {}),
       ...nextState,
     });
 
@@ -951,12 +1765,52 @@
     return button;
   };
 
+  const createCodeActionButton = (label, className, onClick) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = className;
+    button.textContent = label;
+    button.setAttribute('contenteditable', 'false');
+    button.setAttribute('tabindex', '-1');
+    button.addEventListener('mousedown', (event) => event.preventDefault());
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onClick?.(button);
+    });
+    return button;
+  };
+
+  const createCodeMetaBadge = (label) => {
+    const badge = document.createElement('span');
+    badge.className = 'a1right-admin-code-meta';
+    badge.textContent = label;
+    badge.setAttribute('contenteditable', 'false');
+    return badge;
+  };
+
+  const applyCodeGroupState = (group, { expanded = true, wrap = true } = {}) => {
+    group.forEach((item, index) => {
+      item.dataset.codeExpanded = expanded ? 'true' : 'false';
+      item.dataset.codeWrap = wrap ? 'true' : 'false';
+      item.classList.toggle('is-code-collapsed', !expanded && index >= 8);
+      item.classList.toggle('is-code-nowrap', !wrap);
+    });
+  };
+
   const decorateRichTextCodeBlocks = (editable) => {
     if (!(editable instanceof HTMLElement)) return;
 
     const blocks = [...editable.children].filter((item) => item instanceof HTMLElement);
     blocks.forEach((block) => {
+      block._a1rightCodeState = {
+        expanded: block.dataset.codeExpanded !== 'false',
+        wrap: block.dataset.codeWrap !== 'false',
+      };
       block.querySelectorAll('.a1right-admin-code-copy').forEach((button) => button.remove());
+      block
+        .querySelectorAll('.a1right-admin-code-toggle, .a1right-admin-code-wrap-toggle, .a1right-admin-code-lineno, .a1right-admin-code-meta')
+        .forEach((node) => node.remove());
       block.classList.remove(
         'a1right-admin-code-line',
         'is-code-start',
@@ -964,9 +1818,12 @@
         'is-code-end',
         'is-code-single',
         'is-code-empty',
+        'is-code-collapsed',
+        'is-code-nowrap',
       );
       block.removeAttribute('data-code-lang');
       block.removeAttribute('data-code-lang-key');
+      block.removeAttribute('data-code-group');
     });
 
     let group = [];
@@ -976,10 +1833,13 @@
       const language = inferCodeLanguage(lines);
       const languageKey = getCodeLanguageKey(language);
       const codeText = lines.join('\n');
+      const groupId = `code-group-${++decoratorState.codeGroupCounter}`;
+      const preservedState = group[0]._a1rightCodeState || { expanded: group.length <= 14, wrap: true };
 
       group.forEach((item, index) => {
         item.classList.add('a1right-admin-code-line');
         if (!readCodeLineText(item).trim()) item.classList.add('is-code-empty');
+        item.dataset.codeGroup = groupId;
 
         if (group.length === 1) {
           item.classList.add('is-code-single', 'is-code-start', 'is-code-end');
@@ -990,11 +1850,35 @@
         } else {
           item.classList.add('is-code-middle');
         }
+
+        const lineNo = document.createElement('span');
+        lineNo.className = 'a1right-admin-code-lineno';
+        lineNo.textContent = `${index + 1}`;
+        lineNo.setAttribute('contenteditable', 'false');
+        item.prepend(lineNo);
       });
 
       group[0].setAttribute('data-code-lang', language);
       group[0].setAttribute('data-code-lang-key', languageKey);
+      group[0].append(createCodeMetaBadge(`${group.length} 行`));
+      group[0].append(
+        createCodeActionButton(preservedState.wrap ? '不换行' : '自动换行', 'a1right-admin-code-wrap-toggle', (button) => {
+          const wrap = button.textContent === '自动换行';
+          applyCodeGroupState(group, { expanded: group[0].dataset.codeExpanded !== 'false', wrap });
+          button.textContent = wrap ? '不换行' : '自动换行';
+        }),
+      );
+      if (group.length > 8) {
+        group[0].append(
+          createCodeActionButton(preservedState.expanded ? '折叠' : '展开', 'a1right-admin-code-toggle', (button) => {
+            const expanded = button.textContent === '展开';
+            applyCodeGroupState(group, { expanded, wrap: group[0].dataset.codeWrap !== 'false' });
+            button.textContent = expanded ? '折叠' : '展开';
+          }),
+        );
+      }
       group[0].append(createCodeCopyButton(codeText));
+      applyCodeGroupState(group, preservedState);
       group = [];
     };
 
@@ -1212,6 +2096,56 @@
     return { ok: true, locate };
   };
 
+  const insertRichTextCodeTemplate = () => {
+    const editable = getBodyEditable();
+    if (!(editable instanceof HTMLElement)) return false;
+
+    const lines = ['# code block', '', 'print("hello world")'];
+    const fragment = document.createDocumentFragment();
+
+    lines.forEach((line) => {
+      const row = document.createElement('p');
+      const code = document.createElement('code');
+      code.textContent = line;
+      row.append(code);
+      fragment.append(row);
+    });
+
+    const spacer = document.createElement('p');
+    spacer.innerHTML = '<br>';
+    fragment.append(spacer);
+    editable.append(fragment);
+    editable.dispatchEvent(new Event('input', { bubbles: true }));
+    editable.dispatchEvent(new Event('change', { bubbles: true }));
+    editable.focus();
+    scheduleRichTextCodeRefresh();
+    return true;
+  };
+
+  const insertCodeTemplateSnippet = async () => {
+    const markdownSnippet = ['```python', '# code block', '', 'print("hello world")', '```'].join('\n');
+    const inserted = insertMarkdownSnippet(getBodyFieldContainer(), markdownSnippet);
+    if (inserted.ok) {
+      inserted.locate?.();
+      setDirtyState(true);
+      scheduleAutoDraftSave();
+      showToast('代码模板已插入正文。', 'success', 2200);
+      return true;
+    }
+
+    const richInserted = insertRichTextCodeTemplate();
+    if (richInserted) {
+      setDirtyState(true);
+      scheduleAutoDraftSave();
+      showToast('代码模板已插入正文。', 'success', 2200);
+      return true;
+    }
+
+    const copied = await copyTextToClipboard(markdownSnippet);
+    showToast(copied ? '没有找到光标位置，代码模板已复制到剪贴板。' : '暂时没找到可插入代码模板的位置。', copied ? 'warn' : 'error', 3200);
+    return false;
+  };
+
   const applyImageFieldValue = async (root, nextValue) => {
     const resolvedRoot =
       (root instanceof Element && root.isConnected ? root : null) ||
@@ -1365,32 +2299,52 @@
     };
   };
 
-  const handlePaste = async (event) => {
-    if (uploadState.busy) return;
+  const resolveUploadFileFromSource = async (source) => {
+    if (source.kind === 'file') return source.file;
+    if (source.kind === 'data-url') return fileFromDataUrl(source.value);
+    return fetchRemoteImage(source.url);
+  };
 
-    const context = getClipboardContext();
-    if (!context) return;
+  const processImageSources = async ({ context, sources, origin = '粘贴' }) => {
+    if (uploadState.busy) return false;
+    if (!context || !sources?.length) return false;
 
-    const sources = getClipboardSources(event.clipboardData, context.kind);
-    if (!sources.length) return;
-
-    event.preventDefault();
+    setActiveDropTarget(null);
     uploadState.busy = true;
-    showToast('正在处理剪贴板图片…', 'info', 1800);
+    updateUploadOverlay({
+      label: origin === '拖拽' ? '正在处理拖拽图片' : '正在处理剪贴板图片',
+      meta: '准备上传…',
+      step: context.kind === 'image' ? '目标：封面图区' : '目标：正文编辑器',
+      progress: 12,
+      visible: true,
+    });
 
     try {
       const uploads = [];
+      const candidates = sources.slice(0, context.kind === 'image' ? 1 : 4);
 
-      for (const source of sources.slice(0, context.kind === 'image' ? 1 : 4)) {
-        let file;
-        if (source.kind === 'file') file = source.file;
-        else if (source.kind === 'data-url') file = await fileFromDataUrl(source.value);
-        else file = await fetchRemoteImage(source.url);
+      for (const [index, source] of candidates.entries()) {
+        updateUploadOverlay({
+          label: '图片上传中',
+          meta: `正在上传第 ${index + 1} / ${candidates.length} 张`,
+          step: source.kind === 'file' ? `文件：${source.file?.name || 'clipboard-image'}` : '文件：远程图片',
+          progress: 18 + Math.round((index / Math.max(1, candidates.length)) * 56),
+          visible: true,
+        });
 
+        const file = await resolveUploadFileFromSource(source);
         uploads.push(await uploadFileToGitHub(file));
       }
 
-      if (!uploads.length) return;
+      if (!uploads.length) return true;
+
+      updateUploadOverlay({
+        label: '整理内容中',
+        meta: context.kind === 'image' ? '正在同步封面图字段…' : '正在插入正文并刷新缩略列表…',
+        step: uploads[0]?.filename ? `已上传：${uploads[0].filename}` : '',
+        progress: 86,
+        visible: true,
+      });
 
       if (context.kind === 'image') {
         const target = uploads[0];
@@ -1402,15 +2356,17 @@
           filename: target.filename,
           previewUrl: target.previewUrl,
           alt: coverAlt,
-          description: '刚刚通过剪贴板上传，可直接检查封面视觉效果。',
+          description: origin === '拖拽' ? '刚刚通过拖拽上传，可直接检查封面视觉效果。' : '刚刚通过剪贴板上传，可直接检查封面视觉效果。',
         });
 
         if (!applied) {
           await navigator.clipboard?.writeText(target.fieldPath).catch(() => {});
+          finishUploadOverlay('图片已上传，路径已复制到剪贴板');
           showToast(`已上传 ${target.filename}，路径已复制到剪贴板。`, 'warn', 4600);
-          return;
+          return true;
         }
 
+        finishUploadOverlay('封面图已同步完成');
         showPreviewToast({
           title: '封面图已更新',
           description: buildPreviewDescription({ ...target, alt: coverAlt }, 'image'),
@@ -1418,7 +2374,10 @@
           type: 'success',
           duration: 4600,
         });
-        return;
+        setDirtyState(true);
+        scheduleAutoDraftSave();
+        scheduleEditorWorkflowRefresh();
+        return true;
       }
 
       const snippet = uploads
@@ -1428,9 +2387,15 @@
       const inserted = insertMarkdownSnippet(context.root, snippet);
       if (!inserted.ok) {
         await navigator.clipboard?.writeText(snippet).catch(() => {});
+        finishUploadOverlay('Markdown 已复制到剪贴板');
         showToast('图片已上传，但没找到正文光标位置；Markdown 已复制到剪贴板。', 'warn', 4600);
-        return;
+        pushRecentUploads(uploads);
+        scheduleEditorWorkflowRefresh();
+        return true;
       }
+
+      pushRecentUploads(uploads);
+      finishUploadOverlay(`已处理 ${uploads.length} 张图片`);
 
       const firstUpload = uploads[0];
       showPreviewToast({
@@ -1443,12 +2408,36 @@
         type: 'success',
         duration: 5600,
       });
+
+      setDirtyState(true);
+      scheduleAutoDraftSave();
+      scheduleEditorWorkflowRefresh();
+      return true;
     } catch (error) {
-      console.error('[a1right-admin] clipboard upload failed', error);
+      console.error('[a1right-admin] image upload failed', error);
+      updateUploadOverlay({
+        label: '上传失败',
+        meta: error instanceof Error ? error.message : '图片上传失败',
+        progress: 100,
+        visible: true,
+      });
+      finishUploadOverlay(error instanceof Error ? error.message : '图片上传失败', '上传失败');
       showToast(error instanceof Error ? error.message : '剪贴板图片上传失败', 'error', 5600);
+      return false;
     } finally {
       uploadState.busy = false;
     }
+  };
+
+  const handlePaste = async (event) => {
+    const context = getClipboardContext();
+    if (!context) return;
+
+    const sources = getClipboardSources(event.clipboardData, context.kind);
+    if (!sources.length) return;
+
+    event.preventDefault();
+    await processImageSources({ context, sources, origin: '粘贴' });
   };
 
   document.addEventListener('paste', (event) => {
@@ -1465,6 +2454,7 @@
     syncMarkdownEditorState(event.target);
     syncImageEditorState(event.target);
     scheduleRichTextCodeRefresh();
+    handlePossibleSaveAction(event.target);
   }, true);
 
   document.addEventListener('keyup', (event) => {
@@ -1481,6 +2471,8 @@
 
   document.addEventListener('input', (event) => {
     if (!(event.target instanceof Element)) return;
+
+    handleManagedFieldInput(event.target);
 
     const imageRoot = getImageRootFromElement(event.target);
     if (imageRoot) {
@@ -1499,8 +2491,15 @@
 
     if (event.target instanceof HTMLInputElement && event.target.type === 'file') {
       const previewed = previewSelectedImageFile(event.target);
-      if (previewed) return;
+      if (previewed) {
+        setDirtyState(true);
+        scheduleAutoDraftSave();
+        scheduleEditorWorkflowRefresh();
+        return;
+      }
     }
+
+    handleManagedFieldInput(event.target);
 
     const imageRoot = getImageRootFromElement(event.target);
     if (imageRoot) {
@@ -1512,9 +2511,71 @@
     scheduleRichTextCodeRefresh();
   }, true);
 
+  document.addEventListener('dragover', (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const hasImageFiles = [...(event.dataTransfer?.items || [])].some((item) => item.kind === 'file' && item.type.startsWith('image/'));
+    if (!hasImageFiles) {
+      setActiveDropTarget(null);
+      return;
+    }
+
+    const context =
+      getImageRootFromElement(target) ||
+      getMarkdownRootFromElement(target) ||
+      getBodyFieldContainer();
+
+    if (!context) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    setActiveDropTarget(context);
+  }, true);
+
+  document.addEventListener('drop', (event) => {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const files = [...(event.dataTransfer?.files || [])].filter((file) => file.type.startsWith('image/'));
+    if (!files.length) return;
+
+    const imageRoot = getImageRootFromElement(target);
+    const markdownRoot = getMarkdownRootFromElement(target) || getBodyFieldContainer();
+    const context = imageRoot
+      ? { kind: 'image', root: imageRoot }
+      : markdownRoot
+        ? { kind: 'markdown', root: markdownRoot }
+        : null;
+
+    if (!context) return;
+    event.preventDefault();
+    setActiveDropTarget(null);
+    void processImageSources({
+      context,
+      sources: files.map((file) => ({ kind: 'file', file })),
+      origin: '拖拽',
+    });
+  }, true);
+
+  document.addEventListener('dragleave', () => {
+    setActiveDropTarget(null);
+  }, true);
+
+  document.addEventListener('dragend', () => {
+    setActiveDropTarget(null);
+  }, true);
+
   window.addEventListener('hashchange', () => {
+    workflowState.activeDraftKey = getCurrentEditorRouteKey();
+    workflowState.restoreBannerDismissed = false;
     window.setTimeout(scheduleImageFieldPreviewRefresh, 140);
     window.setTimeout(scheduleRichTextCodeRefresh, 140);
+    window.setTimeout(scheduleEditorWorkflowRefresh, 140);
+    window.setTimeout(scheduleManagedFieldAssistRefresh, 140);
+  });
+
+  window.addEventListener('beforeunload', (event) => {
+    if (!workflowState.dirty) return;
+    event.preventDefault();
+    event.returnValue = '';
   });
 
   window.addEventListener('beforeunload', () => {
@@ -1526,9 +2587,13 @@
     new MutationObserver(() => {
       scheduleImageFieldPreviewRefresh();
       scheduleRichTextCodeRefresh();
+      scheduleManagedFieldAssistRefresh();
     }).observe(cmsRoot, { childList: true, subtree: true });
   }
 
   scheduleImageFieldPreviewRefresh();
   scheduleRichTextCodeRefresh();
+  workflowState.activeDraftKey = getCurrentEditorRouteKey();
+  scheduleEditorWorkflowRefresh();
+  scheduleManagedFieldAssistRefresh();
 })();
