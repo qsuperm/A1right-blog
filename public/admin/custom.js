@@ -4,6 +4,13 @@
   const publicFolder = `${runtime.publicFolder || 'images/uploads'}`.replace(/^\/+|\/+$/g, '');
   const publicFolderUrl = `/${publicFolder}`;
   const uploadState = { busy: false };
+  const editorState = {
+    lastMarkdownRoot: null,
+    lastMarkdownEditable: null,
+    lastMarkdownTextarea: null,
+    lastSelectionStart: null,
+    lastSelectionEnd: null,
+  };
 
   const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
 
@@ -41,6 +48,42 @@
     }
   };
 
+  const getMarkdownRootFromElement = (element) => {
+    if (!(element instanceof Element)) return null;
+
+    return (
+      element.closest('[aria-label="markdown field"]') ||
+      element.closest('.CodeMirror') ||
+      element.closest('[class*="MarkdownControl"]') ||
+      null
+    );
+  };
+
+  const syncMarkdownEditorState = (target) => {
+    const root = getMarkdownRootFromElement(target);
+    if (!root) return;
+
+    editorState.lastMarkdownRoot = root;
+
+    const textarea =
+      (target instanceof HTMLTextAreaElement && root.contains(target) ? target : null) ||
+      root.querySelector('textarea');
+
+    if (textarea instanceof HTMLTextAreaElement) {
+      editorState.lastMarkdownTextarea = textarea;
+      editorState.lastSelectionStart = textarea.selectionStart ?? textarea.value.length;
+      editorState.lastSelectionEnd = textarea.selectionEnd ?? editorState.lastSelectionStart;
+    }
+
+    const editable =
+      (target instanceof HTMLElement && target.isContentEditable ? target : null) ||
+      root.querySelector('[contenteditable="true"]');
+
+    if (editable instanceof HTMLElement) {
+      editorState.lastMarkdownEditable = editable;
+    }
+  };
+
   const getClipboardContext = () => {
     const active = document.activeElement;
     if (!(active instanceof Element)) return null;
@@ -48,12 +91,10 @@
     const imageField = active.closest('[aria-label="image field"]');
     if (imageField) return { kind: 'image', root: imageField };
 
-    const markdownField =
-      active.closest('[aria-label="markdown field"]') ??
-      active.closest('.CodeMirror') ??
-      active.closest('[class*="MarkdownControl"]');
+    const markdownField = getMarkdownRootFromElement(active) || editorState.lastMarkdownRoot;
 
     if (markdownField) {
+      syncMarkdownEditorState(active);
       return { kind: 'markdown', root: markdownField };
     }
 
@@ -123,14 +164,62 @@
     }
   };
 
+  const resolveMarkdownRoot = (root) => {
+    if (root instanceof Element && root.isConnected) return root;
+    if (editorState.lastMarkdownRoot instanceof Element && editorState.lastMarkdownRoot.isConnected) {
+      return editorState.lastMarkdownRoot;
+    }
+
+    return (
+      document.querySelector('[aria-label="markdown field"] .CodeMirror')?.closest('[aria-label="markdown field"]') ||
+      document.querySelector('[aria-label="markdown field"]') ||
+      document.querySelector('[class*="MarkdownControl"]') ||
+      document.querySelector('.CodeMirror') ||
+      null
+    );
+  };
+
   const getCodeMirrorInstance = (root) => {
     const focused = document.querySelector('.CodeMirror-focused');
     if (focused?.CodeMirror) return focused.CodeMirror;
 
-    if (!(root instanceof Element)) return null;
+    const resolvedRoot = resolveMarkdownRoot(root);
+    if (!(resolvedRoot instanceof Element)) {
+      const anyHost = [...document.querySelectorAll('.CodeMirror')].find((item) => item?.CodeMirror);
+      return anyHost?.CodeMirror || null;
+    }
 
-    const host = root.matches('.CodeMirror') ? root : root.querySelector('.CodeMirror');
+    const host = resolvedRoot.matches('.CodeMirror') ? resolvedRoot : resolvedRoot.querySelector('.CodeMirror');
     return host?.CodeMirror || null;
+  };
+
+  const insertIntoContentEditable = (editable, snippet) => {
+    if (!(editable instanceof HTMLElement)) return false;
+
+    editable.focus();
+    const selection = window.getSelection();
+    if (!selection) return false;
+
+    if (!selection.rangeCount) {
+      const range = document.createRange();
+      range.selectNodeContents(editable);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
+    const range = selection.getRangeAt(0);
+    range.deleteContents();
+    const textNode = document.createTextNode(snippet);
+    range.insertNode(textNode);
+    range.setStartAfter(textNode);
+    range.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    editable.dispatchEvent(new InputEvent('input', { bubbles: true, data: snippet, inputType: 'insertText' }));
+    editable.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
   };
 
   const insertMarkdownSnippet = (root, snippet) => {
@@ -141,14 +230,31 @@
       return true;
     }
 
+    const resolvedRoot = resolveMarkdownRoot(root);
+    const editable =
+      (resolvedRoot instanceof Element && resolvedRoot.querySelector('[contenteditable="true"]')) ||
+      editorState.lastMarkdownEditable ||
+      null;
+
+    if (insertIntoContentEditable(editable, snippet)) {
+      return true;
+    }
+
     const textarea =
-      (root instanceof Element && root.querySelector('textarea')) ||
+      (resolvedRoot instanceof Element && resolvedRoot.querySelector('textarea')) ||
+      (editorState.lastMarkdownTextarea instanceof HTMLTextAreaElement ? editorState.lastMarkdownTextarea : null) ||
       (document.activeElement instanceof HTMLTextAreaElement ? document.activeElement : null);
 
     if (!textarea) return false;
 
-    const start = textarea.selectionStart ?? textarea.value.length;
-    const end = textarea.selectionEnd ?? start;
+    const start =
+      textarea.selectionStart ??
+      editorState.lastSelectionStart ??
+      textarea.value.length;
+    const end =
+      textarea.selectionEnd ??
+      editorState.lastSelectionEnd ??
+      start;
     const nextValue = `${textarea.value.slice(0, start)}${snippet}${textarea.value.slice(end)}`;
     setNativeValue(textarea, nextValue);
     textarea.selectionStart = textarea.selectionEnd = start + snippet.length;
@@ -364,5 +470,21 @@
 
   document.addEventListener('paste', (event) => {
     void handlePaste(event);
+  }, true);
+
+  document.addEventListener('focusin', (event) => {
+    syncMarkdownEditorState(event.target);
+  }, true);
+
+  document.addEventListener('click', (event) => {
+    syncMarkdownEditorState(event.target);
+  }, true);
+
+  document.addEventListener('keyup', (event) => {
+    syncMarkdownEditorState(event.target);
+  }, true);
+
+  document.addEventListener('mouseup', (event) => {
+    syncMarkdownEditorState(event.target);
   }, true);
 })();
