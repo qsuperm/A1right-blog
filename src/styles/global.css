@@ -2384,6 +2384,12 @@ body * {
   cursor: url('/cursors/silver-arrow.svg') 4 3, auto;
 }
 
+:root[data-theme='light'],
+:root[data-theme='light'] body,
+:root[data-theme='light'] body * {
+  cursor: url('/cursors/blue-arrow.svg') 4 3, auto;
+}
+
 a,
 button,
 [role='button'],
@@ -2399,10 +2405,31 @@ input[type='range'],
   cursor: url('/cursors/silver-pointer.svg') 9 3, pointer;
 }
 
+:root[data-theme='light'] a,
+:root[data-theme='light'] button,
+:root[data-theme='light'] [role='button'],
+:root[data-theme='light'] summary,
+:root[data-theme='light'] select,
+:root[data-theme='light'] label[for],
+:root[data-theme='light'] input[type='checkbox'],
+:root[data-theme='light'] input[type='radio'],
+:root[data-theme='light'] input[type='range'],
+:root[data-theme='light'] .search-result a,
+:root[data-theme='light'] .theme-toggle,
+:root[data-theme='light'] .search-trigger {
+  cursor: url('/cursors/blue-pointer.svg') 9 3, pointer;
+}
+
 input:not([type='checkbox']):not([type='radio']):not([type='range']),
 textarea,
 [contenteditable='true'] {
   cursor: url('/cursors/silver-beam.svg') 12 12, text;
+}
+
+:root[data-theme='light'] input:not([type='checkbox']):not([type='radio']):not([type='range']),
+:root[data-theme='light'] textarea,
+:root[data-theme='light'] [contenteditable='true'] {
+  cursor: url('/cursors/blue-beam.svg') 12 12, text;
 }
 
 @media (pointer: coarse) {

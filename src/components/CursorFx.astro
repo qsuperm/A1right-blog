@@ -1,16 +1,54 @@
 <script>
   import { BAClickFX } from 'ba-click-fx';
 
+  type CursorFxHandle = BAClickFX | null;
+
   const globalWindow = window as Window & {
-    __A1RIGHT_BA_CURSOR__?: BAClickFX | null;
+    __A1RIGHT_BA_CURSOR__?: CursorFxHandle;
   };
 
-  const initCursorFx = () => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    if (window.matchMedia('(pointer: coarse)').matches) return;
+  const getThemePreset = (theme: string) => {
+    if (theme === 'light') {
+      return {
+        color: [90, 156, 255] as [number, number, number],
+        opacity: 0.68,
+        trailWhiteMix: 0.38,
+        ringWhiteMix: 0.58,
+        ringColorEndWhiteMix: 0.72,
+        trailGlowAlpha: 0.16,
+        trailSoftGlowAlpha: 0.08,
+        ringGlowAlpha: 0.16,
+        ringSoftGlowAlpha: 0.1,
+      };
+    }
 
-    globalWindow.__A1RIGHT_BA_CURSOR__?.destroy?.();
+    return {
+      color: [224, 232, 244] as [number, number, number],
+      opacity: 0.62,
+      trailWhiteMix: 0.92,
+      ringWhiteMix: 0.96,
+      ringColorEndWhiteMix: 1,
+      trailGlowAlpha: 0.12,
+      trailSoftGlowAlpha: 0.05,
+      ringGlowAlpha: 0.12,
+      ringSoftGlowAlpha: 0.07,
+    };
+  };
 
+  const applyThemePreset = (fx: BAClickFX, theme: string) => {
+    const preset = getThemePreset(theme);
+    fx.setColor(...preset.color);
+    fx.setOpacity(preset.opacity);
+    fx.setTrailWhiteMix(preset.trailWhiteMix);
+    fx.setRingWhiteMix(preset.ringWhiteMix);
+    fx.setRingColorEndWhiteMix(preset.ringColorEndWhiteMix);
+    fx.setTrailGlowAlpha(preset.trailGlowAlpha);
+    fx.setTrailSoftGlowAlpha(preset.trailSoftGlowAlpha);
+    fx.setRingGlowAlpha(preset.ringGlowAlpha);
+    fx.setRingSoftGlowAlpha(preset.ringSoftGlowAlpha);
+  };
+
+  const createCursorFx = () => {
     const fx = new BAClickFX({
       color: [224, 232, 244],
       scale: 0.92,
@@ -25,21 +63,50 @@
     fx.setFakeGlow(true);
     fx.setClickFakeGlow(true);
     fx.setTrailBrightness(1);
-    fx.setTrailWhiteMix(0.92);
-    fx.setRingWhiteMix(0.96);
-    fx.setRingColorEndWhiteMix(1);
     fx.setTrailWidth(2.2, 1.35);
     fx.setTrailCoreWidth(0.34, 0.56);
     fx.setTrailHotWidth(0.14, 0.24);
-    fx.setTrailGlowAlpha(0.12);
-    fx.setTrailSoftGlowAlpha(0.05);
     fx.setTrailCoreAlpha(0.74);
     fx.setTrailHotAlpha(0.38);
     fx.setTrailRailAlpha(0.035);
-    fx.setRingGlowAlpha(0.12);
-    fx.setRingSoftGlowAlpha(0.07);
+    return fx;
+  };
 
+  const syncCursorFxTheme = () => {
+    const fx = globalWindow.__A1RIGHT_BA_CURSOR__;
+    if (!fx) return;
+    const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+    applyThemePreset(fx, theme);
+  };
+
+  const initCursorFx = () => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (window.matchMedia('(pointer: coarse)').matches) return;
+
+    globalWindow.__A1RIGHT_BA_CURSOR__?.destroy?.();
+
+    const fx = createCursorFx();
     globalWindow.__A1RIGHT_BA_CURSOR__ = fx;
+    syncCursorFxTheme();
+
+    const observer = new MutationObserver(() => {
+      syncCursorFxTheme();
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme'],
+    });
+
+    window.addEventListener(
+      'pagehide',
+      () => {
+        observer.disconnect();
+        globalWindow.__A1RIGHT_BA_CURSOR__?.destroy?.();
+        globalWindow.__A1RIGHT_BA_CURSOR__ = null;
+      },
+      { once: true },
+    );
   };
 
   if (document.readyState === 'loading') {
@@ -47,13 +114,4 @@
   } else {
     initCursorFx();
   }
-
-  window.addEventListener(
-    'pagehide',
-    () => {
-      globalWindow.__A1RIGHT_BA_CURSOR__?.destroy?.();
-      globalWindow.__A1RIGHT_BA_CURSOR__ = null;
-    },
-    { once: true },
-  );
 </script>
