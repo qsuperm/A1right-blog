@@ -4,6 +4,10 @@
   const publicFolder = `${runtime.publicFolder || 'images/uploads'}`.replace(/^\/+|\/+$/g, '');
   const publicFolderUrl = `/${publicFolder}`;
   const uploadState = { busy: false };
+  const previewState = {
+    objectUrls: new Set(),
+    imageFieldState: new WeakMap(),
+  };
   const editorState = {
     lastMarkdownRoot: null,
     lastMarkdownEditable: null,
@@ -28,11 +32,8 @@
     return root;
   };
 
-  const showToast = (message, type = 'info', duration = 3200) => {
+  const mountToast = (toast, duration = 3200) => {
     const root = ensureToastRoot();
-    const toast = document.createElement('div');
-    toast.className = `a1right-admin-toast is-${type}`;
-    toast.textContent = message;
     root.append(toast);
 
     window.requestAnimationFrame(() => toast.classList.add('is-visible'));
@@ -40,6 +41,20 @@
       toast.classList.remove('is-visible');
       window.setTimeout(() => toast.remove(), 220);
     }, duration);
+
+    return toast;
+  };
+
+  const createToast = (type = 'info') => {
+    const toast = document.createElement('div');
+    toast.className = `a1right-admin-toast is-${type}`;
+    return toast;
+  };
+
+  const showToast = (message, type = 'info', duration = 3200) => {
+    const toast = createToast(type);
+    toast.textContent = message;
+    return mountToast(toast, duration);
   };
 
   const hasCjk = (value = '') => /[\u3400-\u9fff]/.test(value);
@@ -52,6 +67,98 @@
       .replace(/[^\w\u3400-\u9fff ]+/g, ' ')
       .replace(/\b\d{8,}\b/g, ' ')
       .trim();
+
+  const formatFileSize = (size = 0) =>
+    size >= 1024 * 1024 ? `${(size / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(size / 1024))} KB`;
+
+  const normalizeAssetUrl = (value = '') => {
+    const trimmed = `${value || ''}`.trim();
+    if (!trimmed) return '';
+    if (/^(https?:)?\/\//i.test(trimmed) || trimmed.startsWith('blob:') || trimmed.startsWith('data:')) {
+      return trimmed;
+    }
+
+    return trimmed.startsWith('/') ? trimmed : `/${trimmed.replace(/^\/+/, '')}`;
+  };
+
+  const rememberObjectUrl = (source) => {
+    if (!(source instanceof Blob)) return '';
+
+    const url = URL.createObjectURL(source);
+    previewState.objectUrls.add(url);
+    return url;
+  };
+
+  const revokeObjectUrl = (url = '') => {
+    if (!url || !previewState.objectUrls.has(url)) return;
+    previewState.objectUrls.delete(url);
+    URL.revokeObjectURL(url);
+  };
+
+  const buildPreviewDescription = (upload, contextKind = 'markdown') => {
+    const size = upload?.size ? formatFileSize(upload.size) : '';
+    const label = upload?.alt || cleanDisplayText(upload?.filename || '');
+
+    if (contextKind === 'image') {
+      return [label, size, '已同步到封面字段'].filter(Boolean).join(' · ');
+    }
+
+    return [label, size, '已插入正文当前位置'].filter(Boolean).join(' · ');
+  };
+
+  const showPreviewToast = ({
+    title,
+    description = '',
+    imageUrl = '',
+    badge = '',
+    type = 'success',
+    duration = 4200,
+  } = {}) => {
+    const toast = createToast(type);
+    toast.classList.add('a1right-admin-toast--preview');
+
+    const figure = document.createElement('div');
+    figure.className = 'a1right-admin-toast__figure';
+
+    if (imageUrl) {
+      const image = document.createElement('img');
+      image.className = 'a1right-admin-toast__image';
+      image.src = imageUrl;
+      image.alt = title || 'preview image';
+      image.loading = 'eager';
+      figure.append(image);
+    } else {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'a1right-admin-toast__placeholder';
+      placeholder.textContent = 'IMG';
+      figure.append(placeholder);
+    }
+
+    if (badge) {
+      const badgeNode = document.createElement('span');
+      badgeNode.className = 'a1right-admin-toast__badge';
+      badgeNode.textContent = badge;
+      figure.append(badgeNode);
+    }
+
+    const body = document.createElement('div');
+    body.className = 'a1right-admin-toast__body';
+
+    const heading = document.createElement('strong');
+    heading.className = 'a1right-admin-toast__title';
+    heading.textContent = title || '图片已处理';
+    body.append(heading);
+
+    if (description) {
+      const detail = document.createElement('p');
+      detail.className = 'a1right-admin-toast__description';
+      detail.textContent = description;
+      body.append(detail);
+    }
+
+    toast.append(figure, body);
+    return mountToast(toast, duration);
+  };
 
   const getStoredUser = () => {
     try {
@@ -288,6 +395,201 @@
       element.value = value;
     }
   };
+
+  const getCoverAltFieldValue = () => {
+    const container = getControlContainerByLabel([/封面描述/, /cover description/i]);
+    const input = container?.querySelector('input, textarea');
+    return cleanDisplayText(input?.value || '');
+  };
+
+  const getImageFieldValue = (root) => {
+    if (!(root instanceof Element)) return '';
+
+    const directInput = root.querySelector('input:not([type="file"]), textarea');
+    if (directInput instanceof HTMLInputElement || directInput instanceof HTMLTextAreaElement) {
+      const value = `${directInput.value || ''}`.trim();
+      if (value) return value;
+    }
+
+    const fallback = [...root.querySelectorAll('input, textarea')]
+      .map((input) => `${input.value || ''}`.trim())
+      .find(Boolean);
+
+    return fallback || '';
+  };
+
+  const getStoredImageFieldPreview = (root) => {
+    if (!(root instanceof Element)) return null;
+
+    const currentFieldValue = getImageFieldValue(root);
+    const stored = previewState.imageFieldState.get(root) || null;
+    if (!stored) return null;
+
+    if (stored.fieldPath && currentFieldValue && stored.fieldPath !== currentFieldValue) {
+      revokeObjectUrl(stored.previewUrl);
+      previewState.imageFieldState.delete(root);
+      return null;
+    }
+
+    return stored;
+  };
+
+  const ensureImageFieldPreviewCard = (root) => {
+    if (!(root instanceof Element)) return null;
+
+    let card = root.querySelector('.a1right-admin-cover-preview');
+    if (card) return card;
+
+    card = document.createElement('section');
+    card.className = 'a1right-admin-cover-preview is-empty';
+
+    const media = document.createElement('div');
+    media.className = 'a1right-admin-cover-preview__media';
+
+    const image = document.createElement('img');
+    image.className = 'a1right-admin-cover-preview__image';
+    image.alt = 'cover preview';
+    image.loading = 'lazy';
+
+    const placeholder = document.createElement('div');
+    placeholder.className = 'a1right-admin-cover-preview__placeholder';
+    placeholder.textContent = 'PASTE COVER';
+
+    const badge = document.createElement('span');
+    badge.className = 'a1right-admin-cover-preview__badge';
+    badge.textContent = '封面预览';
+
+    media.append(image, placeholder, badge);
+
+    const body = document.createElement('div');
+    body.className = 'a1right-admin-cover-preview__body';
+
+    const eyebrow = document.createElement('span');
+    eyebrow.className = 'a1right-admin-cover-preview__eyebrow';
+    eyebrow.textContent = 'Cover Preview';
+
+    const title = document.createElement('strong');
+    title.className = 'a1right-admin-cover-preview__title';
+    title.textContent = '等待封面图';
+
+    const description = document.createElement('p');
+    description.className = 'a1right-admin-cover-preview__description';
+    description.textContent = '先点一下封面图区，再 Ctrl + V，这里会立即显示缩略预览。';
+
+    const meta = document.createElement('div');
+    meta.className = 'a1right-admin-cover-preview__meta';
+
+    const path = document.createElement('code');
+    path.className = 'a1right-admin-cover-preview__path';
+    path.textContent = '尚未设置图片路径';
+
+    const open = document.createElement('a');
+    open.className = 'a1right-admin-cover-preview__open';
+    open.href = '#';
+    open.target = '_blank';
+    open.rel = 'noreferrer';
+    open.textContent = '打开图片';
+    open.hidden = true;
+
+    meta.append(path, open);
+    body.append(eyebrow, title, description, meta);
+    card.append(media, body);
+    root.append(card);
+    return card;
+  };
+
+  const renderImageFieldPreview = (root, override = null) => {
+    if (!(root instanceof Element)) return;
+
+    const card = ensureImageFieldPreviewCard(root);
+    if (!(card instanceof Element)) return;
+
+    const state = override || getStoredImageFieldPreview(root) || {};
+    const fieldPath = state.fieldPath || getImageFieldValue(root);
+    const previewUrl = state.previewUrl || normalizeAssetUrl(fieldPath);
+    const alt = state.alt || getCoverAltFieldValue() || buildAltText({ filename: fieldPath, kind: 'cover' });
+
+    const image = card.querySelector('.a1right-admin-cover-preview__image');
+    const title = card.querySelector('.a1right-admin-cover-preview__title');
+    const description = card.querySelector('.a1right-admin-cover-preview__description');
+    const path = card.querySelector('.a1right-admin-cover-preview__path');
+    const open = card.querySelector('.a1right-admin-cover-preview__open');
+
+    const hasImage = Boolean(previewUrl);
+    card.classList.toggle('is-empty', !hasImage);
+
+    if (image instanceof HTMLImageElement) {
+      if (hasImage) {
+        image.src = previewUrl;
+        image.alt = alt || 'cover preview';
+      } else {
+        image.removeAttribute('src');
+        image.alt = 'cover preview';
+      }
+    }
+
+    if (title instanceof HTMLElement) {
+      title.textContent = hasImage
+        ? cleanDisplayText(state.filename || fieldPath || 'cover image') || '当前封面图'
+        : '等待封面图';
+    }
+
+    if (description instanceof HTMLElement) {
+      description.textContent = hasImage
+        ? state.description || '已自动同步当前封面字段，可以直接检查构图和裁切效果。'
+        : '先点一下封面图区，再 Ctrl + V，这里会立即显示缩略预览。';
+    }
+
+    if (path instanceof HTMLElement) {
+      path.textContent = fieldPath || '尚未设置图片路径';
+    }
+
+    if (open instanceof HTMLAnchorElement) {
+      const href = normalizeAssetUrl(fieldPath) || previewUrl;
+      open.hidden = !href;
+      open.href = href || '#';
+    }
+  };
+
+  const setImageFieldPreviewState = (root, nextState = {}) => {
+    const resolvedRoot =
+      (root instanceof Element && root.isConnected ? root : null) ||
+      (editorState.lastImageRoot instanceof Element && editorState.lastImageRoot.isConnected
+        ? editorState.lastImageRoot
+        : null);
+
+    if (!(resolvedRoot instanceof Element)) return;
+
+    const previous = previewState.imageFieldState.get(resolvedRoot);
+    if (previous?.previewUrl && previous.previewUrl !== nextState.previewUrl) {
+      revokeObjectUrl(previous.previewUrl);
+    }
+
+    previewState.imageFieldState.set(resolvedRoot, {
+      ...previous,
+      ...nextState,
+    });
+
+    renderImageFieldPreview(resolvedRoot, previewState.imageFieldState.get(resolvedRoot));
+  };
+
+  const refreshAllImageFieldPreviews = () => {
+    document.querySelectorAll('[aria-label="image field"]').forEach((root) => {
+      renderImageFieldPreview(root);
+    });
+  };
+
+  const scheduleImageFieldPreviewRefresh = (() => {
+    let rafId = 0;
+
+    return () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = 0;
+        refreshAllImageFieldPreviews();
+      });
+    };
+  })();
 
   const resolveMarkdownRoot = (root) => {
     if (root instanceof Element && root.isConnected) return root;
@@ -581,6 +883,8 @@
       publicPath,
       fieldPath,
       alt,
+      size: file.size,
+      previewUrl: rememberObjectUrl(file),
     };
   };
 
@@ -614,7 +918,15 @@
       if (context.kind === 'image') {
         const target = uploads[0];
         const applied = await applyImageFieldValue(context.root, target.fieldPath);
-        maybeFillCoverAlt(buildAltText({ filename: target.filename, kind: 'cover' }));
+        const coverAlt = buildAltText({ filename: target.filename, kind: 'cover' });
+        maybeFillCoverAlt(coverAlt);
+        setImageFieldPreviewState(context.root, {
+          fieldPath: target.fieldPath,
+          filename: target.filename,
+          previewUrl: target.previewUrl,
+          alt: coverAlt,
+          description: '刚刚通过剪贴板上传，可直接检查封面视觉效果。',
+        });
 
         if (!applied) {
           await navigator.clipboard?.writeText(target.fieldPath).catch(() => {});
@@ -622,7 +934,13 @@
           return;
         }
 
-        showToast(`封面图已上传：${target.filename}`, 'success');
+        showPreviewToast({
+          title: '封面图已更新',
+          description: buildPreviewDescription({ ...target, alt: coverAlt }, 'image'),
+          imageUrl: target.previewUrl || normalizeAssetUrl(target.fieldPath),
+          type: 'success',
+          duration: 4600,
+        });
         return;
       }
 
@@ -637,7 +955,15 @@
         return;
       }
 
-      showToast(`已上传并插入 ${uploads.length} 张图片`, 'success');
+      const firstUpload = uploads[0];
+      showPreviewToast({
+        title: uploads.length === 1 ? '截图已插入当前行' : `已插入 ${uploads.length} 张截图`,
+        description: buildPreviewDescription(firstUpload, 'markdown'),
+        imageUrl: firstUpload.previewUrl || firstUpload.publicPath,
+        badge: uploads.length > 1 ? `+${uploads.length - 1}` : '',
+        type: 'success',
+        duration: 4600,
+      });
     } catch (error) {
       console.error('[a1right-admin] clipboard upload failed', error);
       showToast(error instanceof Error ? error.message : '剪贴板图片上传失败', 'error', 5600);
@@ -669,4 +995,47 @@
     syncMarkdownEditorState(event.target);
     syncImageEditorState(event.target);
   }, true);
+
+  document.addEventListener('input', (event) => {
+    if (!(event.target instanceof Element)) return;
+
+    const imageRoot = getImageRootFromElement(event.target);
+    if (imageRoot) {
+      renderImageFieldPreview(imageRoot);
+      return;
+    }
+
+    if (getControlContainerByLabel([/封面描述/, /cover description/i])) {
+      scheduleImageFieldPreviewRefresh();
+    }
+  }, true);
+
+  document.addEventListener('change', (event) => {
+    if (!(event.target instanceof Element)) return;
+
+    const imageRoot = getImageRootFromElement(event.target);
+    if (imageRoot) {
+      renderImageFieldPreview(imageRoot);
+      return;
+    }
+
+    scheduleImageFieldPreviewRefresh();
+  }, true);
+
+  window.addEventListener('hashchange', () => {
+    window.setTimeout(scheduleImageFieldPreviewRefresh, 140);
+  });
+
+  window.addEventListener('beforeunload', () => {
+    [...previewState.objectUrls].forEach((url) => revokeObjectUrl(url));
+  });
+
+  const cmsRoot = document.getElementById('nc-root');
+  if (cmsRoot) {
+    new MutationObserver(() => {
+      scheduleImageFieldPreviewRefresh();
+    }).observe(cmsRoot, { childList: true, subtree: true });
+  }
+
+  scheduleImageFieldPreviewRefresh();
 })();
