@@ -1,5 +1,6 @@
 import { onRequest as authHandler } from '../functions/api/auth.js';
 import { onRequest as callbackHandler } from '../functions/api/callback.js';
+import { onRequestPost as fetchImageHandler } from '../functions/api/fetch-image.js';
 
 function notFound() {
   return new Response('Not Found', { status: 404 });
@@ -15,6 +16,10 @@ export default {
 
     if (url.pathname === '/api/callback') {
       return callbackHandler({ request, env });
+    }
+
+    if (url.pathname === '/api/fetch-image' && request.method === 'POST') {
+      return fetchImageHandler({ request, env });
     }
 
     if (env.ASSETS) {
