@@ -7,7 +7,7 @@ export const SITE = {
     en: 'A bilingual Astro security blog focused on web security, CTF writeups, and agent pentest notes, with a Firefly-inspired homepage.',
   },
 } as const;
-export const CMS = { repo: 'qsuperm/A1right-blog', branch: 'master', locale: 'zh_Hans', mediaFolder: 'public/images/uploads', publicFolder: 'images/uploads', authEndpoint: '/api/auth' } as const;
+export const CMS = { repo: 'qsuperm/A1right-blog', branch: 'master', locale: 'zh_Hans', mediaFolder: 'public/images/uploads', publicFolder: '/images/uploads', authEndpoint: '/api/auth' } as const;
 export const locales = ['zh-cn', 'en'] as const;
 export type Locale = (typeof locales)[number];
 export const UI = {
