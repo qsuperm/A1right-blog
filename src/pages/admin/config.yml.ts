@@ -219,7 +219,7 @@ locale: ${quote(CMS.locale)}
 show_preview_links: true
 publish_mode: "simple"
 logo:
-  src: "/favicon.svg"
+  src: "/images/a1right-avatar-icon.png"
   show_in_header: true
 backend:
   name: "github"

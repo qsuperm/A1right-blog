@@ -23,6 +23,8 @@ const notes = [
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex,nofollow" />
     <title>{SITE.name} · 后台管理</title>
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="256x256" href="/images/a1right-avatar-icon.png" />
     <link href="/admin/config.yml" type="text/yaml" rel="cms-config-url" />
     <link rel="stylesheet" href="/admin/custom.css" />
     <style>
@@ -59,7 +61,7 @@ const notes = [
       }
       .admin-login__brand { display: flex; align-items: center; gap: 9px; font-weight: 850; }
       .admin-login__brand span { font-family: var(--font-display, 'Noto Sans SC', 'Microsoft YaHei', sans-serif); font-weight: 700; letter-spacing: .015em; }
-      .admin-login__brand i { color: var(--mint); font-size: 1.8rem; font-style: normal; transform: rotate(-18deg); }
+      .admin-login__brand img { width: 34px; height: 34px; border-radius: 10px; object-fit: cover; object-position: center; box-shadow: 0 8px 20px rgba(16, 152, 117, .16); }
       .admin-login__navlinks { display: flex; gap: 8px; }
       .admin-login__navlinks a { padding: 8px 12px; border-radius: 9px; color: var(--muted); font-size: .84rem; font-weight: 700; text-decoration: none; }
       .admin-login__navlinks a:hover { color: var(--mint-deep); background: var(--mint-soft); }
@@ -109,7 +111,7 @@ const notes = [
   <body>
     <div class="admin-login" id="admin-login-shell">
       <header class="admin-login__navbar">
-        <div class="admin-login__brand"><i>❧</i><span>{SITE.name}</span></div>
+        <div class="admin-login__brand"><img src="/images/a1right-avatar-icon.png" alt="" aria-hidden="true" /><span>{SITE.name}</span></div>
         <nav class="admin-login__navlinks">
           {quickLinks.map((item) => <a href={item.href} target={item.external ? '_blank' : undefined} rel={item.external ? 'noreferrer' : undefined}>{item.label}</a>)}
         </nav>

@@ -153,12 +153,12 @@ main {
 .site-logo__mark {
   width: 40px;
   height: 40px;
-  display: grid;
-  place-items: center;
-  border-radius: var(--radius);
-  background: linear-gradient(135deg, #7ddfc7, #f3b2cc 58%, #f4d194);
-  color: #fff;
-  font-weight: 700;
+  display: block;
+  flex-shrink: 0;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(31, 127, 105, 0.16);
 }
 
 .site-logo__text {
@@ -2192,8 +2192,8 @@ body {
 :root[data-theme='dark'] .site-header__inner { background: rgba(28, 33, 32, .86); border-color: rgba(255,255,255,.06); }
 .site-logo { gap: 9px; }
 .site-logo__mark {
-  width: auto; height: auto; display: inline; border-radius: 0; background: none; box-shadow: none;
-  color: var(--fo-primary); font-size: 1.9rem; line-height: 1; transform: rotate(-18deg);
+  width: 42px; height: 42px; display: block; flex-shrink: 0; object-fit: cover; object-position: center;
+  border-radius: 13px; box-shadow: 0 8px 22px rgba(18, 74, 63, .16);
 }
 .site-logo__text { font: 800 1.12rem/1 var(--font-display); }
 .site-nav { gap: 6px; padding: 0; background: transparent; }
