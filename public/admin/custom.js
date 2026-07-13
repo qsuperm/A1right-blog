@@ -883,11 +883,80 @@
     return 'Code';
   };
 
+  const getCodeLanguageKey = (language = '') => {
+    const normalized = `${language || ''}`.trim().toLowerCase();
+    if (normalized === 'c++') return 'cpp';
+    return normalized.replace(/[^a-z0-9]+/g, '-');
+  };
+
+  const copyTextToClipboard = async (value = '') => {
+    const text = `${value || ''}`;
+    if (!text) return false;
+
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.setAttribute('readonly', 'true');
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      textarea.style.pointerEvents = 'none';
+      document.body.append(textarea);
+      textarea.select();
+      textarea.setSelectionRange(0, text.length);
+
+      let copied = false;
+      try {
+        copied = document.execCommand('copy');
+      } catch {
+        copied = false;
+      }
+
+      textarea.remove();
+      return copied;
+    }
+  };
+
+  const createCodeCopyButton = (codeText) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'a1right-admin-code-copy';
+    button.textContent = '复制代码';
+    button.setAttribute('contenteditable', 'false');
+    button.setAttribute('tabindex', '-1');
+
+    button.addEventListener('mousedown', (event) => {
+      event.preventDefault();
+    });
+
+    button.addEventListener('click', async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const copied = await copyTextToClipboard(codeText);
+      if (copied) {
+        button.textContent = '已复制';
+        showToast('代码已复制到剪贴板。', 'success', 2200);
+        window.setTimeout(() => {
+          if (button.isConnected) button.textContent = '复制代码';
+        }, 1400);
+        return;
+      }
+
+      showToast('复制失败，请再试一次。', 'warn', 2600);
+    });
+
+    return button;
+  };
+
   const decorateRichTextCodeBlocks = (editable) => {
     if (!(editable instanceof HTMLElement)) return;
 
     const blocks = [...editable.children].filter((item) => item instanceof HTMLElement);
     blocks.forEach((block) => {
+      block.querySelectorAll('.a1right-admin-code-copy').forEach((button) => button.remove());
       block.classList.remove(
         'a1right-admin-code-line',
         'is-code-start',
@@ -897,12 +966,16 @@
         'is-code-empty',
       );
       block.removeAttribute('data-code-lang');
+      block.removeAttribute('data-code-lang-key');
     });
 
     let group = [];
     const flush = () => {
       if (!group.length) return;
-      const language = inferCodeLanguage(group.map((item) => readCodeLineText(item)));
+      const lines = group.map((item) => readCodeLineText(item));
+      const language = inferCodeLanguage(lines);
+      const languageKey = getCodeLanguageKey(language);
+      const codeText = lines.join('\n');
 
       group.forEach((item, index) => {
         item.classList.add('a1right-admin-code-line');
@@ -920,6 +993,8 @@
       });
 
       group[0].setAttribute('data-code-lang', language);
+      group[0].setAttribute('data-code-lang-key', languageKey);
+      group[0].append(createCodeCopyButton(codeText));
       group = [];
     };
 

@@ -983,7 +983,7 @@ body.admin-shell--cms-active::before {
 #nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-line.is-code-start::before {
   position: absolute;
   top: .68rem;
-  right: .95rem;
+  right: 5.9rem;
   padding: .18rem .55rem;
   border: 1px solid rgba(255, 255, 255, .08);
   border-radius: 999px;
@@ -993,6 +993,69 @@ body.admin-shell--cms-active::before {
   font-size: .72rem;
   font-weight: 700;
   letter-spacing: .03em;
+}
+
+#nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-copy {
+  position: absolute;
+  top: .56rem;
+  right: .95rem;
+  min-height: 28px;
+  padding: 0 .72rem;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 999px;
+  color: #dbe8ff;
+  background: rgba(255, 255, 255, .07);
+  font: inherit;
+  font-size: .73rem;
+  font-weight: 700;
+  letter-spacing: .01em;
+  line-height: 28px;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+#nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-copy:hover {
+  background: rgba(255, 255, 255, .12);
+}
+
+#nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-line[data-code-lang-key="python"].is-code-start::before {
+  color: #ffe082;
+  background: rgba(39, 66, 115, .58);
+  border-color: rgba(255, 224, 130, .18);
+}
+
+#nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-line[data-code-lang-key="bash"].is-code-start::before,
+#nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-line[data-code-lang-key="shell"].is-code-start::before {
+  color: #c7f0d8;
+  background: rgba(39, 76, 58, .6);
+  border-color: rgba(140, 212, 167, .18);
+}
+
+#nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-line[data-code-lang-key="javascript"].is-code-start::before,
+#nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-line[data-code-lang-key="typescript"].is-code-start::before {
+  color: #b7d8ff;
+  background: rgba(33, 65, 108, .58);
+  border-color: rgba(124, 182, 255, .2);
+}
+
+#nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-line[data-code-lang-key="html"].is-code-start::before {
+  color: #ffd3bf;
+  background: rgba(112, 56, 38, .56);
+  border-color: rgba(255, 164, 122, .18);
+}
+
+#nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-line[data-code-lang-key="sql"].is-code-start::before {
+  color: #e2d4ff;
+  background: rgba(82, 48, 123, .55);
+  border-color: rgba(194, 157, 255, .18);
+}
+
+#nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-line[data-code-lang-key="cpp"].is-code-start::before,
+#nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-line[data-code-lang-key="go"].is-code-start::before,
+#nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-line[data-code-lang-key="java"].is-code-start::before {
+  color: #cdefff;
+  background: rgba(34, 77, 95, .56);
+  border-color: rgba(142, 218, 255, .18);
 }
 
 #nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-line.is-code-start::after {
@@ -1024,6 +1087,23 @@ body.admin-shell--cms-active::before {
 #nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-line code:empty::before {
   content: " ";
   white-space: pre;
+}
+
+@media (max-width: 760px) {
+  #nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-line.is-code-start {
+    padding-top: 4rem !important;
+  }
+
+  #nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-line.is-code-start::before {
+    top: 2.12rem;
+    left: 1rem;
+    right: auto;
+  }
+
+  #nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-code-copy {
+    top: .56rem;
+    right: .8rem;
+  }
 }
 
 #nc-root [role="menu"],
