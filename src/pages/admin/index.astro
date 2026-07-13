@@ -14,6 +14,13 @@ const notes = [
   '图片会上传到 public/images/uploads',
   '发布后 Cloudflare Workers 会自动重新部署',
 ];
+
+const adminRuntime = JSON.stringify({
+  repo: CMS.repo,
+  branch: CMS.branch,
+  mediaFolder: CMS.mediaFolder,
+  publicFolder: CMS.publicFolder,
+});
 ---
 
 <!doctype html>
@@ -27,6 +34,10 @@ const notes = [
     <link rel="icon" type="image/png" sizes="256x256" href="/images/a1right-avatar-icon.png?v=20260713-avatar" />
     <link href="/admin/config.yml" type="text/yaml" rel="cms-config-url" />
     <link rel="stylesheet" href="/admin/custom.css" />
+    <script is:inline define:vars={{ adminRuntime }}>
+      window.__A1RIGHT_ADMIN__ = JSON.parse(adminRuntime);
+    </script>
+    <script is:inline src="/admin/custom.js" defer></script>
     <style>
       :root {
         color-scheme: light;
