@@ -3,6 +3,8 @@ import { defineConfig } from 'astro/config';
 import mdx from '@astrojs/mdx';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
+import remarkMath from 'remark-math';
+import rehypeMathjax from 'rehype-mathjax';
 
 export default defineConfig({
   site: 'https://a1right-blog.3223771807.workers.dev',
@@ -16,6 +18,8 @@ export default defineConfig({
     },
   },
   markdown: {
+    remarkPlugins: [remarkMath],
+    rehypePlugins: [rehypeMathjax],
     shikiConfig: {
       themes: {
         light: 'github-light',

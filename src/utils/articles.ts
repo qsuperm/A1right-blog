@@ -1,4 +1,4 @@
-﻿import { TextEncoder } from 'node:util';
+import { TextEncoder } from 'node:util';
 import { getCollection, type CollectionEntry } from 'astro:content';
 import type { Locale } from '../config';
 
@@ -50,9 +50,18 @@ export function sortArticles(entries: ArticleEntry[]) {
   });
 }
 
+export function isArticlePublished(entry: ArticleEntry, now = new Date()) {
+  if (entry.data.draft) return false;
+  if (entry.data.visibility !== 'public') return false;
+  if (entry.data.publishMode !== 'scheduled') return true;
+  if (!entry.data.scheduledAt) return true;
+  return entry.data.scheduledAt.getTime() <= now.getTime();
+}
+
 export async function getArticlesByLocale(locale: Locale) {
-  const entries = await getCollection('articles', ({ data }) => data.locale === locale && !data.draft);
-  return sortArticles(entries);
+  const now = new Date();
+  const entries = await getCollection('articles', ({ data }) => data.locale === locale);
+  return sortArticles(entries.filter((entry) => isArticlePublished(entry, now)));
 }
 
 export function getArticleUrl(entry: ArticleEntry) {

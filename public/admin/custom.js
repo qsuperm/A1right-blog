@@ -13,6 +13,7 @@
     toolbarRefreshRaf: 0,
     codeGroupCounter: 0,
     boundToolbarCodeButtons: new WeakSet(),
+    boundToolbarActionBars: new WeakSet(),
   };
   const workflowState = {
     dirty: false,
@@ -24,6 +25,8 @@
     restoreBannerDismissed: false,
     statsRefreshRaf: 0,
     assistRefreshRaf: 0,
+    outlineRefreshRaf: 0,
+    publishFieldRefreshRaf: 0,
   };
   const uiState = {
     recentUploads: [],
@@ -45,6 +48,28 @@
     lastContextKind: null,
     lastContextRoot: null,
     lastInteractionAt: 0,
+  };
+
+
+  const TAG_SUGGESTIONS = {
+    global: {
+      'zh-cn': ['Web\u5b89\u5168', 'CTF', 'Writeup', '\u6e17\u900f\u6d4b\u8bd5', '\u6f0f\u6d1e\u5206\u6790', '\u4ee3\u7801\u5ba1\u8ba1', 'MCP', '\u6d4f\u89c8\u5668\u81ea\u52a8\u5316'],
+      en: ['Web Security', 'CTF', 'Writeup', 'Pentest', 'Code Audit', 'MCP', 'Automation', 'Browser'],
+    },
+    category: {
+      'web-security': {
+        'zh-cn': ['\u8ba4\u8bc1\u7ed5\u8fc7', '\u6587\u4ef6\u4e0a\u4f20', 'JWT', 'XSS', 'SQL\u6ce8\u5165', '\u903b\u8f91\u6f0f\u6d1e'],
+        en: ['Auth Bypass', 'File Upload', 'JWT', 'XSS', 'SQLi', 'Business Logic'],
+      },
+      'ctf-writeup': {
+        'zh-cn': ['Misc', 'Web', 'Pwn', 'Crypto', 'Reverse', 'Forensics'],
+        en: ['Misc', 'Web', 'Pwn', 'Crypto', 'Reverse', 'Forensics'],
+      },
+      'agent-pentest': {
+        'zh-cn': ['Agent', 'MCP', 'Prompt Injection', 'Tool Chain', 'Browser', 'Workflow'],
+        en: ['Agent', 'MCP', 'Prompt Injection', 'Toolchain', 'Browser', 'Workflow'],
+      },
+    },
   };
 
   const sleep = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -181,6 +206,102 @@
       lines,
       readingMinutes: estimateReadingTime(normalized),
     };
+  };
+
+  const stripMarkdownToPlainText = (source = '') =>
+    `${source || ''}`
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/`[^`]*`/g, ' ')
+      .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+      .replace(/\[[^\]]*\]\([^)]*\)/g, ' ')
+      .replace(/^#{1,6}\s+/gm, ' ')
+      .replace(/^>\s?/gm, ' ')
+      .replace(/[>*_~|-]/g, ' ')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const truncateText = (value = '', maxLength = 256) => {
+    const normalized = `${value || ''}`.replace(/\s+/g, ' ').trim();
+    if (!normalized) return '';
+    return normalized.length <= maxLength ? normalized : `${normalized.slice(0, maxLength).trim()}\u2026`;
+  };
+
+  const buildExcerptFromBody = (maxLength = 120) => {
+    const bodyText = stripMarkdownToPlainText(getBodyPlainText());
+    return truncateText(bodyText, Math.max(48, Math.min(256, maxLength)));
+  };
+
+  const getCurrentEditorLocale = () => (/articles_en/i.test(window.location.hash || '') ? 'en' : 'zh-cn');
+
+  const parseHeadingLine = (line = '', lineNumber = 0) => {
+    const matched = `${line || ''}`.match(/^\s*(#{1,3})\s+(.+?)\s*$/);
+    if (!matched) return null;
+
+    return {
+      level: matched[1].length,
+      text: matched[2].trim(),
+      lineNumber,
+    };
+  };
+
+  const getBodyHeadingItems = () =>
+    `${getBodyPlainText() || ''}`
+      .replace(/\r\n/g, '\n')
+      .split('\n')
+      .map((line, index) => parseHeadingLine(line, index))
+      .filter(Boolean);
+
+  const extractFirstBodyImage = () => {
+    const source = `${getBodyPlainText() || ''}`;
+    const matched = source.match(/!\[(.*?)\]\((.+?)\)/);
+    if (!matched) return null;
+
+    const alt = `${matched[1] || ''}`.trim();
+    const rawPayload = `${matched[2] || ''}`.trim();
+    const titled = rawPayload.match(/^(\S+)\s+(?:\"([^\"]*)\"|'([^']*)')$/);
+    const rawSource = titled?.[1] || rawPayload;
+    const title = titled?.[2] || titled?.[3] || '';
+    const sourceUrl = normalizePreviewLink(rawSource);
+    const fieldPath = normalizeFieldPath(rawSource) || rawSource;
+
+    if (!sourceUrl && !fieldPath) return null;
+
+    return {
+      alt,
+      title,
+      rawSource,
+      sourceUrl,
+      fieldPath,
+    };
+  };
+
+  const normalizeTagToken = (value = '') =>
+    `${value || ''}`
+      .replace(/^#+/, '')
+      .replace(/[\uFF0C\u3001]/g, ',')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const splitCompositeTags = (value = '') => {
+    const normalized = `${value || ''}`.trim();
+    if (!normalized) return [];
+
+    if (/^#/.test(normalized) && normalized.match(/#/g)?.length >= 2) {
+      return normalized
+        .split('#')
+        .map((item) => normalizeTagToken(item))
+        .filter(Boolean);
+    }
+
+    if (/[\uFF0C,\u3001/|]/.test(normalized)) {
+      return normalized
+        .split(/[\uFF0C,\u3001/|]/)
+        .map((item) => normalizeTagToken(item))
+        .filter(Boolean);
+    }
+
+    return [normalizeTagToken(normalized)].filter(Boolean);
   };
 
   const editableDecorationSelector =
@@ -588,20 +709,154 @@
   };
 
   const getCurrentEditorIdentity = () => {
-    const routeSlug = getFieldInputByLabel([/路由 Slug/, /route slug/i])?.value?.trim() || '';
+    const routeSlug = getFieldInputByLabel([/\u8def\u7531 Slug/, /route slug/i])?.value?.trim() || '';
     const title = getTitleFieldValue();
     return routeSlug || title || `${window.location.hash || '#/'}`;
   };
 
   const getEditorManagedInputs = () => ({
-    title: getFieldInputByLabel([/文章标题/, /英文标题/, /(^|\s)title(\s|$)/i], [/seo/i]),
-    excerpt: getFieldInputByLabel([/文章摘要/, /英文摘要/, /(^|\s)excerpt(\s|$)/i], [/seo/i]),
-    routeSlug: getFieldInputByLabel([/路由 Slug/, /route slug/i]),
-    seoTitle: getFieldInputByLabel([/SEO 标题/, /seo title/i]),
-    seoDescription: getFieldInputByLabel([/SEO 描述/, /seo description/i]),
-    cover: getFieldInputByLabel([/封面图/, /cover image/i], [/描述/, /alt/i]),
-    coverAlt: getFieldInputByLabel([/封面描述/, /cover description/i]),
+    title: getFieldInputByLabel([/\u6587\u7ae0\u6807\u9898/, /\u82f1\u6587\u6807\u9898/, /(^|\s)title(\s|$)/i], [/seo/i]),
+    excerpt: getFieldInputByLabel([/\u6587\u7ae0\u6458\u8981/, /\u82f1\u6587\u6458\u8981/, /(^|\s)excerpt(\s|$)/i]),
+    routeSlug: getFieldInputByLabel([/\u8def\u7531 Slug/, /route slug/i]),
+    seoTitle: getFieldInputByLabel([/SEO \u6807\u9898/, /seo title/i]),
+    seoDescription: getFieldInputByLabel([/SEO \u63cf\u8ff0/, /seo description/i]),
+    categoryKey: getFieldInputByLabel([/\u5206\u7c7b Key/, /category key/i]),
+    visibility: getFieldInputByLabel([/\u53ef\u89c1\u6027\u63a7\u5236/, /visibility/i]),
+    publishMode: getFieldInputByLabel([/\u53d1\u5e03\u65b9\u5f0f/, /publish mode/i]),
+    scheduledAt: getFieldInputByLabel([/\u5b9a\u65f6\u53d1\u5e03\u65f6\u95f4/, /scheduled publish time/i]),
+    cover: getFieldInputByLabel([/\u5c01\u9762\u56fe/, /cover image/i], [/\u63cf\u8ff0/, /alt/i]),
+    coverAlt: getFieldInputByLabel([/\u5c01\u9762\u63cf\u8ff0/, /cover description/i]),
+    contentType: getFieldInputByLabel([/\u7248\u6743\u58f0\u660e/, /content copyright type/i]),
+    sourceUrl: getFieldInputByLabel([/\u539f\u6587\u94fe\u63a5/, /source url/i]),
+    allowRepost: getFieldInputByLabel([/\u8f6c\u8f7d\u534f\u8bae/, /repost policy/i]),
   });
+
+  const getTagsFieldContainer = () =>
+    getControlContainerByLabel([/\u82f1\u6587\u6807\u7b7e/, /^\u6807\u7b7e$/, /(^|\s)tags(\s|$)/i]);
+
+  const getTagInputs = () => {
+    const container = getTagsFieldContainer();
+    if (!(container instanceof Element)) return [];
+    return [...container.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), textarea')]
+      .filter((input) => input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement)
+      .filter((input) => !input.closest('.a1right-admin-field-assist'));
+  };
+
+  const getCurrentTagValues = () =>
+    getTagInputs()
+      .map((input) => normalizeTagToken(input.value || ''))
+      .filter(Boolean);
+
+  const waitForCondition = async (predicate, timeout = 720, interval = 40) => {
+    const startedAt = Date.now();
+    while (Date.now() - startedAt <= timeout) {
+      const result = predicate();
+      if (result) return result;
+      await sleep(interval);
+    }
+    return null;
+  };
+
+  const findListActionButton = (container, matcher, excludedMatcher = null) => {
+    if (!(container instanceof Element)) return null;
+    return [...container.querySelectorAll('button')].find((button) => {
+      const text = normalizeUiText(getElementUiText(button));
+      if (!text) return false;
+      if (excludedMatcher && excludedMatcher.test(text)) return false;
+      return matcher.test(text);
+    }) || null;
+  };
+
+  const findAddTagButton = () =>
+    findListActionButton(getTagsFieldContainer(), /\u6dfb\u52a0|\u65b0\u589e|new|add|plus|\+/, /\u5220\u9664|\u79fb\u9664|remove|minus/);
+
+  const ensureTagInputSlot = async () => {
+    const currentInputs = getTagInputs();
+    const emptyInput = currentInputs.find((input) => !`${input.value || ''}`.trim());
+    if (emptyInput) return emptyInput;
+
+    const addButton = findAddTagButton();
+    if (!(addButton instanceof HTMLButtonElement)) return null;
+
+    const beforeCount = currentInputs.length;
+    addButton.click();
+    return waitForCondition(() => {
+      const inputs = getTagInputs();
+      return inputs.length > beforeCount ? inputs.at(-1) : null;
+    });
+  };
+
+  const setInputLikeValue = (input, value) => {
+    if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement)) return false;
+    setNativeValue(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    return true;
+  };
+
+  const addTagValue = async (value) => {
+    const normalized = normalizeTagToken(value);
+    if (!normalized) return false;
+
+    const values = getCurrentTagValues();
+    if (values.some((item) => item.toLowerCase() === normalized.toLowerCase())) {
+      showToast(`\u6807\u7b7e\u201c${normalized}\u201d\u5df2\u7ecf\u5b58\u5728\u3002`, 'info', 2200);
+      return false;
+    }
+
+    if (values.length >= 5) {
+      showToast('\u6807\u7b7e\u6700\u591a\u4fdd\u7559 5 \u4e2a\uff0c\u5148\u5220\u6389\u4e00\u4e2a\u518d\u6dfb\u52a0\u5427\u3002', 'warn', 2600);
+      return false;
+    }
+
+    const slot = await ensureTagInputSlot();
+    if (!(slot instanceof HTMLInputElement || slot instanceof HTMLTextAreaElement)) {
+      showToast('\u6682\u65f6\u6ca1\u6709\u627e\u5230\u53ef\u5199\u5165\u7684\u6807\u7b7e\u8f93\u5165\u6846\u3002', 'warn', 2600);
+      return false;
+    }
+
+    setInputLikeValue(slot, normalized);
+    slot.focus();
+    setDirtyState(true);
+    scheduleAutoDraftSave();
+    scheduleManagedFieldAssistRefresh();
+    showToast(`\u6807\u7b7e\u201c${normalized}\u201d\u5df2\u52a0\u5165\u3002`, 'success', 2200);
+    return true;
+  };
+
+  const normalizeCompositeTagField = async (input) => {
+    if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement)) return false;
+    const tokens = splitCompositeTags(input.value || '');
+    if (tokens.length <= 1) return false;
+
+    const [first, ...rest] = tokens.slice(0, 5);
+    setInputLikeValue(input, first || '');
+    for (const token of rest) {
+      await addTagValue(token);
+    }
+    showToast('\u68c0\u6d4b\u5230\u7ec4\u5408\u6807\u7b7e\uff0c\u5df2\u81ea\u52a8\u62c6\u6210\u5355\u72ec\u6807\u7b7e\u9879\u3002', 'success', 2400);
+    return true;
+  };
+
+  const applyTagListValues = async (values = []) => {
+    const normalizedValues = [...new Set((values || []).map((item) => normalizeTagToken(item)).filter(Boolean))].slice(0, 5);
+    let inputs = getTagInputs();
+    const total = Math.max(inputs.length, normalizedValues.length, 1);
+
+    for (let index = 0; index < total; index += 1) {
+      if (!inputs[index]) {
+        const slot = await ensureTagInputSlot();
+        if (slot) inputs = getTagInputs();
+      }
+
+      const input = inputs[index];
+      if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
+        setInputLikeValue(input, normalizedValues[index] || '');
+      }
+    }
+
+    return true;
+  };
 
   const getSanitizedEditableHtml = (editable) => {
     if (!(editable instanceof HTMLElement)) return '';
@@ -647,8 +902,16 @@
       routeSlug: inputs.routeSlug?.value || '',
       seoTitle: inputs.seoTitle?.value || '',
       seoDescription: inputs.seoDescription?.value || '',
+      categoryKey: inputs.categoryKey?.value || '',
+      tags: getCurrentTagValues(),
+      visibility: inputs.visibility?.value || '',
+      publishMode: inputs.publishMode?.value || '',
+      scheduledAt: inputs.scheduledAt?.value || '',
       cover: inputs.cover?.value || '',
       coverAlt: inputs.coverAlt?.value || '',
+      contentType: inputs.contentType?.value || '',
+      sourceUrl: inputs.sourceUrl?.value || '',
+      allowRepost: inputs.allowRepost?.value || '',
       bodyText,
       bodyHtml: getSanitizedEditableHtml(bodyEditable),
     };
@@ -663,9 +926,17 @@
         snapshot.routeSlug,
         snapshot.seoTitle,
         snapshot.seoDescription,
+        snapshot.categoryKey,
+        snapshot.visibility,
+        snapshot.publishMode,
+        snapshot.scheduledAt,
         snapshot.cover,
         snapshot.coverAlt,
+        snapshot.contentType,
+        snapshot.sourceUrl,
+        snapshot.allowRepost,
         snapshot.bodyText,
+        ...(snapshot.tags || []),
       ].some((value) => `${value || ''}`.trim()),
     );
 
@@ -704,7 +975,7 @@
     input.dispatchEvent(new Event('change', { bubbles: true }));
   };
 
-  const restoreEditorSnapshot = (snapshot) => {
+  const restoreEditorSnapshot = async (snapshot) => {
     if (!snapshot) return false;
 
     const inputs = getEditorManagedInputs();
@@ -713,14 +984,22 @@
     applySnapshotValue(inputs.routeSlug, snapshot.routeSlug || '');
     applySnapshotValue(inputs.seoTitle, snapshot.seoTitle || '');
     applySnapshotValue(inputs.seoDescription, snapshot.seoDescription || '');
+    applySnapshotValue(inputs.categoryKey, snapshot.categoryKey || '');
+    applySnapshotValue(inputs.visibility, snapshot.visibility || 'public');
+    applySnapshotValue(inputs.publishMode, snapshot.publishMode || 'now');
+    applySnapshotValue(inputs.scheduledAt, snapshot.scheduledAt || '');
     applySnapshotValue(inputs.cover, snapshot.cover || '');
     applySnapshotValue(inputs.coverAlt, snapshot.coverAlt || '');
+    applySnapshotValue(inputs.contentType, snapshot.contentType || 'original');
+    applySnapshotValue(inputs.sourceUrl, snapshot.sourceUrl || '');
+    applySnapshotValue(inputs.allowRepost, snapshot.allowRepost || 'forbid');
+    await applyTagListValues(snapshot.tags || []);
 
     const codeMirror = getCodeMirrorInstance(getBodyFieldContainer());
     if (codeMirror && typeof snapshot.bodyText === 'string') {
       codeMirror.setValue(snapshot.bodyText);
     } else {
-      const bodyInput = getFieldInputByLabel([/正文/, /英文正文/, /(^|\s)body(\s|$)/i], [/seo/i]);
+      const bodyInput = getFieldInputByLabel([/\u6b63\u6587/, /\u82f1\u6587\u6b63\u6587/, /(^|\s)body(\s|$)/i], [/seo/i]);
       if (bodyInput instanceof HTMLTextAreaElement || bodyInput instanceof HTMLInputElement) {
         applySnapshotValue(bodyInput, snapshot.bodyText || '');
       } else {
@@ -740,16 +1019,36 @@
     scheduleEditorWorkflowRefresh();
     scheduleMarkdownPreviewRefresh();
     scheduleManagedFieldAssistRefresh();
+    scheduleOutlineRefresh();
+    schedulePublishFieldRefresh();
     scheduleAutoDraftSave();
-    showToast('本地草稿已恢复。', 'success', 2400);
+    showToast('\u672c\u5730\u8349\u7a3f\u5df2\u6062\u590d\u3002', 'success', 2400);
     return true;
   };
 
   const isSnapshotDifferentFromCurrent = (snapshot) => {
     if (!snapshot) return false;
     const current = serializeEditorSnapshot();
-    const keys = ['title', 'excerpt', 'routeSlug', 'seoTitle', 'seoDescription', 'cover', 'coverAlt', 'bodyText'];
-    return keys.some((key) => `${snapshot[key] || ''}` !== `${current[key] || ''}`);
+    const keys = [
+      'title',
+      'excerpt',
+      'routeSlug',
+      'seoTitle',
+      'seoDescription',
+      'categoryKey',
+      'visibility',
+      'publishMode',
+      'scheduledAt',
+      'cover',
+      'coverAlt',
+      'contentType',
+      'sourceUrl',
+      'allowRepost',
+      'bodyText',
+    ];
+    const primitiveChanged = keys.some((key) => `${snapshot[key] || ''}` !== `${current[key] || ''}`);
+    if (primitiveChanged) return true;
+    return JSON.stringify(snapshot.tags || []) !== JSON.stringify(current.tags || []);
   };
 
   const ensureEditorWorkflowPanel = () => {
@@ -764,10 +1063,15 @@
     panel.innerHTML = `
       <div class="a1right-admin-editor-panel__stats"></div>
       <div class="a1right-admin-editor-panel__actions">
-        <button type="button" class="a1right-admin-chip-button" data-action="insert-code">插入 Code Block</button>
-        <button type="button" class="a1right-admin-chip-button" data-action="format-h1" data-tone="ghost">格式 1</button>
-        <button type="button" class="a1right-admin-chip-button" data-action="format-h2" data-tone="ghost">格式 2</button>
-        <button type="button" class="a1right-admin-chip-button" data-action="format-quote" data-tone="ghost">引用块</button>
+        <button type="button" class="a1right-admin-chip-button" data-action="insert-code">Code Block</button>
+        <button type="button" class="a1right-admin-chip-button" data-action="insert-math-inline">\u03a3 \u884c\u5185\u516c\u5f0f</button>
+        <button type="button" class="a1right-admin-chip-button" data-action="insert-math-block">\u03a3 \u516c\u5f0f\u5757</button>
+        <button type="button" class="a1right-admin-chip-button" data-action="insert-video">\u89c6\u9891\u5d4c\u5165</button>
+        <button type="button" class="a1right-admin-chip-button" data-action="cover-from-body">\u6b63\u6587\u9996\u56fe\u505a\u5c01\u9762</button>
+        <button type="button" class="a1right-admin-chip-button" data-action="excerpt-120" data-tone="ghost">\u63d0\u53d6 120 \u5b57\u6458\u8981</button>
+        <button type="button" class="a1right-admin-chip-button" data-action="format-h1" data-tone="ghost">\u683c\u5f0f 1</button>
+        <button type="button" class="a1right-admin-chip-button" data-action="format-h2" data-tone="ghost">\u683c\u5f0f 2</button>
+        <button type="button" class="a1right-admin-chip-button" data-action="format-quote" data-tone="ghost">\u5f15\u7528\u5757</button>
       </div>
       <div class="a1right-admin-editor-panel__status"></div>
       <div class="a1right-admin-editor-panel__restore" hidden></div>
@@ -780,6 +1084,21 @@
 
     panel.querySelector('[data-action="insert-code"]')?.addEventListener('click', () => {
       void insertCodeTemplateSnippet();
+    });
+    panel.querySelector('[data-action="insert-math-inline"]')?.addEventListener('click', () => {
+      void insertMathTemplateSnippet(false);
+    });
+    panel.querySelector('[data-action="insert-math-block"]')?.addEventListener('click', () => {
+      void insertMathTemplateSnippet(true);
+    });
+    panel.querySelector('[data-action="insert-video"]')?.addEventListener('click', () => {
+      void insertVideoEmbedSnippet();
+    });
+    panel.querySelector('[data-action="cover-from-body"]')?.addEventListener('click', () => {
+      void applyCoverFromBodyFirstImage();
+    });
+    panel.querySelector('[data-action="excerpt-120"]')?.addEventListener('click', () => {
+      applyExcerptFromBody(120);
     });
     panel.querySelector('[data-action="format-h1"]')?.addEventListener('click', () => {
       void applyBodyBlockFormat('h1');
@@ -935,7 +1254,6 @@
     const container = getBodyFieldContainer();
     if (!(container instanceof Element)) return null;
 
-    container.classList.remove('a1right-admin-body-control');
     container.querySelector('.a1right-admin-markdown-preview')?.remove();
     return null;
   };
@@ -1141,28 +1459,28 @@
   const getManagedFieldAssistConfig = (role) => {
     if (role === 'routeSlug') {
       return {
-        autoText: '跟随标题自动生成短链接',
-        manualText: '已手动锁定 Slug',
-        restoreText: '恢复自动',
-        restoredToast: '路由 Slug 已恢复自动生成。',
+        autoText: '\u8ddf\u968f\u6807\u9898\u81ea\u52a8\u751f\u6210\u77ed\u94fe\u63a5',
+        manualText: '\u5df2\u624b\u52a8\u9501\u5b9a Slug',
+        restoreText: '\u6062\u590d\u81ea\u52a8',
+        restoredToast: '\u8def\u7531 Slug \u5df2\u6062\u590d\u81ea\u52a8\u751f\u6210\u3002',
       };
     }
 
     if (role === 'seoTitle') {
       return {
-        autoText: '默认跟随文章标题',
-        manualText: '已手动设置 SEO 标题',
-        restoreText: '恢复跟随标题',
-        restoredToast: 'SEO 标题已恢复跟随文章标题。',
+        autoText: '\u9ed8\u8ba4\u8ddf\u968f\u6587\u7ae0\u6807\u9898',
+        manualText: '\u5df2\u624b\u52a8\u8bbe\u7f6e SEO \u6807\u9898',
+        restoreText: '\u6062\u590d\u8ddf\u968f\u6807\u9898',
+        restoredToast: 'SEO \u6807\u9898\u5df2\u6062\u590d\u8ddf\u968f\u6587\u7ae0\u6807\u9898\u3002',
       };
     }
 
     if (role === 'seoDescription') {
       return {
-        autoText: '默认跟随文章摘要',
-        manualText: '已手动设置 SEO 描述',
-        restoreText: '恢复跟随摘要',
-        restoredToast: 'SEO 描述已恢复跟随文章摘要。',
+        autoText: '\u9ed8\u8ba4\u8ddf\u968f\u6587\u7ae0\u6458\u8981',
+        manualText: '\u5df2\u624b\u52a8\u8bbe\u7f6e SEO \u63cf\u8ff0',
+        restoreText: '\u6062\u590d\u8ddf\u968f\u6458\u8981',
+        restoredToast: 'SEO \u63cf\u8ff0\u5df2\u6062\u590d\u8ddf\u968f\u6587\u7ae0\u6458\u8981\u3002',
       };
     }
 
@@ -1184,50 +1502,340 @@
     return assist;
   };
 
-  const renderManagedFieldAssist = () => {
+  const renderAutoManagedFieldAssist = (role, inputs) => {
+    const input = inputs[role];
+    const config = getManagedFieldAssistConfig(role);
+    const container = input?.closest('[class*="ControlContainer"]');
+    if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) || !config || !(container instanceof Element)) {
+      return;
+    }
+
+    const assist = ensureManagedFieldAssist(container);
+    if (!(assist instanceof HTMLElement)) return;
+
+    assist.dataset.assistMode = 'auto';
+    const statusNode = assist.querySelector('.a1right-admin-field-assist__status');
+    const actionsNode = assist.querySelector('.a1right-admin-field-assist__actions');
+    const current = `${input.value || ''}`.trim();
+    const lastAuto = input.dataset.a1rightLastAuto || '';
+    const autoManaged = !current || current === lastAuto || input.dataset.a1rightAutoManaged !== 'manual';
+
+    assist.classList.toggle('is-auto', autoManaged);
+    assist.classList.toggle('is-manual', !autoManaged);
+
+    if (statusNode instanceof HTMLElement) {
+      statusNode.textContent = autoManaged ? config.autoText : config.manualText;
+    }
+
+    if (actionsNode instanceof HTMLElement) {
+      actionsNode.innerHTML = '';
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'a1right-admin-field-assist__button';
+      button.textContent = autoManaged ? '\u81ea\u52a8\u8054\u52a8\u4e2d' : config.restoreText;
+      button.disabled = autoManaged;
+      button.addEventListener('click', () => {
+        input.dataset.a1rightAutoManaged = 'auto';
+        syncDerivedMetadata();
+        scheduleManagedFieldAssistRefresh();
+        setDirtyState(true);
+        scheduleAutoDraftSave();
+        showToast(config.restoredToast, 'success', 2200);
+      });
+      actionsNode.append(button);
+    }
+  };
+
+  const applyExcerptFromBody = (maxLength = 120) => {
     const inputs = getEditorManagedInputs();
-    ['routeSlug', 'seoTitle', 'seoDescription'].forEach((role) => {
-      const input = inputs[role];
-      const config = getManagedFieldAssistConfig(role);
-      const container = input?.closest('[class*="ControlContainer"]');
-      if (!(input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) || !config || !(container instanceof Element)) {
-        return;
-      }
+    const excerptInput = inputs.excerpt;
+    if (!(excerptInput instanceof HTMLTextAreaElement || excerptInput instanceof HTMLInputElement)) return false;
 
-      const assist = ensureManagedFieldAssist(container);
-      if (!(assist instanceof HTMLElement)) return;
+    const nextExcerpt = buildExcerptFromBody(maxLength);
+    if (!nextExcerpt) {
+      showToast('\u6b63\u6587\u8fd8\u6ca1\u6709\u8db3\u591f\u5185\u5bb9\uff0c\u5148\u5199\u4e00\u70b9\u518d\u63d0\u53d6\u6458\u8981\u3002', 'warn', 2400);
+      return false;
+    }
 
-      const statusNode = assist.querySelector('.a1right-admin-field-assist__status');
-      const actionsNode = assist.querySelector('.a1right-admin-field-assist__actions');
-      const current = `${input.value || ''}`.trim();
-      const lastAuto = input.dataset.a1rightLastAuto || '';
-      const autoManaged = !current || current === lastAuto || input.dataset.a1rightAutoManaged !== 'manual';
+    setInputLikeValue(excerptInput, nextExcerpt);
+    syncDerivedMetadata();
+    setDirtyState(true);
+    scheduleAutoDraftSave();
+    scheduleEditorWorkflowRefresh();
+    scheduleManagedFieldAssistRefresh();
+    showToast(`\u5df2\u4ece\u6b63\u6587\u63d0\u53d6 ${Math.min(256, maxLength)} \u5b57\u6458\u8981\u3002`, 'success', 2200);
+    return true;
+  };
 
-      assist.classList.toggle('is-auto', autoManaged);
-      assist.classList.toggle('is-manual', !autoManaged);
+  const renderExcerptFieldAssist = (inputs) => {
+    const input = inputs.excerpt;
+    const container = input?.closest('[class*="ControlContainer"]');
+    if (!(input instanceof HTMLTextAreaElement || input instanceof HTMLInputElement) || !(container instanceof Element)) return;
 
-      if (statusNode instanceof HTMLElement) {
-        statusNode.textContent = autoManaged ? config.autoText : config.manualText;
-      }
+    const assist = ensureManagedFieldAssist(container);
+    if (!(assist instanceof HTMLElement)) return;
 
-      if (actionsNode instanceof HTMLElement) {
-        actionsNode.innerHTML = '';
+    assist.dataset.assistMode = 'excerpt';
+    assist.classList.remove('is-auto', 'is-manual');
+    const statusNode = assist.querySelector('.a1right-admin-field-assist__status');
+    const actionsNode = assist.querySelector('.a1right-admin-field-assist__actions');
+    const current = `${input.value || ''}`.trim();
+    const currentLength = current.length;
+    const statusText = currentLength > 256
+      ? `\u6458\u8981\u5efa\u8bae\u63a7\u5236\u5728 256 \u5b57\u4ee5\u5185\uff0c\u5f53\u524d ${currentLength} \u5b57\u3002`
+      : `\u6458\u8981\u4f1a\u7528\u4e8e\u9996\u9875\u5361\u7247\u3001\u641c\u7d22\u7ed3\u679c\u548c SEO \u63cf\u8ff0\uff0c\u5f53\u524d ${currentLength}/256 \u5b57\u3002`;
+
+    if (statusNode instanceof HTMLElement) {
+      statusNode.textContent = statusText;
+    }
+
+    if (actionsNode instanceof HTMLElement) {
+      actionsNode.innerHTML = '';
+      const lengths = [120, 180, 256];
+      lengths.forEach((length) => {
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'a1right-admin-field-assist__button';
-        button.textContent = autoManaged ? '自动联动中' : config.restoreText;
-        button.disabled = autoManaged;
+        button.textContent = `\u63d0\u53d6 ${length} \u5b57`;
         button.addEventListener('click', () => {
-          input.dataset.a1rightAutoManaged = 'auto';
-          syncDerivedMetadata();
-          scheduleManagedFieldAssistRefresh();
-          setDirtyState(true);
-          scheduleAutoDraftSave();
-          showToast(config.restoredToast, 'success', 2200);
+          applyExcerptFromBody(length);
         });
         actionsNode.append(button);
-      }
+      });
+    }
+  };
+
+  const buildSuggestedTags = (inputs) => {
+    const locale = getCurrentEditorLocale();
+    const categoryKey = `${inputs.categoryKey?.value || ''}`.trim();
+    const categoryTags = TAG_SUGGESTIONS.category[categoryKey]?.[locale] || [];
+    const globalTags = TAG_SUGGESTIONS.global[locale] || [];
+    return [...new Set([...categoryTags, ...globalTags])].slice(0, 10);
+  };
+
+  const renderTagsFieldAssist = (inputs) => {
+    const container = getTagsFieldContainer();
+    if (!(container instanceof Element)) return;
+
+    const assist = ensureManagedFieldAssist(container);
+    if (!(assist instanceof HTMLElement)) return;
+
+    assist.dataset.assistMode = 'tags';
+    assist.classList.remove('is-auto', 'is-manual');
+    const statusNode = assist.querySelector('.a1right-admin-field-assist__status');
+    const actionsNode = assist.querySelector('.a1right-admin-field-assist__actions');
+    const values = getCurrentTagValues();
+    const suggestions = buildSuggestedTags(inputs);
+
+    if (statusNode instanceof HTMLElement) {
+      statusNode.textContent = `\u5df2\u9009 ${values.length}/5 \u4e2a\u6807\u7b7e\u3002\u5efa\u8bae\u4fdd\u7559 2~5 \u4e2a\u5173\u952e\u8bcd\uff0c\u6bcf\u4e2a\u6807\u7b7e\u5355\u72ec\u4e00\u9879\u3002`;
+    }
+
+    if (actionsNode instanceof HTMLElement) {
+      actionsNode.innerHTML = '';
+      const rail = document.createElement('div');
+      rail.className = 'a1right-admin-chip-rail';
+
+      suggestions.forEach((tag) => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'a1right-admin-field-assist__button is-chip';
+        button.textContent = `# ${tag}`;
+        button.disabled = values.some((item) => item.toLowerCase() === tag.toLowerCase());
+        button.addEventListener('click', () => {
+          void addTagValue(tag);
+        });
+        rail.append(button);
+      });
+
+      actionsNode.append(rail);
+    }
+  };
+
+  const getCoverFieldRoot = () =>
+    document.querySelector('[aria-label="image field"]') ||
+    (editorState.lastImageRoot instanceof Element ? editorState.lastImageRoot : null);
+
+  const applyCoverFromBodyFirstImage = async (root = null) => {
+    const targetRoot = (root instanceof Element && root.isConnected ? root : null) || getCoverFieldRoot();
+    if (!(targetRoot instanceof Element)) {
+      showToast('\u6682\u65f6\u8fd8\u6ca1\u627e\u5230\u5c01\u9762\u56fe\u8f93\u5165\u533a\u57df\u3002', 'warn', 2400);
+      return false;
+    }
+
+    const firstImage = extractFirstBodyImage();
+    if (!firstImage) {
+      showToast('\u6b63\u6587\u91cc\u8fd8\u6ca1\u6709\u56fe\u7247\uff0c\u5148\u63d2\u5165\u4e00\u5f20\u56fe\u518d\u63d0\u53d6\u5c01\u9762\u3002', 'warn', 2600);
+      return false;
+    }
+
+    const nextValue = firstImage.fieldPath || firstImage.rawSource || '';
+    if (!nextValue) {
+      showToast('\u6b63\u6587\u9996\u56fe\u8def\u5f84\u6682\u65f6\u65e0\u6cd5\u8bc6\u522b\uff0c\u8bf7\u6362\u4e00\u5f20\u56fe\u7247\u518d\u8bd5\u3002', 'warn', 2600);
+      return false;
+    }
+
+    const applied = await applyImageFieldValue(targetRoot, nextValue);
+    if (!applied) {
+      showToast('\u5c01\u9762\u56fe\u5b57\u6bb5\u6682\u65f6\u65e0\u6cd5\u81ea\u52a8\u56de\u586b\u3002', 'warn', 2600);
+      return false;
+    }
+
+    const coverAlt = firstImage.alt || buildAltText({ filename: nextValue, kind: 'cover' });
+    maybeFillCoverAlt(coverAlt);
+    setImageFieldPreviewState(targetRoot, {
+      fieldPath: nextValue,
+      filename: nextValue.split('/').pop() || nextValue,
+      previewUrl: firstImage.sourceUrl || normalizeAssetUrl(nextValue),
+      alt: coverAlt,
+      description: '\u5df2\u4ece\u6b63\u6587\u7b2c\u4e00\u5f20\u56fe\u63d0\u53d6\u4e3a\u5c01\u9762\uff0c\u53ef\u7ee7\u7eed\u66ff\u6362\u6216\u88c1\u5207\u3002',
     });
+
+    setDirtyState(true);
+    scheduleAutoDraftSave();
+    scheduleEditorWorkflowRefresh();
+    scheduleManagedFieldAssistRefresh();
+    showToast('\u5df2\u628a\u6b63\u6587\u7b2c\u4e00\u5f20\u56fe\u540c\u6b65\u4e3a\u5c01\u9762\u3002', 'success', 2400);
+    return true;
+  };
+
+  const setControlVisibility = (container, visible) => {
+    if (!(container instanceof Element)) return;
+    container.classList.toggle('a1right-admin-control-hidden', !visible);
+    container.setAttribute('aria-hidden', visible ? 'false' : 'true');
+  };
+
+  const refreshPublishFieldVisibility = () => {
+    const inputs = getEditorManagedInputs();
+    const scheduledContainer = inputs.scheduledAt?.closest('[class*="ControlContainer"]');
+    const sourceUrlContainer = inputs.sourceUrl?.closest('[class*="ControlContainer"]');
+    const allowRepostContainer = inputs.allowRepost?.closest('[class*="ControlContainer"]');
+
+    const publishMode = `${inputs.publishMode?.value || 'now'}`;
+    const contentType = `${inputs.contentType?.value || 'original'}`;
+
+    setControlVisibility(scheduledContainer, publishMode === 'scheduled');
+    setControlVisibility(sourceUrlContainer, contentType !== 'original');
+    setControlVisibility(allowRepostContainer, contentType === 'original');
+  };
+
+  const schedulePublishFieldRefresh = () => {
+    if (workflowState.publishFieldRefreshRaf) return;
+    workflowState.publishFieldRefreshRaf = window.requestAnimationFrame(() => {
+      workflowState.publishFieldRefreshRaf = 0;
+      refreshPublishFieldVisibility();
+    });
+  };
+
+  const ensureEditorOutlinePanel = () => {
+    const container = getBodyFieldContainer();
+    if (!(container instanceof Element)) return null;
+
+    container.classList.add('a1right-admin-body-control');
+    let outline = container.querySelector('.a1right-admin-editor-outline');
+    if (outline) return outline;
+
+    outline = document.createElement('aside');
+    outline.className = 'a1right-admin-editor-outline';
+    outline.innerHTML = `
+      <div class="a1right-admin-editor-outline__chrome">
+        <span class="a1right-admin-editor-outline__eyebrow">\u76ee\u5f55</span>
+        <strong class="a1right-admin-editor-outline__title">\u5b9e\u65f6\u5927\u7eb2</strong>
+        <p class="a1right-admin-editor-outline__hint">\u6839\u636e\u6b63\u6587\u91cc\u7684 H1 / H2 / H3 \u81ea\u52a8\u751f\u6210\uff0c\u9002\u5408\u957f\u6587\u5feb\u901f\u8df3\u8f6c\u3002</p>
+      </div>
+      <div class="a1right-admin-editor-outline__list"></div>
+    `;
+    container.append(outline);
+    return outline;
+  };
+
+  const locateHeadingInBody = (headingIndex) => {
+    const headings = getBodyHeadingItems();
+    const target = headings[headingIndex];
+    if (!target) return;
+
+    const bodyRoot = getBodyFieldContainer();
+    const codeMirror = getCodeMirrorInstance(bodyRoot);
+    if (codeMirror) {
+      const position = { line: target.lineNumber, ch: 0 };
+      codeMirror.focus();
+      codeMirror.getDoc().setCursor(position);
+      codeMirror.scrollIntoView(position, 120);
+      pulseField(resolveMarkdownRoot(bodyRoot), 'a1right-admin-field-guided');
+      return;
+    }
+
+    const editable = getBodyEditable();
+    if (editable instanceof HTMLElement) {
+      const blocks = [...editable.children].filter((node) => parseHeadingLine(extractEditableSourceText(node), 0));
+      const block = blocks[headingIndex];
+      if (block instanceof HTMLElement) {
+        editable.focus();
+        block.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const selection = window.getSelection();
+        if (selection) {
+          const range = document.createRange();
+          range.selectNodeContents(block);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+        pulseField(resolveMarkdownRoot(editable), 'a1right-admin-field-guided');
+      }
+      return;
+    }
+
+    const textarea = bodyRoot?.querySelector('textarea');
+    if (textarea instanceof HTMLTextAreaElement) {
+      const lines = textarea.value.replace(/\r\n/g, '\n').split('\n');
+      const offset = lines.slice(0, target.lineNumber).join('\n').length + (target.lineNumber > 0 ? 1 : 0);
+      textarea.focus();
+      textarea.setSelectionRange(offset, offset + lines[target.lineNumber].length);
+      scrollTextareaSelectionIntoView(textarea, offset);
+      pulseField(resolveMarkdownRoot(bodyRoot), 'a1right-admin-field-guided');
+    }
+  };
+
+  const renderEditorOutline = () => {
+    const outline = ensureEditorOutlinePanel();
+    if (!(outline instanceof HTMLElement)) return;
+
+    const list = outline.querySelector('.a1right-admin-editor-outline__list');
+    if (!(list instanceof HTMLElement)) return;
+
+    const headings = getBodyHeadingItems();
+    if (!headings.length) {
+      list.innerHTML = '<div class="a1right-admin-editor-outline__empty">\u5148\u5199\u51e0\u4e2a # / ## / ### \u6807\u9898\uff0c\u8fd9\u91cc\u5c31\u4f1a\u81ea\u52a8\u751f\u6210\u76ee\u5f55\u3002</div>';
+      return;
+    }
+
+    list.innerHTML = '';
+    headings.forEach((heading, index) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `a1right-admin-editor-outline__item is-depth-${heading.level}`;
+      button.innerHTML = `
+        <span class="a1right-admin-editor-outline__dot"></span>
+        <span class="a1right-admin-editor-outline__text">${heading.text}</span>
+      `;
+      button.addEventListener('click', () => locateHeadingInBody(index));
+      list.append(button);
+    });
+  };
+
+  const scheduleOutlineRefresh = () => {
+    if (workflowState.outlineRefreshRaf) return;
+    workflowState.outlineRefreshRaf = window.requestAnimationFrame(() => {
+      workflowState.outlineRefreshRaf = 0;
+      renderEditorOutline();
+    });
+  };
+
+  const renderManagedFieldAssist = () => {
+    const inputs = getEditorManagedInputs();
+    ['routeSlug', 'seoTitle', 'seoDescription'].forEach((role) => renderAutoManagedFieldAssist(role, inputs));
+    renderExcerptFieldAssist(inputs);
+    renderTagsFieldAssist(inputs);
+    schedulePublishFieldRefresh();
   };
 
   const scheduleManagedFieldAssistRefresh = () => {
@@ -1243,14 +1851,22 @@
     const container = target.closest('[class*="ControlContainer"]');
     const label = cleanDisplayText(container?.querySelector('label, [class*="ControlLabel"]')?.textContent || '').toLowerCase();
     if (!label) return '';
-    if ((/title/.test(label) || /标题/.test(label)) && !/seo/.test(label)) return 'title';
-    if (/excerpt/.test(label) || /摘要/.test(label)) return 'excerpt';
+    if ((/title/.test(label) || /\u6807\u9898/.test(label)) && !/seo/.test(label)) return 'title';
+    if (/excerpt/.test(label) || /\u6458\u8981/.test(label)) return 'excerpt';
     if (/slug/.test(label)) return 'routeSlug';
-    if ((/seo/.test(label) && /标题/.test(label)) || /seo title/.test(label)) return 'seoTitle';
-    if ((/seo/.test(label) && /描述/.test(label)) || /seo description/.test(label)) return 'seoDescription';
-    if (/封面图/.test(label) || /cover image/.test(label)) return 'cover';
-    if (/封面描述/.test(label) || /cover description/.test(label)) return 'coverAlt';
-    if ((/正文/.test(label) || /body/.test(label)) && !/seo/.test(label)) return 'body';
+    if ((/seo/.test(label) && /\u6807\u9898/.test(label)) || /seo title/.test(label)) return 'seoTitle';
+    if ((/seo/.test(label) && /\u63cf\u8ff0/.test(label)) || /seo description/.test(label)) return 'seoDescription';
+    if (/\u5206\u7c7b key/.test(label) || /category key/.test(label)) return 'categoryKey';
+    if (/\u6807\u7b7e/.test(label) || /(^|\s)tags(\s|$)/.test(label)) return 'tags';
+    if (/\u53ef\u89c1\u6027/.test(label) || /visibility/.test(label)) return 'visibility';
+    if (/\u53d1\u5e03\u65b9\u5f0f/.test(label) || /publish mode/.test(label)) return 'publishMode';
+    if (/\u5b9a\u65f6\u53d1\u5e03/.test(label) || /scheduled publish/.test(label)) return 'scheduledAt';
+    if (/\u5c01\u9762\u56fe/.test(label) || /cover image/.test(label)) return 'cover';
+    if (/\u5c01\u9762\u63cf\u8ff0/.test(label) || /cover description/.test(label)) return 'coverAlt';
+    if (/\u7248\u6743\u58f0\u660e/.test(label) || /content copyright type/.test(label)) return 'contentType';
+    if (/\u539f\u6587\u94fe\u63a5/.test(label) || /source url/.test(label)) return 'sourceUrl';
+    if (/\u8f6c\u8f7d\u534f\u8bae/.test(label) || /repost policy/.test(label)) return 'allowRepost';
+    if ((/\u6b63\u6587/.test(label) || /body/.test(label)) && !/seo/.test(label)) return 'body';
     return '';
   };
 
@@ -1266,11 +1882,17 @@
       syncDerivedMetadata();
     }
 
+    if (role === 'tags') {
+      void normalizeCompositeTagField(target);
+    }
+
     setDirtyState(true);
     scheduleAutoDraftSave();
     scheduleEditorWorkflowRefresh();
     scheduleMarkdownPreviewRefresh();
     scheduleManagedFieldAssistRefresh();
+    scheduleOutlineRefresh();
+    schedulePublishFieldRefresh();
   };
 
   const handlePossibleSaveAction = (target) => {
@@ -1799,7 +2421,7 @@
       showToast(copied ? '封面图路径已复制。' : '当前没有可复制的封面图路径。', copied ? 'success' : 'info', 2400);
     });
 
-    actions.append(replaceButton, copyPathButton, clearButton);
+    actions.append(replaceButton, fromBodyButton, copyPathButton, clearButton);
     meta.append(path, open);
     body.append(eyebrow, title, description, insights, meta, actions);
     card.append(media, body);
@@ -2367,11 +2989,100 @@
     });
   };
 
+  const createToolbarWorkbenchButton = (label, action, title = label) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'a1right-admin-toolbar-workbench__button';
+    button.textContent = label;
+    button.dataset.action = action;
+    button.title = title;
+    return button;
+  };
+
+  const ensureToolbarWorkbench = (toolbar) => {
+    if (!(toolbar instanceof Element)) return null;
+    let workbench = toolbar.querySelector('.a1right-admin-toolbar-workbench');
+    if (workbench) return workbench;
+
+    workbench = document.createElement('div');
+    workbench.className = 'a1right-admin-toolbar-workbench';
+    workbench.append(
+      createToolbarWorkbenchButton('Code', 'code', '\u63d2\u5165 Code Block'),
+      createToolbarWorkbenchButton('H1', 'h1', '\u683c\u5f0f 1'),
+      createToolbarWorkbenchButton('H2', 'h2', '\u683c\u5f0f 2'),
+      createToolbarWorkbenchButton('\u5f15\u7528', 'quote', '\u63d2\u5165\u5f15\u7528\u5757'),
+      createToolbarWorkbenchButton('\u03a3', 'math-inline', '\u63d2\u5165\u884c\u5185\u516c\u5f0f'),
+      createToolbarWorkbenchButton('\u03a3\u5757', 'math-block', '\u63d2\u5165\u516c\u5f0f\u5757'),
+      createToolbarWorkbenchButton('\u89c6\u9891', 'video', '\u63d2\u5165\u89c6\u9891 iframe'),
+      createToolbarWorkbenchButton('\u6458\u8981', 'excerpt', '\u4ece\u6b63\u6587\u63d0\u53d6 120 \u5b57\u6458\u8981'),
+      createToolbarWorkbenchButton('\u9996\u56fe', 'cover', '\u6b63\u6587\u9996\u56fe\u4f5c\u4e3a\u5c01\u9762'),
+    );
+    toolbar.append(workbench);
+    return workbench;
+  };
+
+  const decorateToolbarWorkbench = () => {
+    document.querySelectorAll('#nc-root [class*="EditorToolbar"]').forEach((toolbar) => {
+      const workbench = ensureToolbarWorkbench(toolbar);
+      if (!(workbench instanceof HTMLElement) || decoratorState.boundToolbarActionBars.has(workbench)) return;
+      decoratorState.boundToolbarActionBars.add(workbench);
+
+      workbench.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+      });
+
+      workbench.addEventListener('click', (event) => {
+        const button = event.target instanceof Element ? event.target.closest('button[data-action]') : null;
+        if (!(button instanceof HTMLButtonElement)) return;
+        event.preventDefault();
+        event.stopPropagation();
+
+        const action = button.dataset.action || '';
+        if (action === 'code') {
+          void insertCodeTemplateSnippet({ preferCodeBlockWidget: true, triggerButton: button });
+          return;
+        }
+        if (action === 'h1') {
+          void applyBodyBlockFormat('h1');
+          return;
+        }
+        if (action === 'h2') {
+          void applyBodyBlockFormat('h2');
+          return;
+        }
+        if (action === 'quote') {
+          void applyBodyBlockFormat('blockquote');
+          return;
+        }
+        if (action === 'math-inline') {
+          void insertMathTemplateSnippet(false);
+          return;
+        }
+        if (action === 'math-block') {
+          void insertMathTemplateSnippet(true);
+          return;
+        }
+        if (action === 'video') {
+          void insertVideoEmbedSnippet();
+          return;
+        }
+        if (action === 'excerpt') {
+          applyExcerptFromBody(120);
+          return;
+        }
+        if (action === 'cover') {
+          void applyCoverFromBodyFirstImage();
+        }
+      });
+    });
+  };
+
   const scheduleToolbarCodeRefresh = () => {
     if (decoratorState.toolbarRefreshRaf) return;
     decoratorState.toolbarRefreshRaf = window.requestAnimationFrame(() => {
       decoratorState.toolbarRefreshRaf = 0;
       decorateToolbarCodeButtons();
+      decorateToolbarWorkbench();
     });
   };
 
@@ -2761,6 +3472,51 @@
     return false;
   };
 
+  const insertMathTemplateSnippet = async (displayMode = false) => {
+    const snippet = displayMode ? ['$$', '\\sum_{i=1}^{n} a_i = S', '$$'].join('\n') : '$E = mc^2$';
+    const inserted = insertMarkdownSnippet(getBodyFieldContainer(), snippet);
+    if (!inserted.ok) {
+      const copied = await copyTextToClipboard(snippet);
+      showToast(copied ? '\u6ca1\u6709\u627e\u5230\u53ef\u63d2\u5165\u4f4d\u7f6e\uff0c\u516c\u5f0f\u6a21\u677f\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f\u3002' : '\u6682\u65f6\u6ca1\u627e\u5230\u53ef\u63d2\u5165\u516c\u5f0f\u6a21\u677f\u7684\u4f4d\u7f6e\u3002', copied ? 'warn' : 'error', 3200);
+      return false;
+    }
+
+    inserted.locate?.();
+    setDirtyState(true);
+    scheduleAutoDraftSave();
+    scheduleEditorWorkflowRefresh();
+    scheduleOutlineRefresh();
+    showToast(displayMode ? '\u516c\u5f0f\u5757\u6a21\u677f\u5df2\u63d2\u5165\u3002' : '\u884c\u5185\u516c\u5f0f\u6a21\u677f\u5df2\u63d2\u5165\u3002', 'success', 2200);
+    return true;
+  };
+
+  const insertVideoEmbedSnippet = async () => {
+    const snippet = [
+      '<iframe',
+      '  src="https://www.youtube.com/embed/VIDEO_ID"',
+      '  title="Embedded video"',
+      '  loading="lazy"',
+      '  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"',
+      '  allowfullscreen',
+      '></iframe>',
+    ].join('\n');
+
+    const inserted = insertMarkdownSnippet(getBodyFieldContainer(), snippet);
+    if (!inserted.ok) {
+      const copied = await copyTextToClipboard(snippet);
+      showToast(copied ? '\u6ca1\u6709\u627e\u5230\u63d2\u5165\u4f4d\u7f6e\uff0c\u89c6\u9891 iframe \u6a21\u677f\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f\u3002' : '\u6682\u65f6\u6ca1\u627e\u5230\u53ef\u63d2\u5165\u89c6\u9891\u6a21\u677f\u7684\u4f4d\u7f6e\u3002', copied ? 'warn' : 'error', 3200);
+      return false;
+    }
+
+    inserted.locate?.();
+    setDirtyState(true);
+    scheduleAutoDraftSave();
+    scheduleEditorWorkflowRefresh();
+    scheduleOutlineRefresh();
+    showToast('\u89c6\u9891\u5d4c\u5165\u6a21\u677f\u5df2\u63d2\u5165\uff0c\u628a VIDEO_ID \u6362\u6210\u4f60\u7684\u94fe\u63a5\u5373\u53ef\u3002', 'success', 2400);
+    return true;
+  };
+
   const insertCodeTemplateSnippet = async ({ preferCodeBlockWidget = true, triggerButton = null } = {}) => {
     if (preferCodeBlockWidget) {
       const openedCodeBlock = await triggerBuiltInCodeBlockEntry(triggerButton);
@@ -3094,6 +3850,8 @@
     scheduleMarkdownPreviewRefresh();
     scheduleRichTextCodeRefresh();
     scheduleToolbarCodeRefresh();
+    scheduleOutlineRefresh();
+    schedulePublishFieldRefresh();
   }, true);
 
   document.addEventListener('click', (event) => {
@@ -3102,6 +3860,8 @@
     scheduleMarkdownPreviewRefresh();
     scheduleRichTextCodeRefresh();
     scheduleToolbarCodeRefresh();
+    scheduleOutlineRefresh();
+    schedulePublishFieldRefresh();
     handlePossibleSaveAction(event.target);
   }, true);
 
@@ -3111,6 +3871,8 @@
     scheduleMarkdownPreviewRefresh();
     scheduleRichTextCodeRefresh();
     scheduleToolbarCodeRefresh();
+    scheduleOutlineRefresh();
+    schedulePublishFieldRefresh();
   }, true);
 
   document.addEventListener('mouseup', (event) => {
@@ -3119,6 +3881,8 @@
     scheduleMarkdownPreviewRefresh();
     scheduleRichTextCodeRefresh();
     scheduleToolbarCodeRefresh();
+    scheduleOutlineRefresh();
+    schedulePublishFieldRefresh();
   }, true);
 
   document.addEventListener('input', (event) => {
@@ -3130,15 +3894,19 @@
     if (imageRoot) {
       renderImageFieldPreview(imageRoot);
       scheduleMarkdownPreviewRefresh();
+      scheduleOutlineRefresh();
+      schedulePublishFieldRefresh();
       return;
     }
 
-    if (getControlContainerByLabel([/封面描述/, /cover description/i])) {
+    if (getControlContainerByLabel([/\u5c01\u9762\u63cf\u8ff0/, /cover description/i])) {
       scheduleImageFieldPreviewRefresh();
     }
     scheduleMarkdownPreviewRefresh();
     scheduleRichTextCodeRefresh();
     scheduleToolbarCodeRefresh();
+    scheduleOutlineRefresh();
+    schedulePublishFieldRefresh();
   }, true);
 
   document.addEventListener('change', (event) => {
@@ -3151,6 +3919,8 @@
         scheduleAutoDraftSave();
         scheduleEditorWorkflowRefresh();
         scheduleMarkdownPreviewRefresh();
+        scheduleOutlineRefresh();
+        schedulePublishFieldRefresh();
         return;
       }
     }
@@ -3161,6 +3931,8 @@
     if (imageRoot) {
       renderImageFieldPreview(imageRoot);
       scheduleMarkdownPreviewRefresh();
+      scheduleOutlineRefresh();
+      schedulePublishFieldRefresh();
       return;
     }
 
@@ -3168,6 +3940,8 @@
     scheduleMarkdownPreviewRefresh();
     scheduleRichTextCodeRefresh();
     scheduleToolbarCodeRefresh();
+    scheduleOutlineRefresh();
+    schedulePublishFieldRefresh();
   }, true);
 
   document.addEventListener('dragover', (event) => {
@@ -3210,7 +3984,7 @@
     void processImageSources({
       context,
       sources: files.map((file) => ({ kind: 'file', file })),
-      origin: '拖拽',
+      origin: '\u62d6\u62fd',
     });
   }, true);
 
@@ -3232,6 +4006,8 @@
     window.setTimeout(scheduleEditorWorkflowRefresh, 140);
     window.setTimeout(scheduleMarkdownPreviewRefresh, 140);
     window.setTimeout(scheduleManagedFieldAssistRefresh, 140);
+    window.setTimeout(scheduleOutlineRefresh, 140);
+    window.setTimeout(schedulePublishFieldRefresh, 140);
   });
 
   window.addEventListener('beforeunload', (event) => {
@@ -3252,6 +4028,8 @@
       scheduleToolbarCodeRefresh();
       scheduleMarkdownPreviewRefresh();
       scheduleManagedFieldAssistRefresh();
+      scheduleOutlineRefresh();
+      schedulePublishFieldRefresh();
     }).observe(cmsRoot, { childList: true, subtree: true });
   }
 
@@ -3262,4 +4040,6 @@
   scheduleEditorWorkflowRefresh();
   scheduleMarkdownPreviewRefresh();
   scheduleManagedFieldAssistRefresh();
+  scheduleOutlineRefresh();
+  schedulePublishFieldRefresh();
 })();
