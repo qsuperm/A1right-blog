@@ -188,7 +188,7 @@ const createCollection = ({
         field: category
       - label: ${quote(filterLabels.yearGroup)}
         field: publishedAt
-        pattern: "\\d{4}"
+        pattern: '\\d{4}'
     fields:
       - label: ${quote(translationKeyLabel)}
         name: "translationKey"
