@@ -935,39 +935,9 @@
     const container = getBodyFieldContainer();
     if (!(container instanceof Element)) return null;
 
-    container.classList.add('a1right-admin-body-control');
-
-    let panel = container.querySelector('.a1right-admin-markdown-preview');
-    if (panel) return panel;
-
-    panel = document.createElement('aside');
-    panel.className = 'a1right-admin-markdown-preview';
-    panel.innerHTML = `
-      <div class="a1right-admin-markdown-preview__chrome">
-        <div>
-          <span class="a1right-admin-markdown-preview__eyebrow">实时 Markdown 预览</span>
-          <strong class="a1right-admin-markdown-preview__heading">标题、图片、代码块会跟随正文同步</strong>
-        </div>
-        <span class="a1right-admin-markdown-preview__badge">AUTO</span>
-      </div>
-      <article class="a1right-admin-markdown-preview__article">
-        <div class="a1right-admin-markdown-preview__meta" data-preview-meta>正在准备预览面板…</div>
-        <div class="a1right-admin-markdown-preview__cover" data-preview-cover hidden>
-          <img class="a1right-admin-markdown-preview__cover-image" data-preview-cover-image alt="" />
-          <div class="a1right-admin-markdown-preview__cover-empty">封面预览</div>
-        </div>
-        <header class="a1right-admin-markdown-preview__header">
-          <h1 class="a1right-admin-markdown-preview__title" data-preview-title>未命名文章</h1>
-          <p class="a1right-admin-markdown-preview__excerpt" data-preview-excerpt hidden></p>
-        </header>
-        <div class="a1right-admin-markdown-preview__body a1right-admin-md-preview" data-preview-body>
-          <div class="a1right-admin-markdown-preview__placeholder">开始输入正文后，这里会实时显示标题、图片、代码块和排版效果。</div>
-        </div>
-      </article>
-    `;
-
-    container.append(panel);
-    return panel;
+    container.classList.remove('a1right-admin-body-control');
+    container.querySelector('.a1right-admin-markdown-preview')?.remove();
+    return null;
   };
 
   const decorateMarkdownPreviewBody = (root) => {

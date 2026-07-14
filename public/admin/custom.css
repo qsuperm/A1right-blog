@@ -1751,6 +1751,7 @@ body.admin-shell--cms-active::before {
 }
 
 #nc-root .a1right-admin-markdown-preview {
+  display: none !important;
   margin-top: 14px;
   padding: 14px;
   border: 1px solid rgba(32, 189, 145, .14);
