@@ -183,6 +183,74 @@
     };
   };
 
+  const editableDecorationSelector =
+    '.a1right-admin-code-copy, .a1right-admin-code-lineno, .a1right-admin-code-toggle, .a1right-admin-code-wrap-toggle, .a1right-admin-code-meta, .a1right-admin-inline-image-preview';
+
+  const stripEditableDecorationNodes = (root) => {
+    root?.querySelectorAll?.(editableDecorationSelector)?.forEach((node) => node.remove());
+    return root;
+  };
+
+  const extractDecoratedNodeText = (node) => {
+    if (node?.nodeType === Node.TEXT_NODE) return `${node.textContent || ''}`;
+    if (!(node instanceof HTMLElement)) return '';
+    if (node.tagName === 'BR') return '\n';
+
+    const text = [...node.childNodes].map((child) => extractDecoratedNodeText(child)).join('');
+    const isBlockNode = /^(P|DIV|LI|PRE|BLOCKQUOTE|H1|H2|H3|H4|H5|H6)$/i.test(node.tagName);
+    return isBlockNode ? `${text}\n` : text;
+  };
+
+  const extractEditableSourceText = (element) => {
+    if (!(element instanceof HTMLElement)) return '';
+    const clone = element.cloneNode(true);
+    stripEditableDecorationNodes(clone);
+    return extractDecoratedNodeText(clone).replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n').trimEnd();
+  };
+
+  const stripMarkdownBlockPrefix = (value = '') =>
+    `${value || ''}`.replace(/^\s*(?:#{1,6}\s+|>\s+)/, '').trimStart();
+
+  const getMarkdownBlockPrefix = (kind) => {
+    if (kind === 'h1') return '# ';
+    if (kind === 'h2') return '## ';
+    if (kind === 'blockquote') return '> ';
+    return '';
+  };
+
+  const formatMarkdownBlockText = (value = '', kind = 'h1') => {
+    const prefix = getMarkdownBlockPrefix(kind);
+    if (!prefix) return `${value || ''}`;
+
+    const normalized = `${value || ''}`.replace(/\r\n/g, '\n');
+    const lines = normalized.split('\n');
+    return lines
+      .map((line, index) => {
+        const cleaned = stripMarkdownBlockPrefix(line);
+        if (!cleaned.trim()) return index === 0 ? prefix : '';
+        return `${prefix}${cleaned}`;
+      })
+      .join('\n');
+  };
+
+  const dispatchEditableMutation = (editable, data = '') => {
+    if (!(editable instanceof HTMLElement)) return;
+    editable.dispatchEvent(new InputEvent('input', { bubbles: true, data, inputType: 'insertText' }));
+    editable.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  const placeCaretAtElementEnd = (element) => {
+    if (!(element instanceof HTMLElement)) return;
+    const selection = window.getSelection();
+    if (!selection) return;
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    range.collapse(false);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
   const getMarkedEngine = () => {
     if (window.marked?.parse) return window.marked;
     if (window.marked?.marked?.parse) return window.marked.marked;
@@ -511,7 +579,7 @@
     if (bodyInput instanceof HTMLInputElement) return bodyInput.value || '';
 
     const editable = getBodyEditable();
-    return editable?.innerText || '';
+    return extractEditableSourceText(editable) || '';
   };
 
   const getCurrentEditorRouteKey = () => {
@@ -538,11 +606,7 @@
   const getSanitizedEditableHtml = (editable) => {
     if (!(editable instanceof HTMLElement)) return '';
     const clone = editable.cloneNode(true);
-    clone
-      .querySelectorAll(
-        '.a1right-admin-code-copy, .a1right-admin-code-lineno, .a1right-admin-code-toggle, .a1right-admin-code-wrap-toggle, .a1right-admin-code-meta',
-      )
-      .forEach((node) => node.remove());
+    stripEditableDecorationNodes(clone);
     clone.querySelectorAll('.a1right-admin-code-line').forEach((node) => {
       node.classList.remove(
         'a1right-admin-code-line',
@@ -552,6 +616,7 @@
         'is-code-single',
         'is-code-empty',
         'is-code-collapsed',
+        'is-code-nowrap',
       );
       node.removeAttribute('data-code-lang');
       node.removeAttribute('data-code-lang-key');
@@ -559,6 +624,11 @@
       node.removeAttribute('data-code-expanded');
       node.removeAttribute('data-code-wrap');
       node.style.removeProperty('--code-visible-lines');
+    });
+    clone.querySelectorAll('.a1right-admin-inline-image-line').forEach((node) => {
+      node.classList.remove('a1right-admin-inline-image-line');
+      node.removeAttribute('data-inline-image-src');
+      node.removeAttribute('data-inline-image-alt');
     });
     return clone.innerHTML;
   };
@@ -695,14 +765,30 @@
       <div class="a1right-admin-editor-panel__stats"></div>
       <div class="a1right-admin-editor-panel__actions">
         <button type="button" class="a1right-admin-chip-button" data-action="insert-code">插入 Code Block</button>
+        <button type="button" class="a1right-admin-chip-button" data-action="format-h1" data-tone="ghost">格式 1</button>
+        <button type="button" class="a1right-admin-chip-button" data-action="format-h2" data-tone="ghost">格式 2</button>
+        <button type="button" class="a1right-admin-chip-button" data-action="format-quote" data-tone="ghost">引用块</button>
       </div>
       <div class="a1right-admin-editor-panel__status"></div>
       <div class="a1right-admin-editor-panel__restore" hidden></div>
       <div class="a1right-admin-editor-panel__uploads"></div>
     `;
 
+    panel.querySelectorAll('button').forEach((button) => {
+      button.addEventListener('mousedown', (event) => event.preventDefault());
+    });
+
     panel.querySelector('[data-action="insert-code"]')?.addEventListener('click', () => {
       void insertCodeTemplateSnippet();
+    });
+    panel.querySelector('[data-action="format-h1"]')?.addEventListener('click', () => {
+      void applyBodyBlockFormat('h1');
+    });
+    panel.querySelector('[data-action="format-h2"]')?.addEventListener('click', () => {
+      void applyBodyBlockFormat('h2');
+    });
+    panel.querySelector('[data-action="format-quote"]')?.addEventListener('click', () => {
+      void applyBodyBlockFormat('blockquote');
     });
 
     container.append(panel);
@@ -1895,14 +1981,14 @@
 
   const readCodeLineText = (element) => {
     if (!(element instanceof HTMLElement)) return '';
-    if (element.matches('pre')) return `${element.textContent || ''}`;
+    if (element.matches('pre')) return extractEditableSourceText(element);
 
     const codeChild = element.firstElementChild;
-    if (codeChild instanceof HTMLElement && codeChild.tagName === 'CODE') {
+    if (codeChild instanceof HTMLElement && codeChild.tagName === 'CODE' && element.childElementCount === 1) {
       return `${codeChild.textContent || ''}`;
     }
 
-    return `${element.textContent || ''}`;
+    return extractEditableSourceText(element);
   };
 
   const isRichTextCodeLine = (element) => {
@@ -2042,6 +2128,84 @@
     });
   };
 
+  const parseMarkdownImageLine = (value = '') => {
+    const matched = `${value || ''}`.trim().match(/^!\[(.*?)\]\((.+?)\)$/);
+    if (!matched) return null;
+
+    const alt = matched[1].trim();
+    const rawPayload = matched[2].trim();
+    const titled = rawPayload.match(/^(\S+)\s+(?:"([^"]*)"|'([^']*)')$/);
+    const rawSource = titled?.[1] || rawPayload;
+    const title = titled?.[2] || titled?.[3] || '';
+    const source = normalizePreviewLink(rawSource);
+    if (!source) return null;
+
+    return {
+      alt: alt || 'image',
+      source,
+      rawSource,
+      title,
+    };
+  };
+
+  const createInlineImagePreviewCard = ({ alt = 'image', source = '', rawSource = '', title = '' }) => {
+    const wrapper = document.createElement('span');
+    wrapper.className = 'a1right-admin-inline-image-preview';
+    wrapper.setAttribute('contenteditable', 'false');
+    wrapper.setAttribute('tabindex', '-1');
+    wrapper.addEventListener('mousedown', (event) => event.preventDefault());
+
+    const image = document.createElement('img');
+    image.className = 'a1right-admin-inline-image-preview__image';
+    image.src = source;
+    image.alt = alt || 'image';
+    image.loading = 'lazy';
+    image.decoding = 'async';
+
+    const meta = document.createElement('span');
+    meta.className = 'a1right-admin-inline-image-preview__meta';
+
+    const badge = document.createElement('span');
+    badge.className = 'a1right-admin-inline-image-preview__badge';
+    badge.textContent = '图片预览';
+
+    const text = document.createElement('span');
+    text.className = 'a1right-admin-inline-image-preview__text';
+
+    const titleNode = document.createElement('strong');
+    titleNode.textContent = title || alt || '已插入图片';
+
+    const pathNode = document.createElement('code');
+    pathNode.textContent = rawSource || source;
+
+    text.append(titleNode, pathNode);
+    meta.append(badge, text);
+    wrapper.append(image, meta);
+    return wrapper;
+  };
+
+  const decorateRichTextInlineImages = (editable) => {
+    if (!(editable instanceof HTMLElement)) return;
+
+    [...editable.children].forEach((block) => {
+      if (!(block instanceof HTMLElement)) return;
+      block.querySelectorAll('.a1right-admin-inline-image-preview').forEach((node) => node.remove());
+      block.classList.remove('a1right-admin-inline-image-line');
+      block.removeAttribute('data-inline-image-src');
+      block.removeAttribute('data-inline-image-alt');
+
+      if (block.matches('pre') || block.classList.contains('a1right-admin-code-line')) return;
+
+      const parsed = parseMarkdownImageLine(extractEditableSourceText(block));
+      if (!parsed) return;
+
+      block.classList.add('a1right-admin-inline-image-line');
+      block.dataset.inlineImageSrc = parsed.source;
+      block.dataset.inlineImageAlt = parsed.alt;
+      block.append(createInlineImagePreviewCard(parsed));
+    });
+  };
+
   const decorateRichTextCodeBlocks = (editable) => {
     if (!(editable instanceof HTMLElement)) return;
 
@@ -2140,6 +2304,7 @@
   const refreshAllRichTextCodeBlocks = () => {
     document.querySelectorAll('#nc-root [class*="EditorControl"] [contenteditable="true"]').forEach((editable) => {
       decorateRichTextCodeBlocks(editable);
+      decorateRichTextInlineImages(editable);
     });
   };
 
@@ -2301,6 +2466,87 @@
     textarea.scrollTop = Math.max(0, (lineCount - 3) * lineHeight);
   };
 
+  const resolveEditableBlockFromSelection = (editable) => {
+    if (!(editable instanceof HTMLElement)) return null;
+
+    const selection = window.getSelection();
+    const anchorNode = selection?.anchorNode || null;
+    let current = anchorNode instanceof Element ? anchorNode : anchorNode?.parentElement || null;
+
+    while (current && current !== editable && current.parentElement !== editable) {
+      current = current.parentElement;
+    }
+
+    if (current instanceof HTMLElement && current.parentElement === editable) {
+      return current;
+    }
+
+    return editable.lastElementChild instanceof HTMLElement ? editable.lastElementChild : null;
+  };
+
+  const ensureEditableBlockFromSelection = (editable) => {
+    const block = resolveEditableBlockFromSelection(editable);
+    if (block instanceof HTMLElement) return block;
+
+    const created = document.createElement('p');
+    created.innerHTML = '<br>';
+    editable.append(created);
+    return created;
+  };
+
+  const isEditableBlockEmpty = (block) => !extractEditableSourceText(block).trim();
+
+  const buildEditableBlockFromMarkdownLine = (line = '') => {
+    const row = document.createElement('p');
+    if (`${line || ''}`) {
+      row.textContent = line;
+    } else {
+      row.innerHTML = '<br>';
+    }
+    return row;
+  };
+
+  const insertBlockSnippetIntoContentEditable = (editable, snippet) => {
+    if (!(editable instanceof HTMLElement)) return { ok: false, locate: null };
+
+    editable.focus();
+    const lines = `${snippet || ''}`.replace(/\r\n/g, '\n').split('\n');
+    const blocks = lines.map((line) => buildEditableBlockFromMarkdownLine(line));
+    if (!blocks.length) return { ok: false, locate: null };
+
+    const currentBlock = ensureEditableBlockFromSelection(editable);
+    const shouldReplaceCurrent = currentBlock instanceof HTMLElement && isEditableBlockEmpty(currentBlock);
+
+    if (shouldReplaceCurrent) {
+      currentBlock.replaceWith(...blocks);
+    } else if (currentBlock instanceof HTMLElement) {
+      currentBlock.after(...blocks);
+    } else {
+      editable.append(...blocks);
+    }
+
+    const tailBlock = blocks[blocks.length - 1];
+    placeCaretAtElementEnd(tailBlock);
+    dispatchEditableMutation(editable, snippet);
+
+    const locate = () => {
+      const headBlock = blocks[0];
+      if (!(headBlock instanceof HTMLElement) || !headBlock.isConnected) return;
+      editable.focus();
+      const selection = window.getSelection();
+      if (selection) {
+        const range = document.createRange();
+        range.selectNodeContents(headBlock);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      headBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      pulseField(resolveMarkdownRoot(editable), 'a1right-admin-field-guided');
+    };
+
+    return { ok: true, locate };
+  };
+
   const insertIntoContentEditable = (editable, snippet) => {
     if (!(editable instanceof HTMLElement)) return { ok: false, locate: null };
 
@@ -2325,8 +2571,7 @@
     selection.removeAllRanges();
     selection.addRange(range);
 
-    editable.dispatchEvent(new InputEvent('input', { bubbles: true, data: snippet, inputType: 'insertText' }));
-    editable.dispatchEvent(new Event('change', { bubbles: true }));
+    dispatchEditableMutation(editable, snippet);
 
     const locate = () => {
       if (!textNode.isConnected) return;
@@ -2379,9 +2624,13 @@
       null;
 
     if (editable instanceof HTMLElement) {
-      const currentText = editable.textContent || '';
+      const currentText = extractEditableSourceText(editable);
       const { leading, trailing } = getSurroundingSpacing(currentText, '');
-      const inserted = insertIntoContentEditable(editable, `${leading}${snippet.trim()}${trailing}`);
+      const payload = `${leading}${snippet.trim()}${trailing}`;
+      const shouldUseBlocks = /\n/.test(payload) || /^!\[[^\]]*\]\(.+\)$/.test(`${snippet || ''}`.trim());
+      const inserted = shouldUseBlocks
+        ? insertBlockSnippetIntoContentEditable(editable, payload)
+        : insertIntoContentEditable(editable, payload);
       if (inserted.ok) {
         return inserted;
       }
@@ -2454,6 +2703,92 @@
     scheduleRichTextCodeRefresh();
     scheduleToolbarCodeRefresh();
     return true;
+  };
+
+  const applyPlainTextBlockFormat = (value = '', selectionStart = 0, selectionEnd = selectionStart, kind = 'h1') => {
+    const normalized = `${value || ''}`.replace(/\r\n/g, '\n');
+    const startLineStart = normalized.lastIndexOf('\n', Math.max(0, selectionStart - 1)) + 1;
+    const endLineBreak = normalized.indexOf('\n', selectionEnd);
+    const endLineEnd = endLineBreak === -1 ? normalized.length : endLineBreak;
+    const selectedBlock = normalized.slice(startLineStart, endLineEnd);
+    const formattedBlock = formatMarkdownBlockText(selectedBlock, kind) || getMarkdownBlockPrefix(kind);
+
+    return {
+      nextValue: `${normalized.slice(0, startLineStart)}${formattedBlock}${normalized.slice(endLineEnd)}`,
+      selectionStart: startLineStart,
+      selectionEnd: startLineStart + formattedBlock.length,
+    };
+  };
+
+  const applyBodyBlockFormat = async (kind = 'h1') => {
+    const editable = getBodyEditable();
+    if (editable instanceof HTMLElement) {
+      const block = ensureEditableBlockFromSelection(editable);
+      const sourceText = extractEditableSourceText(block).replace(/\r?\n/g, ' ');
+      const nextText = formatMarkdownBlockText(sourceText, kind) || getMarkdownBlockPrefix(kind);
+      block.textContent = nextText;
+      placeCaretAtElementEnd(block);
+      dispatchEditableMutation(editable, nextText);
+      setDirtyState(true);
+      scheduleAutoDraftSave();
+      scheduleEditorWorkflowRefresh();
+      scheduleMarkdownPreviewRefresh();
+      scheduleRichTextCodeRefresh();
+      scheduleToolbarCodeRefresh();
+      return true;
+    }
+
+    const codeMirror = getCodeMirrorInstance(getBodyFieldContainer());
+    if (codeMirror) {
+      const doc = codeMirror.getDoc();
+      const from = doc.getCursor('from');
+      const to = doc.getCursor('to');
+      const start = { line: from.line, ch: 0 };
+      const end = { line: to.line, ch: doc.getLine(to.line).length };
+      const selectedBlock = doc.getRange(start, end);
+      const formattedBlock = formatMarkdownBlockText(selectedBlock, kind) || getMarkdownBlockPrefix(kind);
+      const lines = formattedBlock.split('\n');
+      const nextEnd = { line: start.line + lines.length - 1, ch: lines.at(-1)?.length || 0 };
+      doc.replaceRange(formattedBlock, start, end);
+      doc.setSelection(start, nextEnd);
+      codeMirror.focus();
+      setDirtyState(true);
+      scheduleAutoDraftSave();
+      scheduleEditorWorkflowRefresh();
+      scheduleMarkdownPreviewRefresh();
+      scheduleRichTextCodeRefresh();
+      scheduleToolbarCodeRefresh();
+      return true;
+    }
+
+    const textarea =
+      getBodyFieldContainer()?.querySelector('textarea') ||
+      (editorState.lastMarkdownTextarea instanceof HTMLTextAreaElement ? editorState.lastMarkdownTextarea : null);
+
+    if (textarea instanceof HTMLTextAreaElement) {
+      const result = applyPlainTextBlockFormat(
+        textarea.value,
+        textarea.selectionStart ?? editorState.lastSelectionStart ?? textarea.value.length,
+        textarea.selectionEnd ?? editorState.lastSelectionEnd ?? textarea.value.length,
+        kind,
+      );
+      setNativeValue(textarea, result.nextValue);
+      textarea.focus();
+      textarea.setSelectionRange(result.selectionStart, result.selectionEnd);
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      textarea.dispatchEvent(new Event('change', { bubbles: true }));
+      scrollTextareaSelectionIntoView(textarea, result.selectionStart);
+      setDirtyState(true);
+      scheduleAutoDraftSave();
+      scheduleEditorWorkflowRefresh();
+      scheduleMarkdownPreviewRefresh();
+      scheduleRichTextCodeRefresh();
+      scheduleToolbarCodeRefresh();
+      return true;
+    }
+
+    showToast('当前没有找到可格式化的正文区域。', 'warn', 2600);
+    return false;
   };
 
   const insertCodeTemplateSnippet = async ({ preferCodeBlockWidget = true, triggerButton = null } = {}) => {
