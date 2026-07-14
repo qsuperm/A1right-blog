@@ -39,7 +39,7 @@ pnpm setup:publish
 ## 当前部署目标
 
 - 免费托管：Cloudflare Pages
-- 预设线上地址：`https://a1right-blog.3223771807.workers.dev`
+- 预设线上地址：`https://itsa1right.ink`
 - 生产构建命令：`pnpm build`
 - 输出目录：`dist`
 - 生产分支：`master`
@@ -104,8 +104,8 @@ git -C "D:\ctftools\blog" push -u origin master
 推荐填写：
 
 - Application name：`A1right Blog CMS`
-- Homepage URL：`https://a1right-blog.3223771807.workers.dev`
-- Authorization callback URL：`https://a1right-blog.3223771807.workers.dev/api/callback`
+- Homepage URL：`https://itsa1right.ink`
+- Authorization callback URL：`https://itsa1right.ink/api/callback`
 
 > 回调地址一定要带 `/api/callback`，因为当前 Cloudflare Pages Functions 的回调接口就在这个路径。
 
@@ -124,7 +124,7 @@ git -C "D:\ctftools\blog" push -u origin master
 
 加完后重新部署一次，再打开：
 
-- `https://a1right-blog.3223771807.workers.dev/admin`
+- `https://itsa1right.ink/admin`
 
 就可以用 GitHub 登录后台发文。
 

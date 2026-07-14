@@ -7,7 +7,7 @@ import remarkMath from 'remark-math';
 import rehypeMathjax from 'rehype-mathjax';
 
 export default defineConfig({
-  site: 'https://a1right-blog.3223771807.workers.dev',
+  site: 'https://itsa1right.ink',
   output: 'static',
   trailingSlash: 'never',
   i18n: {

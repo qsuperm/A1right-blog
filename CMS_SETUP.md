@@ -78,8 +78,8 @@ branch: 'main'
 推荐这样填：
 
 - **Application name**：`A1right Blog CMS`
-- **Homepage URL**：`https://a1right-blog.3223771807.workers.dev`
-- **Authorization callback URL**：`https://a1right-blog.3223771807.workers.dev/api/callback`
+- **Homepage URL**：`https://itsa1right.ink`
+- **Authorization callback URL**：`https://itsa1right.ink/api/callback`
 
 创建后你会拿到：
 
@@ -218,7 +218,7 @@ Pages 项目中添加环境变量：
    - `GITHUB_CLIENT_ID`
    - `GITHUB_CLIENT_SECRET`
 4. OAuth App 的回调地址是否是：
-   - `https://a1right-blog.3223771807.workers.dev/api/callback`
+   - `https://itsa1right.ink/api/callback`
 5. 是否已经重新部署
 
 ---
