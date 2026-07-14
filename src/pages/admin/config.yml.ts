@@ -4,6 +4,7 @@ import { CMS, SITE } from '../../config';
 export const prerender = true;
 
 const siteUrl = new URL(SITE.provisionalUrl);
+const oauthBaseUrl = 'https://a1right-blog.3223771807.workers.dev';
 const quote = (value: string) => JSON.stringify(value);
 
 type LocaleMode = 'zh-cn' | 'en';
@@ -343,7 +344,7 @@ backend:
   repo: ${quote(CMS.repo)}
   branch: ${quote(CMS.branch)}
   site_domain: ${quote(siteUrl.hostname)}
-  base_url: ${quote(siteUrl.origin)}
+  base_url: ${quote(oauthBaseUrl)}
   auth_endpoint: ${quote(CMS.authEndpoint)}
   commit_messages:
     create: "创建 {{collection}}：{{slug}}"
