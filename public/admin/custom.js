@@ -47,6 +47,7 @@
     lastMarkdownTextarea: null,
     lastSelectionStart: null,
     lastSelectionEnd: null,
+    lastRichTextSelection: null,
     lastImageRoot: null,
     lastContextKind: null,
     lastContextRoot: null,
@@ -376,18 +377,6 @@
     if (!(editable instanceof HTMLElement)) return;
     editable.dispatchEvent(new InputEvent('input', { bubbles: true, data, inputType: 'insertText' }));
     editable.dispatchEvent(new Event('change', { bubbles: true }));
-  };
-
-  const placeCaretAtElementEnd = (element) => {
-    if (!(element instanceof HTMLElement)) return;
-    const selection = window.getSelection();
-    if (!selection) return;
-    const range = document.createRange();
-    range.selectNodeContents(element);
-    range.collapse(false);
-    selection.removeAllRanges();
-    selection.addRange(range);
-    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   const getMarkedEngine = () => {
@@ -1989,7 +1978,41 @@
 
     if (editable instanceof HTMLElement) {
       editorState.lastMarkdownEditable = editable;
+      editorState.lastRichTextSelection = captureRichTextSelection(editable);
     }
+  };
+
+  const isNodeWithinEditable = (node, editable) => {
+    if (!(editable instanceof HTMLElement) || !node) return false;
+    const element = node instanceof Element ? node : node.parentElement;
+    return element instanceof Element && editable.contains(element);
+  };
+
+  const captureRichTextSelection = (editable) => {
+    if (!(editable instanceof HTMLElement)) return null;
+    const selection = window.getSelection();
+    if (!selection?.rangeCount) return null;
+
+    const range = selection.getRangeAt(0);
+    if (!isNodeWithinEditable(range.startContainer, editable) || !isNodeWithinEditable(range.endContainer, editable)) {
+      return null;
+    }
+
+    return range.cloneRange();
+  };
+
+  const restoreRichTextSelection = (editable, bookmark) => {
+    if (!(editable instanceof HTMLElement) || !(bookmark instanceof Range)) return false;
+    if (!bookmark.startContainer.isConnected || !bookmark.endContainer.isConnected) return false;
+    if (!isNodeWithinEditable(bookmark.startContainer, editable) || !isNodeWithinEditable(bookmark.endContainer, editable)) {
+      return false;
+    }
+
+    const selection = window.getSelection();
+    if (!selection) return false;
+    selection.removeAllRanges();
+    selection.addRange(bookmark);
+    return true;
   };
 
   const syncImageEditorState = (target) => {
@@ -2015,7 +2038,14 @@
 
     if (markdownField) {
       if (active instanceof Element) syncMarkdownEditorState(active);
-      return { kind: 'markdown', root: markdownField };
+      const editable =
+        (active instanceof HTMLElement && active.isContentEditable ? active : null) ||
+        markdownField.querySelector('[contenteditable="true"]');
+      return {
+        kind: 'markdown',
+        root: markdownField,
+        richTextSelection: captureRichTextSelection(editable),
+      };
     }
 
     if (
@@ -3089,7 +3119,8 @@
       .filter((editable) => editable instanceof HTMLElement);
 
     decoratedEditables.forEach((editable) => {
-      decorateRichTextCodeBlocks(editable);
+      // Decap owns the rich-text subtree. Adding code controls to it makes React's
+      // reconciler lose track of child nodes after an edit or deletion.
       decorateRichTextInlineImages(editable);
     });
 
@@ -3346,133 +3377,25 @@
     textarea.scrollTop = Math.max(0, (lineCount - 3) * lineHeight);
   };
 
-  const resolveEditableBlockFromSelection = (editable) => {
-    if (!(editable instanceof HTMLElement)) return null;
-
-    const selection = window.getSelection();
-    const anchorNode = selection?.anchorNode || null;
-    let current = anchorNode instanceof Element ? anchorNode : anchorNode?.parentElement || null;
-
-    while (current && current !== editable && current.parentElement !== editable) {
-      current = current.parentElement;
-    }
-
-    if (current instanceof HTMLElement && current.parentElement === editable) {
-      return current;
-    }
-
-    return editable.lastElementChild instanceof HTMLElement ? editable.lastElementChild : null;
-  };
-
-  const ensureEditableBlockFromSelection = (editable) => {
-    const block = resolveEditableBlockFromSelection(editable);
-    if (block instanceof HTMLElement) return block;
-
-    const created = document.createElement('p');
-    created.innerHTML = '<br>';
-    editable.append(created);
-    return created;
-  };
-
-  const isEditableBlockEmpty = (block) => !extractEditableSourceText(block).trim();
-
-  const buildEditableBlockFromMarkdownLine = (line = '') => {
-    const row = document.createElement('p');
-    if (`${line || ''}`) {
-      row.textContent = line;
-    } else {
-      row.innerHTML = '<br>';
-    }
-    return row;
-  };
-
-  const insertBlockSnippetIntoContentEditable = (editable, snippet) => {
-    if (!(editable instanceof HTMLElement)) return { ok: false, locate: null };
-
-    editable.focus();
-    const lines = `${snippet || ''}`.replace(/\r\n/g, '\n').split('\n');
-    const blocks = lines.map((line) => buildEditableBlockFromMarkdownLine(line));
-    if (lines.some((line) => parseMarkdownImageLine(line))) {
-      blocks.push(buildEditableBlockFromMarkdownLine(''));
-    }
-    if (!blocks.length) return { ok: false, locate: null };
-
-    const currentBlock = ensureEditableBlockFromSelection(editable);
-    const shouldReplaceCurrent = currentBlock instanceof HTMLElement && isEditableBlockEmpty(currentBlock);
-
-    if (shouldReplaceCurrent) {
-      currentBlock.replaceWith(...blocks);
-    } else if (currentBlock instanceof HTMLElement) {
-      currentBlock.after(...blocks);
-    } else {
-      editable.append(...blocks);
-    }
-
-    const tailBlock = blocks[blocks.length - 1];
-    placeCaretAtElementEnd(tailBlock);
-    dispatchEditableMutation(editable, snippet);
-
-    const locate = () => {
-      const headBlock = blocks[0];
-      if (!(headBlock instanceof HTMLElement) || !headBlock.isConnected) return;
-      editable.focus();
-      const selection = window.getSelection();
-      if (selection) {
-        const range = document.createRange();
-        range.selectNodeContents(headBlock);
-        selection.removeAllRanges();
-        selection.addRange(range);
-      }
-      headBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      pulseField(resolveMarkdownRoot(editable), 'a1right-admin-field-guided');
-    };
-
-    return { ok: true, locate };
-  };
-
   const insertIntoContentEditable = (editable, snippet) => {
     if (!(editable instanceof HTMLElement)) return { ok: false, locate: null };
 
     editable.focus();
-    const selection = window.getSelection();
-    if (!selection) return { ok: false, locate: null };
-
-    if (!selection.rangeCount) {
-      const range = document.createRange();
-      range.selectNodeContents(editable);
-      range.collapse(false);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    }
-
-    const range = selection.getRangeAt(0);
-    range.deleteContents();
-    const textNode = document.createTextNode(snippet);
-    range.insertNode(textNode);
-    range.setStartAfter(textNode);
-    range.collapse(true);
-    selection.removeAllRanges();
-    selection.addRange(range);
+    const inserted = document.execCommand('insertText', false, snippet);
+    if (!inserted) return { ok: false, locate: null };
 
     dispatchEditableMutation(editable, snippet);
 
     const locate = () => {
-      if (!textNode.isConnected) return;
       editable.focus();
-      const nextSelection = window.getSelection();
-      if (!nextSelection) return;
-      const nextRange = document.createRange();
-      nextRange.selectNodeContents(textNode);
-      nextSelection.removeAllRanges();
-      nextSelection.addRange(nextRange);
-      textNode.parentElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      editable.scrollIntoView({ behavior: 'smooth', block: 'center' });
       pulseField(resolveMarkdownRoot(editable), 'a1right-admin-field-guided');
     };
 
     return { ok: true, locate };
   };
 
-  const insertMarkdownSnippet = (root, snippet) => {
+  const insertMarkdownSnippet = (root, snippet, richTextSelection = null) => {
     const codeMirror = getCodeMirrorInstance(root);
     if (codeMirror) {
       const doc = codeMirror.getDoc();
@@ -3507,21 +3430,14 @@
       null;
 
     if (editable instanceof HTMLElement) {
+      restoreRichTextSelection(editable, richTextSelection);
       const currentText = extractEditableSourceText(editable);
       const { leading, trailing } = getSurroundingSpacing(currentText, '');
       const payload = `${leading}${snippet.trim()}${trailing}`;
-      const shouldUseBlocks = /\n/.test(payload) || /^!\[[^\]]*\]\(.+\)$/.test(`${snippet || ''}`.trim());
-      const inserted = shouldUseBlocks
-        ? insertBlockSnippetIntoContentEditable(editable, payload)
-        : insertIntoContentEditable(editable, payload);
+      const inserted = insertIntoContentEditable(editable, payload);
       if (inserted.ok) {
         return inserted;
       }
-    }
-
-    const directInsert = insertIntoContentEditable(editable, snippet);
-    if (directInsert.ok) {
-      return directInsert;
     }
 
     const textarea =
@@ -3561,31 +3477,52 @@
     return { ok: true, locate };
   };
 
+  const insertImagesIntoRichTextEditor = (root, uploads, richTextSelection = null) => {
+    const resolvedRoot = resolveMarkdownRoot(root);
+    const editable =
+      (resolvedRoot instanceof Element && resolvedRoot.querySelector('[contenteditable="true"]')) ||
+      editorState.lastMarkdownEditable ||
+      null;
+
+    if (!(editable instanceof HTMLElement) || !uploads.length) return { ok: false, locate: null };
+
+    editable.focus();
+    restoreRichTextSelection(editable, richTextSelection);
+
+    const selection = window.getSelection();
+    if (!selection?.rangeCount || !isNodeWithinEditable(selection.getRangeAt(0).startContainer, editable)) {
+      const range = document.createRange();
+      range.selectNodeContents(editable);
+      range.collapse(false);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
+
+    for (const upload of uploads) {
+      const inserted = document.execCommand('insertImage', false, upload.publicPath);
+      if (!inserted) return { ok: false, locate: null };
+      document.execCommand('insertParagraph', false);
+    }
+
+    // Native editing commands produce DOM/input changes that Decap can serialize.
+    // Do not append, replace, or wrap nodes inside this controlled editor.
+    dispatchEditableMutation(editable, '');
+
+    return {
+      ok: true,
+      locate: () => {
+        editable.focus();
+        editable.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        pulseField(resolveMarkdownRoot(editable), 'a1right-admin-field-guided');
+      },
+    };
+  };
+
   const insertRichTextCodeTemplate = () => {
     const editable = getBodyEditable();
     if (!(editable instanceof HTMLElement)) return false;
 
-    const lines = ['# code block', '', 'print("hello world")'];
-    const fragment = document.createDocumentFragment();
-
-    lines.forEach((line) => {
-      const row = document.createElement('p');
-      const code = document.createElement('code');
-      code.textContent = line;
-      row.append(code);
-      fragment.append(row);
-    });
-
-    const spacer = document.createElement('p');
-    spacer.innerHTML = '<br>';
-    fragment.append(spacer);
-    editable.append(fragment);
-    editable.dispatchEvent(new Event('input', { bubbles: true }));
-    editable.dispatchEvent(new Event('change', { bubbles: true }));
-    editable.focus();
-    scheduleRichTextCodeRefresh();
-    scheduleToolbarCodeRefresh();
-    return true;
+    return insertIntoContentEditable(editable, ['# code block', '', 'print("hello world")'].join('\n')).ok;
   };
 
   const applyPlainTextBlockFormat = (value = '', selectionStart = 0, selectionEnd = selectionStart, kind = 'h1') => {
@@ -3606,12 +3543,11 @@
   const applyBodyBlockFormat = async (kind = 'h1') => {
     const editable = getBodyEditable();
     if (editable instanceof HTMLElement) {
-      const block = ensureEditableBlockFromSelection(editable);
-      const sourceText = extractEditableSourceText(block).replace(/\r?\n/g, ' ');
-      const nextText = formatMarkdownBlockText(sourceText, kind) || getMarkdownBlockPrefix(kind);
-      block.textContent = nextText;
-      placeCaretAtElementEnd(block);
-      dispatchEditableMutation(editable, nextText);
+      editable.focus();
+      const tag = kind === 'h1' ? 'H1' : kind === 'h2' ? 'H2' : 'BLOCKQUOTE';
+      const formatted = document.execCommand('formatBlock', false, tag);
+      if (!formatted) return false;
+      dispatchEditableMutation(editable, '');
       setDirtyState(true);
       scheduleAutoDraftSave();
       scheduleEditorWorkflowRefresh();
@@ -3985,8 +3921,10 @@
       const snippet = uploads
         .map((item) => `![${item.alt || 'image'}](${item.publicPath})`)
         .join('\n\n');
-
-      const inserted = insertMarkdownSnippet(context.root, snippet);
+      const richTextInserted = insertImagesIntoRichTextEditor(context.root, uploads, context.richTextSelection);
+      const inserted = richTextInserted.ok
+        ? richTextInserted
+        : insertMarkdownSnippet(context.root, snippet, context.richTextSelection);
       if (!inserted.ok) {
         await navigator.clipboard?.writeText(snippet).catch(() => {});
         finishUploadOverlay('Markdown 已复制到剪贴板');
