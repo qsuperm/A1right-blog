@@ -1169,29 +1169,38 @@ body.admin-shell--cms-active::before {
 }
 
 #nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-inline-image-line {
-  padding-bottom: .18rem !important;
+  min-height: 1px;
+  margin: 26px 0 !important;
+  padding: 0 !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
 }
 
 #nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-inline-image-preview {
-  width: 100%;
-  margin-top: 12px;
-  display: grid;
-  gap: 10px;
-  border: 1px solid rgba(32, 189, 145, .14);
-  border-radius: 16px;
+  width: min(100%, 920px);
+  margin: 0;
+  display: block;
+  color: #17362e;
+  font-size: 1rem;
+  line-height: normal;
+  border: 1px solid rgba(32, 189, 145, .16);
+  border-radius: 12px;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 100% 0, rgba(32, 189, 145, .08), transparent 12rem),
-    linear-gradient(180deg, rgba(255, 255, 255, .97), rgba(245, 250, 248, .98));
-  box-shadow: 0 14px 34px rgba(29, 68, 57, .08);
+  background: rgba(246, 250, 248, .9);
+  box-shadow: 0 14px 34px rgba(29, 68, 57, .1);
 }
 
 #nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-inline-image-preview__image {
   width: 100%;
-  max-height: 340px;
+  max-height: 680px;
   display: block;
-  object-fit: cover;
+  object-fit: contain;
   background: rgba(223, 240, 234, .62);
+}
+
+#nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-inline-image-preview__meta {
+  display: none !important;
 }
 
 #nc-root [class*="EditorControl"] [contenteditable="true"] .a1right-admin-inline-image-preview__meta {
@@ -2440,7 +2449,41 @@ body.admin-shell--cms-active::before {
   font-weight: 700;
 }
 
-@media (max-width: 1280px) {
+/* Long-form article canvas: keep the outline beside the editor on ordinary laptop screens. */
+body.admin-route--editor #nc-root [class*="ControlPaneContainer"] {
+  width: min(1500px, calc(100% - 48px)) !important;
+  max-width: 1500px !important;
+}
+
+#nc-root .a1right-admin-body-control {
+  grid-template-columns: minmax(172px, 200px) minmax(0, 1fr) !important;
+  gap: 18px 24px !important;
+}
+
+#nc-root .a1right-admin-editor-outline {
+  grid-row: 2 / span 100 !important;
+  top: 92px;
+  max-height: calc(100vh - 116px);
+  overflow: auto;
+}
+
+#nc-root .a1right-admin-editor-outline__hint {
+  display: none;
+}
+
+#nc-root .a1right-admin-editor-panel {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+#nc-root .a1right-admin-editor-panel__restore:not([hidden]) {
+  margin-top: 16px;
+}
+
+@media (max-width: 860px) {
   #nc-root .a1right-admin-body-control {
     grid-template-columns: 1fr !important;
   }
@@ -2453,6 +2496,7 @@ body.admin-shell--cms-active::before {
 
   #nc-root .a1right-admin-editor-outline {
     position: static;
+    max-height: none;
   }
 
   #nc-root [class*="EditorToolbar"] .a1right-admin-toolbar-workbench {

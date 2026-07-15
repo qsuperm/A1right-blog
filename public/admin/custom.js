@@ -7,6 +7,7 @@
   const previewState = {
     objectUrls: new Set(),
     imageFieldState: new WeakMap(),
+    inlineImageSources: new Map(),
   };
   const decoratorState = {
     richTextCodeRefreshRaf: 0,
@@ -1078,6 +1079,8 @@
       <div class="a1right-admin-editor-panel__uploads"></div>
     `;
 
+    panel.innerHTML = '<div class="a1right-admin-editor-panel__restore" hidden></div>';
+
     panel.querySelectorAll('button').forEach((button) => {
       button.addEventListener('mousedown', (event) => event.preventDefault());
     });
@@ -1155,10 +1158,12 @@
   };
 
   const pushRecentUploads = (uploads) => {
+    uploads.forEach(cacheInlineImagePreview);
     uiState.recentUploads = [...uploads, ...uiState.recentUploads]
       .filter((item) => item?.fieldPath)
       .slice(0, 8);
     renderRecentUploadsRail();
+    scheduleRichTextCodeRefresh();
   };
 
   const renderEditorWorkflowPanel = () => {
@@ -1248,6 +1253,21 @@
     if (!trimmed) return '';
     if (/^(https?:|mailto:|tel:|#)/i.test(trimmed)) return trimmed;
     return normalizeAssetUrl(trimmed);
+  };
+
+  const cacheInlineImagePreview = (upload) => {
+    const previewUrl = `${upload?.previewUrl || ''}`.trim();
+    if (!previewUrl) return;
+
+    [upload?.publicPath, upload?.fieldPath]
+      .map((value) => normalizeFieldPath(value || ''))
+      .filter(Boolean)
+      .forEach((path) => previewState.inlineImageSources.set(path, previewUrl));
+  };
+
+  const resolveInlineImageSource = (rawSource = '') => {
+    const fieldPath = normalizeFieldPath(rawSource);
+    return previewState.inlineImageSources.get(fieldPath) || normalizePreviewLink(rawSource);
   };
 
   const ensureMarkdownPreviewPanel = () => {
@@ -2729,7 +2749,7 @@
     const titled = rawPayload.match(/^(\S+)\s+(?:"([^"]*)"|'([^']*)')$/);
     const rawSource = titled?.[1] || rawPayload;
     const title = titled?.[2] || titled?.[3] || '';
-    const source = normalizePreviewLink(rawSource);
+    const source = resolveInlineImageSource(rawSource);
     if (!source) return null;
 
     return {
@@ -2745,6 +2765,7 @@
     wrapper.className = 'a1right-admin-inline-image-preview';
     wrapper.setAttribute('contenteditable', 'false');
     wrapper.setAttribute('tabindex', '-1');
+    wrapper.setAttribute('aria-label', title || alt || 'article image');
     wrapper.addEventListener('mousedown', (event) => event.preventDefault());
 
     const image = document.createElement('img');
@@ -2753,6 +2774,13 @@
     image.alt = alt || 'image';
     image.loading = 'lazy';
     image.decoding = 'async';
+    const fallbackSource = normalizePreviewLink(rawSource);
+    image.addEventListener('error', () => {
+      if (fallbackSource && image.dataset.fallbackApplied !== 'true' && image.src !== fallbackSource) {
+        image.dataset.fallbackApplied = 'true';
+        image.src = fallbackSource;
+      }
+    });
 
     const meta = document.createElement('span');
     meta.className = 'a1right-admin-inline-image-preview__meta';
@@ -2772,7 +2800,7 @@
 
     text.append(titleNode, pathNode);
     meta.append(badge, text);
-    wrapper.append(image, meta);
+    wrapper.append(image);
     return wrapper;
   };
 
@@ -3193,6 +3221,9 @@
     editable.focus();
     const lines = `${snippet || ''}`.replace(/\r\n/g, '\n').split('\n');
     const blocks = lines.map((line) => buildEditableBlockFromMarkdownLine(line));
+    if (lines.some((line) => parseMarkdownImageLine(line))) {
+      blocks.push(buildEditableBlockFromMarkdownLine(''));
+    }
     if (!blocks.length) return { ok: false, locate: null };
 
     const currentBlock = ensureEditableBlockFromSelection(editable);
