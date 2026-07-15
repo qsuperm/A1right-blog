@@ -3477,47 +3477,6 @@
     return { ok: true, locate };
   };
 
-  const insertImagesIntoRichTextEditor = (root, uploads, richTextSelection = null) => {
-    const resolvedRoot = resolveMarkdownRoot(root);
-    const editable =
-      (resolvedRoot instanceof Element && resolvedRoot.querySelector('[contenteditable="true"]')) ||
-      editorState.lastMarkdownEditable ||
-      null;
-
-    if (!(editable instanceof HTMLElement) || !uploads.length) return { ok: false, locate: null };
-
-    editable.focus();
-    restoreRichTextSelection(editable, richTextSelection);
-
-    const selection = window.getSelection();
-    if (!selection?.rangeCount || !isNodeWithinEditable(selection.getRangeAt(0).startContainer, editable)) {
-      const range = document.createRange();
-      range.selectNodeContents(editable);
-      range.collapse(false);
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-    }
-
-    for (const upload of uploads) {
-      const inserted = document.execCommand('insertImage', false, upload.publicPath);
-      if (!inserted) return { ok: false, locate: null };
-      document.execCommand('insertParagraph', false);
-    }
-
-    // Native editing commands produce DOM/input changes that Decap can serialize.
-    // Do not append, replace, or wrap nodes inside this controlled editor.
-    dispatchEditableMutation(editable, '');
-
-    return {
-      ok: true,
-      locate: () => {
-        editable.focus();
-        editable.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        pulseField(resolveMarkdownRoot(editable), 'a1right-admin-field-guided');
-      },
-    };
-  };
-
   const insertRichTextCodeTemplate = () => {
     const editable = getBodyEditable();
     if (!(editable instanceof HTMLElement)) return false;
@@ -3921,10 +3880,9 @@
       const snippet = uploads
         .map((item) => `![${item.alt || 'image'}](${item.publicPath})`)
         .join('\n\n');
-      const richTextInserted = insertImagesIntoRichTextEditor(context.root, uploads, context.richTextSelection);
-      const inserted = richTextInserted.ok
-        ? richTextInserted
-        : insertMarkdownSnippet(context.root, snippet, context.richTextSelection);
+      // Keep Decap's persisted value as Markdown. The editor's CSS render layer
+      // displays this line as an image without introducing an unmanaged <img> node.
+      const inserted = insertMarkdownSnippet(context.root, snippet, context.richTextSelection);
       if (!inserted.ok) {
         await navigator.clipboard?.writeText(snippet).catch(() => {});
         finishUploadOverlay('Markdown 已复制到剪贴板');
