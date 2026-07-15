@@ -1,0 +1,117 @@
+<script is:inline>
+  (() => {
+    const COUNT_API_BASE = 'https://countapi.mileshilliard.com/api/v1';
+    const SITE_COUNTER_PREFIX = 'itsa1right-ink';
+    const TOTAL_COUNTER_KEY = '__site_total__';
+    const state = {
+      counts: new Map(),
+      pending: new Map(),
+    };
+
+    const normalizePath = (value) => {
+      try {
+        if (!value) return '/';
+        const url = new URL(value, window.location.origin);
+        const normalized = url.pathname.replace(/\/+$/, '');
+        return normalized || '/';
+      } catch {
+        return '/';
+      }
+    };
+
+    const buildCounterKey = (path, kind = 'page') => {
+      const normalized = kind === 'site-total' ? TOTAL_COUNTER_KEY : normalizePath(path);
+      const encoded = encodeURIComponent(normalized).replace(/%/g, '_');
+      return `${SITE_COUNTER_PREFIX}__${kind}__${encoded}`;
+    };
+
+    const setBadgeValue = (element, value) => {
+      const valueNode = element.querySelector('.pageview-badge__value');
+      if (!valueNode) return;
+      valueNode.textContent = Number.isFinite(value) ? new Intl.NumberFormat('en-US').format(value) : '--';
+    };
+
+    const requestCounter = async (path, { hit = false, kind = 'page' } = {}) => {
+      const normalized = kind === 'site-total' ? TOTAL_COUNTER_KEY : normalizePath(path);
+      const cacheKey = `${kind}:${normalized}`;
+      const pendingKey = `${hit ? 'hit' : 'get'}:${cacheKey}`;
+
+      if (!hit && state.counts.has(cacheKey)) return state.counts.get(cacheKey);
+      if (state.pending.has(pendingKey)) return state.pending.get(pendingKey);
+
+      const endpoint = hit ? 'hit' : 'get';
+      const key = buildCounterKey(normalized, kind);
+      const promise = fetch(`${COUNT_API_BASE}/${endpoint}/${encodeURIComponent(key)}`, {
+        mode: 'cors',
+        cache: 'no-store',
+      })
+        .then(async (response) => {
+          if (response.status === 404 && !hit) return 0;
+          const payload = await response.json();
+          const nextValue = Number(payload?.value ?? 0);
+          return Number.isFinite(nextValue) ? nextValue : 0;
+        })
+        .catch(() => null)
+        .then((value) => {
+          state.pending.delete(pendingKey);
+          if (value !== null) state.counts.set(cacheKey, value);
+          return value;
+        });
+
+      state.pending.set(pendingKey, promise);
+      return promise;
+    };
+
+    const hydrateBadges = async () => {
+      const badgeMap = new Map();
+      const badges = document.querySelectorAll('[data-pageview-path], [data-pageview-total="true"]');
+
+      badges.forEach((badge) => {
+        const isTotal = badge.getAttribute('data-pageview-total') === 'true';
+        const normalizedPath = isTotal ? TOTAL_COUNTER_KEY : normalizePath(badge.getAttribute('data-pageview-path') || '/');
+        const groupKey = `${isTotal ? 'site-total' : 'page'}:${normalizedPath}`;
+        if (!badgeMap.has(groupKey)) badgeMap.set(groupKey, []);
+        badgeMap.get(groupKey).push(badge);
+      });
+
+      await Promise.all(
+        [...badgeMap.entries()].map(async ([groupKey, elements]) => {
+          const [kind, rawPath] = groupKey.split(':');
+          const value = await requestCounter(rawPath, { kind });
+          elements.forEach((element) => setBadgeValue(element, value));
+        }),
+      );
+    };
+
+    const incrementCurrentPage = async () => {
+      const currentPath = normalizePath(window.location.pathname);
+      const sessionKey = `a1right-pageview-hit:${currentPath}`;
+      const shouldHit = !window.sessionStorage.getItem(sessionKey);
+
+      const [pageValue, totalValue] = await Promise.all([
+        requestCounter(currentPath, { hit: shouldHit, kind: 'page' }),
+        requestCounter(TOTAL_COUNTER_KEY, { hit: shouldHit, kind: 'site-total' }),
+      ]);
+
+      if (shouldHit) window.sessionStorage.setItem(sessionKey, '1');
+
+      document.querySelectorAll(`[data-pageview-path="${currentPath}"]`).forEach((element) => {
+        setBadgeValue(element, pageValue);
+      });
+      document.querySelectorAll('[data-pageview-total="true"]').forEach((element) => {
+        setBadgeValue(element, totalValue);
+      });
+    };
+
+    const run = async () => {
+      await incrementCurrentPage();
+      await hydrateBadges();
+    };
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', run, { once: true });
+    } else {
+      run();
+    }
+  })();
+</script>

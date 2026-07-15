@@ -1,0 +1,34 @@
+---
+import type { Locale } from '../config';
+
+interface Props {
+  locale?: Locale;
+  path?: string;
+  total?: boolean;
+  mode?: 'compact' | 'full';
+}
+
+const {
+  locale = 'zh-cn',
+  path,
+  total = false,
+  mode = 'compact',
+} = Astro.props;
+
+const label = locale === 'en' ? 'Views' : '浏览量';
+const totalLabel = locale === 'en' ? 'Site views' : '总站浏览量';
+const resolvedPath = total ? undefined : path;
+const resolvedLabel = total ? totalLabel : label;
+---
+
+<span
+  class:list={['pageview-badge', mode === 'compact' && 'pageview-badge--compact']}
+  data-pageview-path={resolvedPath}
+  data-pageview-total={total ? 'true' : undefined}
+  data-pageview-label={resolvedLabel}
+  aria-live="polite"
+>
+  <span class="pageview-badge__icon" aria-hidden="true">◔</span>
+  <span class="pageview-badge__label">{resolvedLabel}</span>
+  <strong class="pageview-badge__value">--</strong>
+</span>

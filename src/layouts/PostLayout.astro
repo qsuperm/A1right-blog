@@ -1,5 +1,6 @@
 ---
 import BaseLayout from './BaseLayout.astro';
+import PageViewBadge from '../components/PageViewBadge.astro';
 import { SITE, type Locale } from '../config';
 import {
   formatDate,
@@ -99,6 +100,7 @@ const breadcrumbStructuredData = buildBreadcrumbJsonLd([
           <a class="article-hero__chip" href={getCategoryUrl(locale, entry.data.categoryKey)}>{entry.data.category}</a>
           <time datetime={entry.data.publishedAt.toISOString()}>{publishedLabel}: {formatDate(entry.data.publishedAt, locale)}</time>
           <span>{readingLabel}</span>
+          <PageViewBadge path={articleUrl} locale={locale} />
           <span>{authorLabel}: {authorName}</span>
           {entry.data.updatedAt && (
             <time datetime={entry.data.updatedAt.toISOString()}>{updatedLabel}: {formatDate(entry.data.updatedAt, locale)}</time>
@@ -181,6 +183,10 @@ const breadcrumbStructuredData = buildBreadcrumbJsonLd([
             <div>
               <dt>{locale === 'en' ? 'Category' : '栏目'}</dt>
               <dd>{entry.data.category}</dd>
+            </div>
+            <div>
+              <dt>{locale === 'en' ? 'Views' : '浏览量'}</dt>
+              <dd><PageViewBadge path={articleUrl} locale={locale} mode="full" /></dd>
             </div>
             <div>
               <dt>{locale === 'en' ? 'Tags' : '标签'}</dt>

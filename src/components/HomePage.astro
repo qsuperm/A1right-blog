@@ -1,4 +1,5 @@
 ---
+import PageViewBadge from './PageViewBadge.astro';
 import { SITE, UI, type Locale } from '../config';
 import {
   CATEGORY_META,
@@ -151,6 +152,7 @@ const totalWords = articles.reduce((sum, entry) => sum + (entry.body ?? '').spli
               {post.data.pinned && <span class="fo-pinned">▣ {UI[locale].sticky}</span>}
               <time datetime={post.data.publishedAt.toISOString()}>▢ {formatDate(post.data.publishedAt, locale)}</time>
               <a href={getCategoryUrl(locale, post.data.categoryKey)}>▤ {post.data.category}</a>
+              <PageViewBadge path={getArticleUrl(post)} locale={locale} />
             </div>
             <p>{post.data.excerpt}</p>
             <div class="fo-post-card__tags">{post.data.tags.map((tag) => <a href={getTagUrl(locale, tag)}>#{tag}</a>)}</div>
@@ -171,6 +173,7 @@ const totalWords = articles.reduce((sum, entry) => sum + (entry.body ?? '').spli
         <div><dt>□ {copy.categories}</dt><dd>{categories.length}</dd></div>
         <div><dt>◇ {copy.tags}</dt><dd>{totalTags}</dd></div>
         <div><dt>▧ {copy.words}</dt><dd>{totalWords.toLocaleString()}</dd></div>
+        <div><dt>◔ {locale === 'en' ? 'Site views' : '总站浏览量'}</dt><dd><PageViewBadge total locale={locale} mode="full" /></dd></div>
         <div><dt>◴ {copy.uptime}</dt><dd>1 {copy.days}</dd></div>
         <div><dt>⌁ {copy.activity}</dt><dd>{copy.today}</dd></div>
       </dl>

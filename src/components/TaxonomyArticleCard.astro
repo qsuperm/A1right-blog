@@ -1,4 +1,5 @@
 ﻿---
+import PageViewBadge from './PageViewBadge.astro';
 import type { Locale } from '../config';
 import { formatDate, getArticleUrl, getCategoryUrl, getTagUrl, type ArticleEntry } from '../utils/articles';
 
@@ -20,6 +21,7 @@ const HeadingTag = headingTag;
     <div class="taxonomy-post__meta">
       <a class="taxonomy-post__chip" href={getCategoryUrl(locale, entry.data.categoryKey)}>{entry.data.category}</a>
       <time datetime={entry.data.publishedAt.toISOString()}>{formatDate(entry.data.publishedAt, locale)}</time>
+      <PageViewBadge path={getArticleUrl(entry)} locale={locale} />
     </div>
     <HeadingTag class="taxonomy-post__title">
       <a href={getArticleUrl(entry)}>{entry.data.title}</a>

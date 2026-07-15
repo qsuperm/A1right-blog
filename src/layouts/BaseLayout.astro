@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import { SITE, type Locale } from '../config';
 import CursorFx from '../components/CursorFx.astro';
+import PageViewScript from '../components/PageViewScript.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
 
@@ -81,5 +82,6 @@ const structuredDataItems = Array.isArray(structuredData)
     </main>
     <SiteFooter locale={locale} />
     <CursorFx />
+    <PageViewScript />
   </body>
 </html>
