@@ -185,6 +185,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "LXGW WenKai Quote";
+  src: url("/assets/fonts/lxgw/lxgw-wenkai-title.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --font-sans: "HarmonyOS Sans SC", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   --font-display: "LXGW WenKai Title", "HarmonyOS Sans SC", "Noto Sans SC", "Microsoft YaHei", sans-serif;

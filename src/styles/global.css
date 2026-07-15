@@ -2327,9 +2327,10 @@ body {
   min-height: 5.25em;
   margin: 18px auto 0;
   color: rgba(255, 255, 255, .97);
-  font-family: "LXGW WenKai Title", "Segoe Print", "Bradley Hand", cursive;
+  font-family: "LXGW WenKai Quote", "Segoe Print", "Bradley Hand", cursive;
   font-size: clamp(1rem, 1.45vw, 1.4rem);
-  font-weight: 700;
+  font-weight: 400;
+  font-synthesis: none;
   font-kerning: normal;
   font-variant-ligatures: common-ligatures;
   letter-spacing: 0;
