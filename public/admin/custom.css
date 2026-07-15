@@ -2485,12 +2485,27 @@ body.admin-route--editor #nc-root [class*="ControlPaneContainer"] {
 
 /* Decap changes its internal editor class between releases; the body container is our stable WYSIWYG boundary. */
 #nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-line {
+  --inline-image-width: 100%;
+  --inline-image-aspect: 16 / 9;
   min-height: 1px;
   margin: 26px 0 !important;
   padding: 0 !important;
   color: transparent !important;
   font-size: 0 !important;
   line-height: 0 !important;
+}
+
+#nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-line::after {
+  width: min(var(--inline-image-width), 920px);
+  max-width: 100%;
+  aspect-ratio: var(--inline-image-aspect);
+  display: block;
+  border: 1px solid rgba(32, 189, 145, .16);
+  border-radius: 12px;
+  content: '';
+  background: var(--inline-image-url) center / contain no-repeat, rgba(246, 250, 248, .9);
+  box-shadow: 0 14px 34px rgba(29, 68, 57, .1);
+  cursor: pointer;
 }
 
 #nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-preview {
@@ -2521,6 +2536,39 @@ body.admin-route--editor #nc-root [class*="ControlPaneContainer"] {
 
 #nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-preview__meta {
   display: none !important;
+}
+
+#a1right-admin-inline-image-popover {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid rgba(32, 189, 145, .2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 14px 34px rgba(29, 68, 57, .18);
+  backdrop-filter: blur(14px);
+}
+
+#a1right-admin-inline-image-popover input {
+  width: 130px;
+  accent-color: #20bd91;
+}
+
+#a1right-admin-inline-image-popover button {
+  min-width: 42px;
+  min-height: 30px;
+  padding: 0 8px;
+  border: 1px solid rgba(32, 189, 145, .22);
+  border-radius: 7px;
+  color: #145641;
+  background: rgba(32, 189, 145, .07);
+  font: inherit;
+  font-size: .72rem;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 #nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-tools {

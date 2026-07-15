@@ -34,6 +34,8 @@
     uploadOverlayHideTimer: 0,
     dropTargetClearTimer: 0,
     activeDropTarget: null,
+    inlineImagePopover: null,
+    activeInlineImageBlock: null,
   };
   const markdownPreviewState = {
     refreshRaf: 0,
@@ -2790,8 +2792,53 @@
     if (!(block instanceof HTMLElement)) return;
     const width = normalizeInlineImageWidth(value);
     block.dataset.inlineImageWidth = `${width}`;
-    const preview = block.querySelector('.a1right-admin-inline-image-preview');
-    if (preview instanceof HTMLElement) preview.style.setProperty('--inline-image-width', `${width}%`);
+    block.style.setProperty('--inline-image-width', `${width}%`);
+  };
+
+  const closeInlineImagePopover = () => {
+    uiState.inlineImagePopover?.remove();
+    uiState.inlineImagePopover = null;
+    uiState.activeInlineImageBlock = null;
+  };
+
+  const openInlineImagePopover = (block) => {
+    if (!(block instanceof HTMLElement) || !block.classList.contains('a1right-admin-inline-image-line')) return;
+    if (uiState.activeInlineImageBlock === block && uiState.inlineImagePopover?.isConnected) return;
+
+    closeInlineImagePopover();
+    const popover = document.createElement('div');
+    popover.id = 'a1right-admin-inline-image-popover';
+    popover.setAttribute('role', 'toolbar');
+    popover.setAttribute('aria-label', '图片宽度');
+
+    const range = document.createElement('input');
+    range.type = 'range';
+    range.min = '32';
+    range.max = '100';
+    range.value = `${normalizeInlineImageWidth(block.dataset.inlineImageWidth)}`;
+    range.setAttribute('aria-label', '图片宽度');
+    range.addEventListener('input', () => applyInlineImageWidth(block, range.value));
+    popover.append(range);
+
+    [40, 70, 100].forEach((width) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = `${width}%`;
+      button.addEventListener('click', () => {
+        applyInlineImageWidth(block, width);
+        range.value = `${width}`;
+      });
+      popover.append(button);
+    });
+
+    document.body.append(popover);
+    const rect = block.getBoundingClientRect();
+    const left = Math.max(12, Math.min(rect.left, window.innerWidth - popover.offsetWidth - 12));
+    const top = Math.max(12, Math.min(rect.bottom + 8, window.innerHeight - popover.offsetHeight - 12));
+    popover.style.left = `${left}px`;
+    popover.style.top = `${top}px`;
+    uiState.inlineImagePopover = popover;
+    uiState.activeInlineImageBlock = block;
   };
 
   const bindInlineImageResizeControls = (block, preview) => {
@@ -2910,28 +2957,35 @@
       if (block.matches('pre') || block.classList.contains('a1right-admin-code-line')) return;
 
       const parsed = parseMarkdownImageLine(extractEditableSourceText(block));
-      const existingPreview = block.querySelector('.a1right-admin-inline-image-preview');
       const isCurrent =
-        existingPreview instanceof HTMLElement &&
         block.classList.contains('a1right-admin-inline-image-line') &&
-        existingPreview.dataset.inlineImageSource === parsed?.rawSource;
+        block.dataset.inlineImageRawSource === parsed?.rawSource &&
+        block.style.getPropertyValue('--inline-image-url');
 
       if (isCurrent) return;
 
-      existingPreview?.remove();
       block.classList.remove('a1right-admin-inline-image-line');
       block.removeAttribute('data-inline-image-src');
       block.removeAttribute('data-inline-image-alt');
+      block.removeAttribute('data-inline-image-raw-source');
+      block.style.removeProperty('--inline-image-url');
+      block.style.removeProperty('--inline-image-aspect');
 
       if (!parsed) return;
 
       block.classList.add('a1right-admin-inline-image-line');
       block.dataset.inlineImageSrc = parsed.source;
       block.dataset.inlineImageAlt = parsed.alt;
-      const preview = createInlineImagePreviewCard(parsed);
-      block.append(preview);
+      block.dataset.inlineImageRawSource = parsed.rawSource;
+      block.style.setProperty('--inline-image-url', `url("${parsed.source.replace(/["\\]/g, '\\$&')}")`);
       applyInlineImageWidth(block, block.dataset.inlineImageWidth);
-      bindInlineImageResizeControls(block, preview);
+
+      const probe = new Image();
+      probe.addEventListener('load', () => {
+        if (block.dataset.inlineImageRawSource !== parsed.rawSource || !probe.naturalWidth || !probe.naturalHeight) return;
+        block.style.setProperty('--inline-image-aspect', `${probe.naturalWidth} / ${probe.naturalHeight}`);
+      }, { once: true });
+      probe.src = parsed.source;
     });
   };
 
@@ -4003,6 +4057,14 @@
   }, true);
 
   document.addEventListener('click', (event) => {
+    const target = event.target instanceof Element ? event.target : null;
+    const imageBlock = target?.closest('.a1right-admin-inline-image-line');
+    if (imageBlock instanceof HTMLElement) {
+      openInlineImagePopover(imageBlock);
+    } else if (!target?.closest('#a1right-admin-inline-image-popover')) {
+      closeInlineImagePopover();
+    }
+
     syncMarkdownEditorState(event.target);
     syncImageEditorState(event.target);
     scheduleMarkdownPreviewRefresh();
