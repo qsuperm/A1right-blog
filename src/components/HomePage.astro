@@ -43,7 +43,7 @@ const calendarCells = [...Array(firstDay).fill(null), ...Array.from({ length: da
 
 const copy = isEnglish ? {
   bannerTitle: "A1right's Corner",
-  bannerSubtitle: 'From the unseen trace, a note begins to shine',
+  bannerSubtitle: 'Between cloudlight and code, the trace keeps glowing',
   role: 'Student · Security learner',
   bio: 'Hello, I am A1right. I write about Web security, CTF and Agent pentest experiments.',
   announcement: 'Announcement',
@@ -52,6 +52,12 @@ const copy = isEnglish ? {
   archive: 'Archive',
   more: 'More',
   siteStats: 'Site statistics',
+  visitPanel: 'Visit overview',
+  todayViews: 'Today views',
+  totalViews: 'Total views',
+  liveStatus: 'Live',
+  autoUpdate: 'Auto update',
+  viewHint: 'Counters refresh automatically when visitors open pages.',
   siteInfo: 'Site information',
   posts: 'Articles', categories: 'Categories', tags: 'Tags', words: 'Total words', uptime: 'Running', activity: 'Last active',
   platform: 'Build platform', version: 'Blog version', license: 'Article license', language: 'Language',
@@ -59,7 +65,7 @@ const copy = isEnglish ? {
   month: `${calendarYear}/${String(calendarMonth + 1).padStart(2, '0')}`,
 } : {
   bannerTitle: 'A1right的小窝',
-  bannerSubtitle: '从未见的线索中，记录开始发光',
+  bannerSubtitle: '在云光与代码之间，线索仍然发亮',
   role: '学生 · 安全学习者',
   bio: '你好，我是 A1right。这里记录 Web 安全、CTF 题解与 Agent 渗透实验。',
   announcement: '公告',
@@ -68,6 +74,12 @@ const copy = isEnglish ? {
   archive: '归档',
   more: '更多',
   siteStats: '站点统计',
+  visitPanel: '访问概览',
+  todayViews: '今日访问',
+  totalViews: '累计访问',
+  liveStatus: '实时',
+  autoUpdate: '自动更新',
+  viewHint: '有访客打开页面时，统计卡片会自动刷新。', 
   siteInfo: '站点信息',
   posts: '文章', categories: '分类', tags: '标签', words: '总字数', uptime: '运行时长', activity: '最后活动',
   platform: '构建平台', version: '博客版本', license: '文章许可', language: '站点语言',
@@ -166,6 +178,30 @@ const totalWords = articles.reduce((sum, entry) => sum + (entry.body ?? '').spli
   </div>
 
   <aside class="fo-sidebar fo-sidebar--right">
+    <article class="fo-card fo-visit-hero">
+      <div class="fo-visit-hero__head">
+        <p class="fo-visit-hero__eyebrow">{copy.visitPanel}</p>
+        <span class="fo-visit-hero__status">{copy.liveStatus} · {copy.autoUpdate}</span>
+      </div>
+      <div class="fo-visit-hero__grid">
+        <section class="fo-visit-metric fo-visit-metric--today">
+          <span class="fo-visit-metric__icon" aria-hidden="true">✦</span>
+          <div class="fo-visit-metric__body">
+            <p>{copy.todayViews}</p>
+            <PageViewBadge daily locale={locale} mode="value" />
+          </div>
+        </section>
+        <section class="fo-visit-metric fo-visit-metric--total">
+          <span class="fo-visit-metric__icon" aria-hidden="true">◔</span>
+          <div class="fo-visit-metric__body">
+            <p>{copy.totalViews}</p>
+            <PageViewBadge total locale={locale} mode="value" />
+          </div>
+        </section>
+      </div>
+      <p class="fo-visit-hero__hint">{copy.viewHint}</p>
+    </article>
+
     <article class="fo-card fo-widget fo-stats-widget">
       <h2 class="fo-widget-title">{copy.siteStats}</h2>
       <dl>
@@ -173,7 +209,8 @@ const totalWords = articles.reduce((sum, entry) => sum + (entry.body ?? '').spli
         <div><dt>□ {copy.categories}</dt><dd>{categories.length}</dd></div>
         <div><dt>◇ {copy.tags}</dt><dd>{totalTags}</dd></div>
         <div><dt>▧ {copy.words}</dt><dd>{totalWords.toLocaleString()}</dd></div>
-        <div><dt>◔ {locale === 'en' ? 'Site views' : '总站浏览量'}</dt><dd><PageViewBadge total locale={locale} mode="full" /></dd></div>
+        <div><dt>✦ {copy.todayViews}</dt><dd><PageViewBadge daily locale={locale} mode="full" /></dd></div>
+        <div><dt>◔ {copy.totalViews}</dt><dd><PageViewBadge total locale={locale} mode="full" /></dd></div>
         <div><dt>◴ {copy.uptime}</dt><dd>1 {copy.days}</dd></div>
         <div><dt>⌁ {copy.activity}</dt><dd>{copy.today}</dd></div>
       </dl>

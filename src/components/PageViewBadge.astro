@@ -5,26 +5,35 @@ interface Props {
   locale?: Locale;
   path?: string;
   total?: boolean;
-  mode?: 'compact' | 'full';
+  daily?: boolean;
+  mode?: 'compact' | 'full' | 'value';
 }
 
 const {
   locale = 'zh-cn',
   path,
   total = false,
+  daily = false,
   mode = 'compact',
 } = Astro.props;
 
 const label = locale === 'en' ? 'Views' : '浏览量';
 const totalLabel = locale === 'en' ? 'Site views' : '总站浏览量';
+const dailyLabel = locale === 'en' ? 'Today views' : '今日访问';
 const resolvedPath = total ? undefined : path;
-const resolvedLabel = total ? totalLabel : label;
+const resolvedScope = daily ? 'site-daily' : total ? 'site-total' : 'page';
+const resolvedLabel = daily ? dailyLabel : total ? totalLabel : label;
 ---
 
 <span
-  class:list={['pageview-badge', mode === 'compact' && 'pageview-badge--compact']}
+  class:list={[
+    'pageview-badge',
+    mode === 'compact' && 'pageview-badge--compact',
+    mode === 'full' && 'pageview-badge--full',
+    mode === 'value' && 'pageview-badge--value',
+  ]}
   data-pageview-path={resolvedPath}
-  data-pageview-total={total ? 'true' : undefined}
+  data-pageview-scope={resolvedScope}
   data-pageview-label={resolvedLabel}
   aria-live="polite"
 >

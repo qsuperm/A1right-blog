@@ -3,6 +3,13 @@
     const COUNT_API_BASE = 'https://countapi.mileshilliard.com/api/v1';
     const SITE_COUNTER_PREFIX = 'itsa1right-ink';
     const TOTAL_COUNTER_KEY = '__site_total__';
+    const getTodayKey = () => {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const date = String(now.getDate()).padStart(2, '0');
+      return `__site_daily__${year}-${month}-${date}`;
+    };
     const state = {
       counts: new Map(),
       pending: new Map(),
@@ -20,7 +27,11 @@
     };
 
     const buildCounterKey = (path, kind = 'page') => {
-      const normalized = kind === 'site-total' ? TOTAL_COUNTER_KEY : normalizePath(path);
+      const normalized = kind === 'site-total'
+        ? TOTAL_COUNTER_KEY
+        : kind === 'site-daily'
+          ? getTodayKey()
+          : normalizePath(path);
       const encoded = encodeURIComponent(normalized).replace(/%/g, '_');
       return `${SITE_COUNTER_PREFIX}__${kind}__${encoded}`;
     };
@@ -32,7 +43,11 @@
     };
 
     const requestCounter = async (path, { hit = false, kind = 'page' } = {}) => {
-      const normalized = kind === 'site-total' ? TOTAL_COUNTER_KEY : normalizePath(path);
+      const normalized = kind === 'site-total'
+        ? TOTAL_COUNTER_KEY
+        : kind === 'site-daily'
+          ? getTodayKey()
+          : normalizePath(path);
       const cacheKey = `${kind}:${normalized}`;
       const pendingKey = `${hit ? 'hit' : 'get'}:${cacheKey}`;
 
@@ -64,12 +79,16 @@
 
     const hydrateBadges = async () => {
       const badgeMap = new Map();
-      const badges = document.querySelectorAll('[data-pageview-path], [data-pageview-total="true"]');
+      const badges = document.querySelectorAll('[data-pageview-path], [data-pageview-scope]');
 
       badges.forEach((badge) => {
-        const isTotal = badge.getAttribute('data-pageview-total') === 'true';
-        const normalizedPath = isTotal ? TOTAL_COUNTER_KEY : normalizePath(badge.getAttribute('data-pageview-path') || '/');
-        const groupKey = `${isTotal ? 'site-total' : 'page'}:${normalizedPath}`;
+        const scope = badge.getAttribute('data-pageview-scope') || 'page';
+        const normalizedPath = scope === 'site-total'
+          ? TOTAL_COUNTER_KEY
+          : scope === 'site-daily'
+            ? getTodayKey()
+            : normalizePath(badge.getAttribute('data-pageview-path') || '/');
+        const groupKey = `${scope}:${normalizedPath}`;
         if (!badgeMap.has(groupKey)) badgeMap.set(groupKey, []);
         badgeMap.get(groupKey).push(badge);
       });
@@ -88,9 +107,10 @@
       const sessionKey = `a1right-pageview-hit:${currentPath}`;
       const shouldHit = !window.sessionStorage.getItem(sessionKey);
 
-      const [pageValue, totalValue] = await Promise.all([
+      const [pageValue, totalValue, dailyValue] = await Promise.all([
         requestCounter(currentPath, { hit: shouldHit, kind: 'page' }),
         requestCounter(TOTAL_COUNTER_KEY, { hit: shouldHit, kind: 'site-total' }),
+        requestCounter(getTodayKey(), { hit: shouldHit, kind: 'site-daily' }),
       ]);
 
       if (shouldHit) window.sessionStorage.setItem(sessionKey, '1');
@@ -98,8 +118,11 @@
       document.querySelectorAll(`[data-pageview-path="${currentPath}"]`).forEach((element) => {
         setBadgeValue(element, pageValue);
       });
-      document.querySelectorAll('[data-pageview-total="true"]').forEach((element) => {
+      document.querySelectorAll('[data-pageview-scope="site-total"]').forEach((element) => {
         setBadgeValue(element, totalValue);
+      });
+      document.querySelectorAll('[data-pageview-scope="site-daily"]').forEach((element) => {
+        setBadgeValue(element, dailyValue);
       });
     };
 
