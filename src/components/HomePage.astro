@@ -34,6 +34,11 @@ const categories = (['web-security', 'ctf-writeup', 'agent-pentest'] as const).m
 }));
 
 const allTags = Array.from(new Set(articles.flatMap((entry) => entry.data.tags))).slice(0, 12);
+const bannerLines = [
+  'We are all visitors to this time, this place.',
+  'We are just passing through.',
+  'Our purpose here is to observe, to learn, to grow, to love, and then we return home.',
+];
 const today = new Date();
 const calendarYear = today.getFullYear();
 const calendarMonth = today.getMonth();
@@ -43,7 +48,6 @@ const calendarCells = [...Array(firstDay).fill(null), ...Array.from({ length: da
 
 const copy = isEnglish ? {
   bannerTitle: "A1right's Corner",
-  bannerSubtitle: 'Between cloudlight and code, the trace keeps glowing',
   role: 'Student · Security learner',
   bio: 'Hello, I am A1right. I write about Web security, CTF and Agent pentest experiments.',
   announcement: 'Announcement',
@@ -65,7 +69,6 @@ const copy = isEnglish ? {
   month: `${calendarYear}/${String(calendarMonth + 1).padStart(2, '0')}`,
 } : {
   bannerTitle: 'A1right的小窝',
-  bannerSubtitle: '在云光与代码之间，线索仍然发亮',
   role: '学生 · 安全学习者',
   bio: '你好，我是 A1right。这里记录 Web 安全、CTF 题解与 Agent 渗透实验。',
   announcement: '公告',
@@ -95,7 +98,16 @@ const totalWords = articles.reduce((sum, entry) => sum + (entry.body ?? '').spli
   <div class="fo-banner__dim" aria-hidden="true"></div>
   <div class="fo-banner__text">
     <h1>{copy.bannerTitle}</h1>
-    <p>{copy.bannerSubtitle}</p>
+    <p
+      class="fo-banner__typewriter"
+      data-banner-typewriter
+      data-banner-typewriter-lines={JSON.stringify(bannerLines)}
+      aria-label={bannerLines.join(' ')}
+    >
+      <span class="fo-banner__typewriter-output" aria-hidden="true">
+        {bannerLines.map((line) => <span class="fo-banner__typewriter-line">{line}</span>)}
+      </span>
+    </p>
   </div>
   <a class="fo-banner__down" href="#home-content" aria-label={isEnglish ? 'Scroll down' : '向下滚动'}>⌄</a>
   <div class="fo-waves" aria-hidden="true">
@@ -233,3 +245,54 @@ const totalWords = articles.reduce((sum, entry) => sum + (entry.body ?? '').spli
     </article>
   </aside>
 </div>
+
+<script>
+  const pause = (duration: number) => new Promise<void>((resolve) => window.setTimeout(resolve, duration));
+
+  const animateBannerTypewriter = async (element: HTMLElement) => {
+    if (element.dataset.typewriterReady === 'true') return;
+
+    const rawLines = element.dataset.bannerTypewriterLines;
+    const output = element.querySelector<HTMLElement>('.fo-banner__typewriter-output');
+    if (!rawLines || !output) return;
+
+    let lines: string[];
+    try {
+      lines = JSON.parse(rawLines);
+    } catch {
+      return;
+    }
+
+    if (!Array.isArray(lines) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    element.dataset.typewriterReady = 'true';
+    await document.fonts.ready;
+    output.replaceChildren();
+    await pause(520);
+
+    for (const [lineIndex, line] of lines.entries()) {
+      const lineElement = document.createElement('span');
+      lineElement.className = 'fo-banner__typewriter-line is-typing';
+      output.append(lineElement);
+
+      for (const character of Array.from(line)) {
+        lineElement.textContent += character;
+        await pause(character === ',' ? 112 : character === '.' ? 180 : character === ' ' ? 22 : 36);
+      }
+
+      lineElement.classList.remove('is-typing');
+      if (lineIndex < lines.length - 1) await pause(360);
+    }
+
+    output.lastElementChild?.classList.add('is-typing');
+  };
+
+  const bindBannerTypewriter = () => {
+    document.querySelectorAll<HTMLElement>('[data-banner-typewriter]').forEach((element) => {
+      void animateBannerTypewriter(element);
+    });
+  };
+
+  bindBannerTypewriter();
+  document.addEventListener('astro:page-load', bindBannerTypewriter);
+</script>

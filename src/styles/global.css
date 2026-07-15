@@ -2279,18 +2279,75 @@ body {
 .theme-toggle__label--sun { display: none; }
 
 .fo-banner { position: relative; height: 650px; overflow: hidden; color: #fff; }
-.fo-banner__image, .fo-banner__dim { position: absolute; inset: 0; }
-.fo-banner__image { background: url('/images/anime-day-cloud-city.jpg') center 64% / cover no-repeat; transform: scale(1.02); }
-:root[data-theme='dark'] .fo-banner__image { background-image: url('/images/anime-hero-room.jpg'); background-position: center 52%; transform: none; }
-.fo-banner__dim {
+.fo-banner__image, .fo-banner__dim { position: absolute; inset: 0; overflow: hidden; }
+.fo-banner__image::before, .fo-banner__image::after,
+.fo-banner__dim::before, .fo-banner__dim::after {
+  position: absolute;
+  inset: -2%;
+  content: '';
+  pointer-events: none;
+}
+.fo-banner__image::before, .fo-banner__image::after {
+  background-repeat: no-repeat;
+  background-size: cover;
+  transition: opacity 900ms cubic-bezier(.22, .8, .28, 1), transform 1100ms cubic-bezier(.22, .8, .28, 1);
+  will-change: opacity, transform;
+}
+.fo-banner__image::before {
+  background-image: url('/images/anime-day-cloud-city.jpg');
+  background-position: center 64%;
+  opacity: 1;
+  transform: scale(1.025);
+}
+.fo-banner__image::after {
+  background-image: url('/images/anime-hero-room.jpg');
+  background-position: center 52%;
+  opacity: 0;
+  transform: scale(1.07);
+}
+:root[data-theme='dark'] .fo-banner__image::before { opacity: 0; transform: scale(1.07); }
+:root[data-theme='dark'] .fo-banner__image::after { opacity: 1; transform: scale(1.025); }
+.fo-banner__dim::before, .fo-banner__dim::after {
+  transition: opacity 780ms ease;
+  will-change: opacity;
+}
+.fo-banner__dim::before {
   background:
     linear-gradient(180deg, rgba(236, 245, 255, .08) 0%, rgba(101, 145, 182, .18) 32%, rgba(20, 38, 58, .38) 100%),
     rgba(14, 20, 28, .12);
+  opacity: 1;
 }
-:root[data-theme='dark'] .fo-banner__dim { background: rgba(9, 13, 18, .57); }
+.fo-banner__dim::after { background: rgba(9, 13, 18, .57); opacity: 0; }
+:root[data-theme='dark'] .fo-banner__dim::before { opacity: 0; }
+:root[data-theme='dark'] .fo-banner__dim::after { opacity: 1; }
 .fo-banner__text { position: absolute; z-index: 1; inset: 0; display: grid; place-content: center; text-align: center; padding-bottom: 38px; text-shadow: 0 6px 26px rgba(7,15,24,.34); }
 .fo-banner__text h1 { margin: 0; font-family: var(--font-display); font-size: clamp(2.7rem, 5vw, 4.4rem); line-height: 1.12; letter-spacing: -.02em; }
-.fo-banner__text p { margin: 15px 0 0; font-family: var(--font-display); font-size: clamp(1rem, 1.8vw, 1.45rem); font-weight: 600; letter-spacing: .015em; }
+.fo-banner__typewriter {
+  width: min(94vw, 960px);
+  min-height: 5.25em;
+  margin: 18px auto 0;
+  color: rgba(255, 255, 255, .97);
+  font-family: "LXGW WenKai Title", "Segoe Print", "Bradley Hand", cursive;
+  font-size: clamp(1rem, 1.45vw, 1.4rem);
+  font-weight: 700;
+  font-kerning: normal;
+  font-variant-ligatures: common-ligatures;
+  letter-spacing: 0;
+  line-height: 1.72;
+  text-rendering: optimizeLegibility;
+}
+.fo-banner__typewriter-output { display: grid; justify-items: center; }
+.fo-banner__typewriter-line { display: block; min-height: 1.72em; }
+.fo-banner__typewriter-line.is-typing::after {
+  content: '|';
+  display: inline-block;
+  width: .45em;
+  margin-left: .07em;
+  color: rgba(255, 255, 255, .88);
+  font-family: var(--font-mono);
+  font-weight: 400;
+  animation: fo-type-caret 720ms steps(1, end) infinite;
+}
 .fo-banner__down { position: absolute; z-index: 3; left: 50%; bottom: clamp(120px, 18vh, 190px); color: #fff; font-size: 3.3rem; line-height: 1; transform: translateX(-50%); text-shadow: 0 3px 12px rgba(0,0,0,.28); animation: fo-down 1.35s ease-in-out infinite; }
 :root[data-theme='dark'] .fo-banner__text { text-shadow: 0 4px 24px rgba(0,0,0,.6); }
 :root[data-theme='dark'] .fo-banner__down { text-shadow: 0 3px 12px rgba(0,0,0,.45); }
@@ -2494,6 +2551,7 @@ body {
 
 @keyframes fo-down { 0%,100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, 8px); } }
 @keyframes fo-wave { from { transform: translate3d(-90px, 0, 0); } to { transform: translate3d(85px, 0, 0); } }
+@keyframes fo-type-caret { 50% { opacity: 0; } }
 
 @media (max-width: 1180px) {
   .fo-home-grid { grid-template-columns: 240px minmax(0, 1fr); }
@@ -2514,7 +2572,7 @@ body {
 
 @media (max-width: 640px) {
   .site-logo__text { font-size: .92rem; }.site-header__actions { gap: 3px; }.site-header__link--github { display: none; }
-  .fo-banner { height: 410px; }.fo-banner__text h1 { font-size: 2.25rem; }.fo-banner__text p { font-size: .9rem; }
+  .fo-banner { height: 470px; }.fo-banner__text { padding: 18px 15px 100px; }.fo-banner__text h1 { font-size: 2.25rem; }.fo-banner__typewriter { width: min(94vw, 440px); min-height: 8.6em; margin-top: 13px; font-size: .95rem; line-height: 1.58; }.fo-banner__typewriter-line { min-height: 1.58em; }.fo-banner__down { bottom: 108px; font-size: 2.7rem; }
   .fo-category-bar { border-radius: 14px; }.fo-category-pill { padding: 0 12px; }
   .fo-post-card { min-height: 0; grid-template-columns: 1fr; }
   .fo-post-card__cover { grid-row: 1; margin: 0; aspect-ratio: 2 / 1; border-radius: 14px 14px 0 0; }
@@ -2558,7 +2616,11 @@ body {
     #171b2a;
 }
 :root[data-theme='dark'] .site-header__inner { background: rgba(34, 40, 59, .88); }
-:root[data-theme='dark'] .fo-banner__dim { background: rgba(9, 13, 18, .57); }
+@media (prefers-reduced-motion: reduce) {
+  .fo-banner__image::before, .fo-banner__image::after,
+  .fo-banner__dim::before, .fo-banner__dim::after { transition: none; }
+  .fo-banner__typewriter-line.is-typing::after { animation: none; }
+}
 
 html,
 body,
