@@ -246,12 +246,27 @@
     };
   };
 
-  const getBodyHeadingItems = () =>
-    `${getBodyPlainText() || ''}`
+  const getBodyHeadingItems = () => {
+    const editable = getBodyEditable();
+    const richTextHeadings = editable instanceof HTMLElement
+      ? [...editable.querySelectorAll('h1, h2, h3')]
+          .map((element, index) => ({
+            level: Number(element.tagName.slice(1)),
+            text: `${element.textContent || ''}`.replace(/\s+/g, ' ').trim(),
+            lineNumber: index,
+            kind: 'rich-text',
+          }))
+          .filter((heading) => heading.text)
+      : [];
+
+    if (richTextHeadings.length) return richTextHeadings;
+
+    return `${getBodyPlainText() || ''}`
       .replace(/\r\n/g, '\n')
       .split('\n')
       .map((line, index) => parseHeadingLine(line, index))
       .filter(Boolean);
+  };
 
   const extractFirstBodyImage = () => {
     const source = `${getBodyPlainText() || ''}`;
@@ -1792,8 +1807,9 @@
 
     const editable = getBodyEditable();
     if (editable instanceof HTMLElement) {
-      const blocks = [...editable.children].filter((node) => parseHeadingLine(extractEditableSourceText(node), 0));
-      const block = blocks[headingIndex];
+      const richTextHeadings = [...editable.querySelectorAll('h1, h2, h3')];
+      const markdownBlocks = [...editable.children].filter((node) => parseHeadingLine(extractEditableSourceText(node), 0));
+      const block = target.kind === 'rich-text' ? richTextHeadings[target.lineNumber] : markdownBlocks[headingIndex];
       if (block instanceof HTMLElement) {
         editable.focus();
         block.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2765,6 +2781,53 @@
     };
   };
 
+  const normalizeInlineImageWidth = (value) => {
+    const number = Number.parseFloat(`${value || ''}`);
+    return Number.isFinite(number) ? Math.max(32, Math.min(100, Math.round(number))) : 100;
+  };
+
+  const applyInlineImageWidth = (block, value) => {
+    if (!(block instanceof HTMLElement)) return;
+    const width = normalizeInlineImageWidth(value);
+    block.dataset.inlineImageWidth = `${width}`;
+    const preview = block.querySelector('.a1right-admin-inline-image-preview');
+    if (preview instanceof HTMLElement) preview.style.setProperty('--inline-image-width', `${width}%`);
+  };
+
+  const bindInlineImageResizeControls = (block, preview) => {
+    if (!(block instanceof HTMLElement) || !(preview instanceof HTMLElement)) return;
+
+    preview.querySelectorAll('[data-inline-image-width]').forEach((button) => {
+      button.addEventListener('mousedown', (event) => event.preventDefault());
+      button.addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        applyInlineImageWidth(block, button.getAttribute('data-inline-image-width'));
+      });
+    });
+
+    const handle = preview.querySelector('.a1right-admin-inline-image-resize-handle');
+    handle?.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const startX = event.clientX;
+      const startWidth = normalizeInlineImageWidth(block.dataset.inlineImageWidth);
+      const canvasWidth = block.parentElement?.getBoundingClientRect().width || block.getBoundingClientRect().width || 1;
+
+      const onMove = (moveEvent) => {
+        const width = startWidth + ((moveEvent.clientX - startX) / canvasWidth) * 100;
+        applyInlineImageWidth(block, width);
+      };
+      const onEnd = () => {
+        document.removeEventListener('pointermove', onMove);
+        document.removeEventListener('pointerup', onEnd);
+      };
+
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onEnd, { once: true });
+    });
+  };
+
   const createInlineImagePreviewCard = ({ alt = 'image', source = '', rawSource = '', title = '' }) => {
     const wrapper = document.createElement('span');
     wrapper.className = 'a1right-admin-inline-image-preview';
@@ -2788,6 +2851,25 @@
       }
     });
 
+    const controls = document.createElement('span');
+    controls.className = 'a1right-admin-inline-image-tools';
+    [40, 70, 100].forEach((width) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'a1right-admin-inline-image-size-button';
+      button.setAttribute('data-inline-image-width', `${width}`);
+      button.title = `图片宽度 ${width}%`;
+      button.textContent = `${width}%`;
+      controls.append(button);
+    });
+
+    const resizeHandle = document.createElement('button');
+    resizeHandle.type = 'button';
+    resizeHandle.className = 'a1right-admin-inline-image-resize-handle';
+    resizeHandle.setAttribute('aria-label', '拖拽调整图片宽度');
+    resizeHandle.title = '拖拽调整图片宽度';
+    resizeHandle.textContent = '↘';
+
     const meta = document.createElement('span');
     meta.className = 'a1right-admin-inline-image-preview__meta';
 
@@ -2806,7 +2888,7 @@
 
     text.append(titleNode, pathNode);
     meta.append(badge, text);
-    wrapper.append(image);
+    wrapper.append(image, controls, resizeHandle);
     return wrapper;
   };
 
@@ -2846,7 +2928,10 @@
       block.classList.add('a1right-admin-inline-image-line');
       block.dataset.inlineImageSrc = parsed.source;
       block.dataset.inlineImageAlt = parsed.alt;
-      block.append(createInlineImagePreviewCard(parsed));
+      const preview = createInlineImagePreviewCard(parsed);
+      block.append(preview);
+      applyInlineImageWidth(block, block.dataset.inlineImageWidth);
+      bindInlineImageResizeControls(block, preview);
     });
   };
 

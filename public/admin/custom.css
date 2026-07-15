@@ -2494,9 +2494,12 @@ body.admin-route--editor #nc-root [class*="ControlPaneContainer"] {
 }
 
 #nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-preview {
+  --inline-image-width: 100%;
   width: min(100%, 920px);
+  width: min(var(--inline-image-width), 920px);
   margin: 0;
   display: block;
+  position: relative;
   color: #17362e;
   font-size: 1rem;
   line-height: normal;
@@ -2505,6 +2508,7 @@ body.admin-route--editor #nc-root [class*="ControlPaneContainer"] {
   overflow: hidden;
   background: rgba(246, 250, 248, .9);
   box-shadow: 0 14px 34px rgba(29, 68, 57, .1);
+  transition: width .16s ease;
 }
 
 #nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-preview__image {
@@ -2517,6 +2521,62 @@ body.admin-route--editor #nc-root [class*="ControlPaneContainer"] {
 
 #nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-preview__meta {
   display: none !important;
+}
+
+#nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-tools {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .16s ease, transform .16s ease;
+}
+
+#nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-preview:hover .a1right-admin-inline-image-tools,
+#nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-preview:focus-within .a1right-admin-inline-image-tools {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+#nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-size-button,
+#nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-resize-handle {
+  border: 1px solid rgba(32, 189, 145, .24) !important;
+  color: #145641 !important;
+  background: rgba(255, 255, 255, .94) !important;
+  box-shadow: 0 6px 18px rgba(27, 79, 64, .14) !important;
+  font: inherit !important;
+  font-size: .72rem !important;
+  font-weight: 800 !important;
+  cursor: pointer;
+}
+
+#nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-size-button {
+  min-width: 42px;
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: 8px !important;
+}
+
+#nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-resize-handle {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px !important;
+  opacity: 0;
+  touch-action: none;
+  cursor: nwse-resize;
+  transition: opacity .16s ease;
+}
+
+#nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-preview:hover .a1right-admin-inline-image-resize-handle,
+#nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-preview:focus-within .a1right-admin-inline-image-resize-handle {
+  opacity: 1;
 }
 
 @media (max-width: 860px) {
