@@ -2483,6 +2483,42 @@ body.admin-route--editor #nc-root [class*="ControlPaneContainer"] {
   margin-top: 16px;
 }
 
+/* Decap changes its internal editor class between releases; the body container is our stable WYSIWYG boundary. */
+#nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-line {
+  min-height: 1px;
+  margin: 26px 0 !important;
+  padding: 0 !important;
+  color: transparent !important;
+  font-size: 0 !important;
+  line-height: 0 !important;
+}
+
+#nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-preview {
+  width: min(100%, 920px);
+  margin: 0;
+  display: block;
+  color: #17362e;
+  font-size: 1rem;
+  line-height: normal;
+  border: 1px solid rgba(32, 189, 145, .16);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(246, 250, 248, .9);
+  box-shadow: 0 14px 34px rgba(29, 68, 57, .1);
+}
+
+#nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-preview__image {
+  width: 100%;
+  max-height: 680px;
+  display: block;
+  object-fit: contain;
+  background: rgba(223, 240, 234, .62);
+}
+
+#nc-root .a1right-admin-body-control [contenteditable="true"] .a1right-admin-inline-image-preview__meta {
+  display: none !important;
+}
+
 @media (max-width: 860px) {
   #nc-root .a1right-admin-body-control {
     grid-template-columns: 1fr !important;

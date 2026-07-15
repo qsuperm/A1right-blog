@@ -1159,6 +1159,11 @@
 
   const pushRecentUploads = (uploads) => {
     uploads.forEach(cacheInlineImagePreview);
+    const bodyEditable = getBodyEditable();
+    if (bodyEditable instanceof HTMLElement) {
+      decorateRichTextInlineImages(bodyEditable);
+      window.setTimeout(() => decorateRichTextInlineImages(bodyEditable), 80);
+    }
     uiState.recentUploads = [...uploads, ...uiState.recentUploads]
       .filter((item) => item?.fieldPath)
       .slice(0, 8);
@@ -2766,6 +2771,7 @@
     wrapper.setAttribute('contenteditable', 'false');
     wrapper.setAttribute('tabindex', '-1');
     wrapper.setAttribute('aria-label', title || alt || 'article image');
+    wrapper.dataset.inlineImageSource = rawSource;
     wrapper.addEventListener('mousedown', (event) => event.preventDefault());
 
     const image = document.createElement('img');
@@ -2804,19 +2810,37 @@
     return wrapper;
   };
 
+  const getRichTextImageBlocks = (editable) => {
+    if (!(editable instanceof HTMLElement)) return [];
+
+    const directBlocks = [...editable.children];
+    const nestedLeafBlocks = [...editable.querySelectorAll('p, li, div')].filter((block) =>
+      ![...block.children].some((child) => /^(P|LI|DIV)$/i.test(child.tagName)),
+    );
+
+    return [...new Set([...directBlocks, ...nestedLeafBlocks])].filter((block) => block instanceof HTMLElement);
+  };
+
   const decorateRichTextInlineImages = (editable) => {
     if (!(editable instanceof HTMLElement)) return;
 
-    [...editable.children].forEach((block) => {
-      if (!(block instanceof HTMLElement)) return;
-      block.querySelectorAll('.a1right-admin-inline-image-preview').forEach((node) => node.remove());
+    getRichTextImageBlocks(editable).forEach((block) => {
+      if (block.matches('pre') || block.classList.contains('a1right-admin-code-line')) return;
+
+      const parsed = parseMarkdownImageLine(extractEditableSourceText(block));
+      const existingPreview = block.querySelector('.a1right-admin-inline-image-preview');
+      const isCurrent =
+        existingPreview instanceof HTMLElement &&
+        block.classList.contains('a1right-admin-inline-image-line') &&
+        existingPreview.dataset.inlineImageSource === parsed?.rawSource;
+
+      if (isCurrent) return;
+
+      existingPreview?.remove();
       block.classList.remove('a1right-admin-inline-image-line');
       block.removeAttribute('data-inline-image-src');
       block.removeAttribute('data-inline-image-alt');
 
-      if (block.matches('pre') || block.classList.contains('a1right-admin-code-line')) return;
-
-      const parsed = parseMarkdownImageLine(extractEditableSourceText(block));
       if (!parsed) return;
 
       block.classList.add('a1right-admin-inline-image-line');
@@ -2922,10 +2946,18 @@
   };
 
   const refreshAllRichTextCodeBlocks = () => {
-    document.querySelectorAll('#nc-root [class*="EditorControl"] [contenteditable="true"]').forEach((editable) => {
+    const decoratedEditables = [...document.querySelectorAll('#nc-root [class*="EditorControl"] [contenteditable="true"]')]
+      .filter((editable) => editable instanceof HTMLElement);
+
+    decoratedEditables.forEach((editable) => {
       decorateRichTextCodeBlocks(editable);
       decorateRichTextInlineImages(editable);
     });
+
+    const bodyEditable = getBodyEditable();
+    if (bodyEditable instanceof HTMLElement && !decoratedEditables.includes(bodyEditable)) {
+      decorateRichTextInlineImages(bodyEditable);
+    }
   };
 
   const scheduleRichTextCodeRefresh = () => {

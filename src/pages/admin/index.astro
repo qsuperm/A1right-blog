@@ -21,6 +21,7 @@ const adminRuntime = JSON.stringify({
   mediaFolder: CMS.mediaFolder,
   publicFolder: CMS.publicFolder,
 });
+const adminAssetVersion = '20260715-wysiwyg-2';
 ---
 
 <!doctype html>
@@ -33,13 +34,13 @@ const adminRuntime = JSON.stringify({
     <link rel="icon" href="/favicon.ico?v=20260713-avatar" sizes="any" />
     <link rel="icon" type="image/png" sizes="256x256" href="/images/a1right-avatar-icon.png?v=20260713-avatar" />
     <link href="/admin/config.yml" type="text/yaml" rel="cms-config-url" />
-    <link rel="stylesheet" href="/admin/custom.css" />
+    <link rel="stylesheet" href={`/admin/custom.css?v=${adminAssetVersion}`} />
     <script is:inline define:vars={{ adminRuntime }}>
       window.__A1RIGHT_ADMIN__ = JSON.parse(adminRuntime);
     </script>
     <script is:inline src="/admin/vendor/marked.umd.js" defer></script>
     <script is:inline src="/admin/vendor/purify.min.js" defer></script>
-    <script is:inline src="/admin/custom.js" defer></script>
+    <script is:inline src={`/admin/custom.js?v=${adminAssetVersion}`} defer></script>
     <style>
       :root {
         color-scheme: light;
