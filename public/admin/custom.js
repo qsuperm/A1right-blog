@@ -3392,7 +3392,7 @@
     const sourceSnippet = appendParagraph ? `${normalizedSnippet}\n\n` : normalizedSnippet;
     const wysiwyg = getWysiwygAdapter(root);
     if (wysiwyg) {
-      wysiwyg.insertValue(sourceSnippet);
+      wysiwyg.insertValue(normalizedSnippet, { appendParagraph });
       return {
         ok: true,
         locate: () => {
@@ -3942,6 +3942,9 @@
     if (!sources.length) return;
 
     event.preventDefault();
+    // This listener runs in the capture phase. Vditor also listens for paste;
+    // stopping propagation here prevents it from creating a second image node.
+    if (getWysiwygAdapter(context.root)) event.stopImmediatePropagation();
     await processImageSources({ context, sources, origin: '粘贴' });
   };
 

@@ -98,9 +98,12 @@
             this.lastValue = this.editor.getValue();
             this.props.onChange(this.lastValue);
           },
-          insertValue: (value) => {
+          insertValue: (value, { appendParagraph = false } = {}) => {
             this.editor.focus();
-            this.editor.insertValue(value, true);
+            // insertValue treats its argument as HTML. Keep the stored body as
+            // Markdown so Vditor creates one managed image block instead.
+            this.editor.insertMD(value);
+            if (appendParagraph) this.editor.insertEmptyBlock('afterend');
             window.setTimeout(() => {
               if (!this.editor) return;
               this.lastValue = this.editor.getValue();
