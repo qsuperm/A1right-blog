@@ -712,7 +712,9 @@
 
   const getCurrentEditorRouteKey = () => {
     const hash = `${window.location.hash || '#/'}`.replace(/\/+$/, '');
-    return `a1right-admin:draft:${hash || 'root'}`;
+    // v2 deliberately ignores snapshots created while custom decorations were
+    // written into Slate's DOM tree.
+    return `a1right-admin:draft:v2:${hash || 'root'}`;
   };
 
   const getCurrentEditorIdentity = () => {
@@ -865,40 +867,12 @@
     return true;
   };
 
-  const getSanitizedEditableHtml = (editable) => {
-    if (!(editable instanceof HTMLElement)) return '';
-    const clone = editable.cloneNode(true);
-    stripEditableDecorationNodes(clone);
-    clone.querySelectorAll('.a1right-admin-code-line').forEach((node) => {
-      node.classList.remove(
-        'a1right-admin-code-line',
-        'is-code-start',
-        'is-code-middle',
-        'is-code-end',
-        'is-code-single',
-        'is-code-empty',
-        'is-code-collapsed',
-        'is-code-nowrap',
-      );
-      node.removeAttribute('data-code-lang');
-      node.removeAttribute('data-code-lang-key');
-      node.removeAttribute('data-code-group');
-      node.removeAttribute('data-code-expanded');
-      node.removeAttribute('data-code-wrap');
-      node.style.removeProperty('--code-visible-lines');
-    });
-    clone.querySelectorAll('.a1right-admin-inline-image-line').forEach((node) => {
-      node.classList.remove('a1right-admin-inline-image-line');
-      node.removeAttribute('data-inline-image-src');
-      node.removeAttribute('data-inline-image-alt');
-    });
-    return clone.innerHTML;
-  };
-
   const serializeEditorSnapshot = () => {
     const inputs = getEditorManagedInputs();
     const bodyEditable = getBodyEditable();
-    const bodyText = getBodyPlainText();
+    // Slate already owns rich-text recovery. Persisting its HTML and assigning it
+    // back later creates DOM nodes that Slate cannot resolve.
+    const bodyText = bodyEditable instanceof HTMLElement ? '' : getBodyPlainText();
 
     return {
       id: getCurrentEditorIdentity(),
@@ -920,7 +894,6 @@
       sourceUrl: inputs.sourceUrl?.value || '',
       allowRepost: inputs.allowRepost?.value || '',
       bodyText,
-      bodyHtml: getSanitizedEditableHtml(bodyEditable),
     };
   };
 
@@ -985,6 +958,16 @@
   const restoreEditorSnapshot = async (snapshot) => {
     if (!snapshot) return false;
 
+    if (getBodyEditable() instanceof HTMLElement && `${snapshot.bodyText || ''}`.trim()) {
+      const copied = await copyTextToClipboard(snapshot.bodyText);
+      showToast(
+        copied ? '富文本草稿已复制到剪贴板，请在正文中手动粘贴。' : '富文本草稿不能直接写回，避免破坏编辑器节点。',
+        'warn',
+        4200,
+      );
+      return false;
+    }
+
     const inputs = getEditorManagedInputs();
     applySnapshotValue(inputs.title, snapshot.title || '');
     applySnapshotValue(inputs.excerpt, snapshot.excerpt || '');
@@ -1009,13 +992,6 @@
       const bodyInput = getFieldInputByLabel([/\u6b63\u6587/, /\u82f1\u6587\u6b63\u6587/, /(^|\s)body(\s|$)/i], [/seo/i]);
       if (bodyInput instanceof HTMLTextAreaElement || bodyInput instanceof HTMLInputElement) {
         applySnapshotValue(bodyInput, snapshot.bodyText || '');
-      } else {
-        const editable = getBodyEditable();
-        if (editable instanceof HTMLElement) {
-          editable.innerHTML = snapshot.bodyHtml || '';
-          editable.dispatchEvent(new Event('input', { bubbles: true }));
-          editable.dispatchEvent(new Event('change', { bubbles: true }));
-        }
       }
     }
 
@@ -3377,12 +3353,16 @@
     textarea.scrollTop = Math.max(0, (lineCount - 3) * lineHeight);
   };
 
-  const insertIntoContentEditable = (editable, snippet) => {
+  const insertIntoContentEditable = (editable, snippet, { appendParagraph = false } = {}) => {
     if (!(editable instanceof HTMLElement)) return { ok: false, locate: null };
 
     editable.focus();
     const inserted = document.execCommand('insertText', false, snippet);
     if (!inserted) return { ok: false, locate: null };
+
+    if (appendParagraph && !document.execCommand('insertParagraph', false)) {
+      return { ok: false, locate: null };
+    }
 
     dispatchEditableMutation(editable, snippet);
 
@@ -3395,7 +3375,9 @@
     return { ok: true, locate };
   };
 
-  const insertMarkdownSnippet = (root, snippet, richTextSelection = null) => {
+  const insertMarkdownSnippet = (root, snippet, richTextSelection = null, { appendParagraph = false } = {}) => {
+    const normalizedSnippet = `${snippet || ''}`.trim();
+    const sourceSnippet = appendParagraph ? `${normalizedSnippet}\n\n` : normalizedSnippet;
     const codeMirror = getCodeMirrorInstance(root);
     if (codeMirror) {
       const doc = codeMirror.getDoc();
@@ -3405,7 +3387,7 @@
       const start = doc.indexFromPos(from);
       const end = doc.indexFromPos(to);
       const { leading, trailing } = getSurroundingSpacing(content.slice(0, start), content.slice(end));
-      const payload = `${leading}${snippet.trim()}${trailing}`;
+      const payload = `${leading}${sourceSnippet}${trailing}`;
       const insertFrom = doc.posFromIndex(start);
       const insertTo = doc.posFromIndex(start + payload.length);
 
@@ -3433,8 +3415,8 @@
       restoreRichTextSelection(editable, richTextSelection);
       const currentText = extractEditableSourceText(editable);
       const { leading, trailing } = getSurroundingSpacing(currentText, '');
-      const payload = `${leading}${snippet.trim()}${trailing}`;
-      const inserted = insertIntoContentEditable(editable, payload);
+      const payload = `${leading}${normalizedSnippet}${trailing}`;
+      const inserted = insertIntoContentEditable(editable, payload, { appendParagraph });
       if (inserted.ok) {
         return inserted;
       }
@@ -3456,7 +3438,7 @@
       editorState.lastSelectionEnd ??
       start;
     const { leading, trailing } = getSurroundingSpacing(textarea.value.slice(0, start), textarea.value.slice(end));
-    const payload = `${leading}${snippet.trim()}${trailing}`;
+    const payload = `${leading}${sourceSnippet}${trailing}`;
     const nextValue = `${textarea.value.slice(0, start)}${payload}${textarea.value.slice(end)}`;
     const insertedStart = start;
     const insertedEnd = start + payload.length;
@@ -3882,7 +3864,7 @@
         .join('\n\n');
       // Keep Decap's persisted value as Markdown. The editor's CSS render layer
       // displays this line as an image without introducing an unmanaged <img> node.
-      const inserted = insertMarkdownSnippet(context.root, snippet, context.richTextSelection);
+      const inserted = insertMarkdownSnippet(context.root, snippet, context.richTextSelection, { appendParagraph: true });
       if (!inserted.ok) {
         await navigator.clipboard?.writeText(snippet).catch(() => {});
         finishUploadOverlay('Markdown 已复制到剪贴板');
