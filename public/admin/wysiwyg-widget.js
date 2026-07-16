@@ -1,6 +1,8 @@
 (() => {
   const VDITOR_VERSION = '3.11.2';
   const VDITOR_CDN = `https://unpkg.com/vditor@${VDITOR_VERSION}`;
+  const LOCAL_UPLOAD_PREFIX = '/images/uploads/';
+  const MAX_IMAGE_RETRIES = 8;
   let loader = null;
 
   const loadAsset = (tagName, url) =>
@@ -63,12 +65,13 @@
               ],
               value: this.props.value || '',
               after: () => {
-                this.lastValue = this.editor.getValue();
+                this.lastValue = this.getPersistedValue();
                 this.bindAdapter();
+                this.bindImageRecovery();
               },
-              input: (value) => {
-                this.lastValue = value;
-                this.props.onChange(value);
+              input: () => {
+                this.lastValue = this.getPersistedValue();
+                this.props.onChange(this.lastValue);
               },
             });
           })
@@ -79,24 +82,120 @@
       componentDidUpdate() {
         if (!this.editor) return;
         const nextValue = this.props.value || '';
-        if (nextValue !== this.lastValue && nextValue !== this.editor.getValue()) {
+        if (nextValue !== this.lastValue && nextValue !== this.getPersistedValue()) {
           this.editor.setValue(nextValue);
           this.lastValue = nextValue;
+          this.recoverBrokenImages();
         }
       },
       componentWillUnmount() {
         this.mounted = false;
+        this.imageRetryTimers?.forEach((timer) => window.clearTimeout(timer));
+        if (this.imageRoot && this.imageErrorHandler) {
+          this.imageRoot.removeEventListener('error', this.imageErrorHandler, true);
+        }
         if (this.host) delete this.host.__a1rightVditor;
         this.editor?.destroy?.();
+      },
+      toLocalUploadPath(value = '') {
+        try {
+          const url = new URL(value, window.location.origin);
+          return url.origin === window.location.origin && url.pathname.startsWith(LOCAL_UPLOAD_PREFIX)
+            ? url.pathname
+            : '';
+        } catch {
+          return '';
+        }
+      },
+      getWysiwygRoot() {
+        return this.host?.querySelector('.vditor-wysiwyg') || null;
+      },
+      getPersistedValue() {
+        if (!this.editor) return '';
+
+        const restored = [];
+        this.getWysiwygRoot()?.querySelectorAll('img[data-a1right-persist-src]').forEach((image) => {
+          const persistedSource = image.dataset.a1rightPersistSrc;
+          const visualSource = image.dataset.a1rightPreviewSrc || image.getAttribute('src') || '';
+          if (!persistedSource || image.getAttribute('src') === persistedSource) return;
+          restored.push({ image, visualSource });
+          image.setAttribute('src', persistedSource);
+        });
+
+        try {
+          return this.editor.getValue();
+        } finally {
+          restored.forEach(({ image, visualSource }) => image.setAttribute('src', visualSource));
+        }
+      },
+      applyLocalImagePreviews(uploads = {}, attempt = 0) {
+        const root = this.getWysiwygRoot();
+        const items = Array.isArray(uploads) ? uploads : [];
+        if (!root || !items.length) return;
+
+        let applied = 0;
+        items.forEach((upload) => {
+          const persistedSource = this.toLocalUploadPath(upload?.publicPath || '');
+          const previewSource = `${upload?.previewUrl || ''}`.trim();
+          if (!persistedSource || !previewSource) return;
+
+          root.querySelectorAll('img').forEach((image) => {
+            const imageSource = this.toLocalUploadPath(image.dataset.a1rightPersistSrc || image.getAttribute('src') || '');
+            if (imageSource !== persistedSource) return;
+            image.dataset.a1rightPersistSrc = persistedSource;
+            image.dataset.a1rightPreviewSrc = previewSource;
+            image.setAttribute('src', previewSource);
+            applied += 1;
+          });
+        });
+
+        if (!applied && attempt < 3) {
+          window.setTimeout(() => this.applyLocalImagePreviews(items, attempt + 1), 80 * (attempt + 1));
+        }
+      },
+      bindImageRecovery() {
+        const root = this.getWysiwygRoot();
+        if (!root || this.imageRoot === root) return;
+
+        this.imageRoot = root;
+        this.imageRetryTimers = new Set();
+        this.imageErrorHandler = (event) => this.retryBrokenImage(event.target);
+        root.addEventListener('error', this.imageErrorHandler, true);
+        window.setTimeout(() => this.recoverBrokenImages(), 0);
+      },
+      recoverBrokenImages() {
+        this.getWysiwygRoot()?.querySelectorAll('img').forEach((image) => {
+          if (image.complete && !image.naturalWidth) this.retryBrokenImage(image);
+        });
+      },
+      retryBrokenImage(image) {
+        if (!(image instanceof HTMLImageElement) || !this.mounted || image.naturalWidth) return;
+        const source = image.dataset.a1rightPersistSrc || this.toLocalUploadPath(image.getAttribute('src') || '');
+        if (!source || !this.toLocalUploadPath(source)) return;
+
+        const retries = Number.parseInt(image.dataset.a1rightRetryCount || '0', 10);
+        if (retries >= MAX_IMAGE_RETRIES || image.dataset.a1rightRetryPending === 'true') return;
+
+        image.dataset.a1rightPersistSrc = this.toLocalUploadPath(source);
+        image.dataset.a1rightRetryCount = `${retries + 1}`;
+        image.dataset.a1rightRetryPending = 'true';
+        const timer = window.setTimeout(() => {
+          this.imageRetryTimers?.delete(timer);
+          image.dataset.a1rightRetryPending = 'false';
+          if (!this.mounted || !image.isConnected || image.naturalWidth) return;
+          image.setAttribute('src', `${source}?a1right-retry=${Date.now()}`);
+        }, Math.min(2000 * (retries + 1), 16000));
+        this.imageRetryTimers?.add(timer);
       },
       bindAdapter() {
         if (!this.host || !this.editor) return;
         this.host.__a1rightVditor = {
-          getValue: () => this.editor.getValue(),
+          getValue: () => this.getPersistedValue(),
           setValue: (value) => {
             this.editor.setValue(value || '');
-            this.lastValue = this.editor.getValue();
+            this.lastValue = this.getPersistedValue();
             this.props.onChange(this.lastValue);
+            this.recoverBrokenImages();
           },
           insertValue: (value, { appendParagraph = false } = {}) => {
             this.editor.focus();
@@ -106,10 +205,11 @@
             if (appendParagraph) this.editor.insertEmptyBlock('afterend');
             window.setTimeout(() => {
               if (!this.editor) return;
-              this.lastValue = this.editor.getValue();
+              this.lastValue = this.getPersistedValue();
               this.props.onChange(this.lastValue);
             }, 0);
           },
+          setImagePreviews: (uploads) => this.applyLocalImagePreviews(uploads),
           focus: () => this.editor.focus(),
           scrollIntoView: () => this.host.scrollIntoView({ behavior: 'smooth', block: 'center' }),
         };

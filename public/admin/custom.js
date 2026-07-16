@@ -2465,7 +2465,7 @@
 
     const clearButton = document.createElement('button');
     clearButton.type = 'button';
-    clearButton.className = 'a1right-admin-cover-preview__action is-secondary';
+    clearButton.className = 'a1right-admin-cover-preview__action is-secondary is-clear';
     clearButton.textContent = '清空图片';
     clearButton.addEventListener('click', async () => {
       const cleared = await clearImageFieldValue(root);
@@ -2480,6 +2480,14 @@
       const fieldPath = getImageFieldValue(root);
       const copied = fieldPath ? await copyTextToClipboard(fieldPath) : false;
       showToast(copied ? '封面图路径已复制。' : '当前没有可复制的封面图路径。', copied ? 'success' : 'info', 2400);
+    });
+
+    const fromBodyButton = document.createElement('button');
+    fromBodyButton.type = 'button';
+    fromBodyButton.className = 'a1right-admin-cover-preview__action is-secondary is-from-body';
+    fromBodyButton.textContent = '提取正文首图';
+    fromBodyButton.addEventListener('click', () => {
+      void applyCoverFromBodyFirstImage(root);
     });
 
     actions.append(replaceButton, fromBodyButton, copyPathButton, clearButton);
@@ -2508,7 +2516,7 @@
     const insights = card.querySelector('.a1right-admin-cover-preview__insights');
     const path = card.querySelector('.a1right-admin-cover-preview__path');
     const open = card.querySelector('.a1right-admin-cover-preview__open');
-    const clearButton = card.querySelector('.a1right-admin-cover-preview__action.is-secondary');
+    const clearButton = card.querySelector('.a1right-admin-cover-preview__action.is-clear');
     const copyPathButton = card.querySelector('.a1right-admin-cover-preview__action.is-ghost');
 
     const hasImage = Boolean(previewUrl);
@@ -3899,6 +3907,7 @@
         return true;
       }
 
+      getWysiwygAdapter(context.root)?.setImagePreviews?.(uploads);
       pushRecentUploads(uploads);
       finishUploadOverlay(`已处理 ${uploads.length} 张图片`);
 
