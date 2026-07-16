@@ -327,7 +327,7 @@ ${toSelectOptions(allowRepostOptions)}
         default: false
       - label: ${quote(bodyLabel)}
         name: "body"
-        widget: "markdown"
+        widget: "a1right_wysiwyg"
         hint: ${quote(contentHints.body)}`;
 };
 

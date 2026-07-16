@@ -692,13 +692,24 @@
   const getBodyFieldContainer = () =>
     getControlContainerByLabel([/正文/, /英文正文/, /(^|\s)body(\s|$)/i], [/seo/i]);
 
+  const getWysiwygAdapter = (root = getBodyFieldContainer()) => {
+    if (!(root instanceof Element)) return null;
+    const host = root.matches('.a1right-vditor-widget') ? root : root.querySelector('.a1right-vditor-widget');
+    const adapter = host?.__a1rightVditor;
+    return adapter && typeof adapter.getValue === 'function' ? adapter : null;
+  };
+
   const getBodyEditable = () => {
     const container = getBodyFieldContainer();
+    if (getWysiwygAdapter(container)) return null;
     const editable = container?.querySelector('[contenteditable="true"]');
     return editable instanceof HTMLElement ? editable : null;
   };
 
   const getBodyPlainText = () => {
+    const wysiwyg = getWysiwygAdapter();
+    if (wysiwyg) return wysiwyg.getValue();
+
     const codeMirror = getCodeMirrorInstance(getBodyFieldContainer());
     if (codeMirror) return codeMirror.getValue();
 
@@ -714,7 +725,7 @@
     const hash = `${window.location.hash || '#/'}`.replace(/\/+$/, '');
     // v2 deliberately ignores snapshots created while custom decorations were
     // written into Slate's DOM tree.
-    return `a1right-admin:draft:v2:${hash || 'root'}`;
+    return `a1right-admin:draft:v3:${hash || 'root'}`;
   };
 
   const getCurrentEditorIdentity = () => {
@@ -869,10 +880,7 @@
 
   const serializeEditorSnapshot = () => {
     const inputs = getEditorManagedInputs();
-    const bodyEditable = getBodyEditable();
-    // Slate already owns rich-text recovery. Persisting its HTML and assigning it
-    // back later creates DOM nodes that Slate cannot resolve.
-    const bodyText = bodyEditable instanceof HTMLElement ? '' : getBodyPlainText();
+    const bodyText = getBodyPlainText();
 
     return {
       id: getCurrentEditorIdentity(),
@@ -958,7 +966,8 @@
   const restoreEditorSnapshot = async (snapshot) => {
     if (!snapshot) return false;
 
-    if (getBodyEditable() instanceof HTMLElement && `${snapshot.bodyText || ''}`.trim()) {
+    const wysiwyg = getWysiwygAdapter();
+    if (!wysiwyg && getBodyEditable() instanceof HTMLElement && `${snapshot.bodyText || ''}`.trim()) {
       const copied = await copyTextToClipboard(snapshot.bodyText);
       showToast(
         copied ? '富文本草稿已复制到剪贴板，请在正文中手动粘贴。' : '富文本草稿不能直接写回，避免破坏编辑器节点。',
@@ -986,7 +995,9 @@
     await applyTagListValues(snapshot.tags || []);
 
     const codeMirror = getCodeMirrorInstance(getBodyFieldContainer());
-    if (codeMirror && typeof snapshot.bodyText === 'string') {
+    if (wysiwyg && typeof snapshot.bodyText === 'string') {
+      wysiwyg.setValue(snapshot.bodyText);
+    } else if (codeMirror && typeof snapshot.bodyText === 'string') {
       codeMirror.setValue(snapshot.bodyText);
     } else {
       const bodyInput = getFieldInputByLabel([/\u6b63\u6587/, /\u82f1\u6587\u6b63\u6587/, /(^|\s)body(\s|$)/i], [/seo/i]);
@@ -1919,6 +1930,7 @@
     if (!(element instanceof Element)) return null;
 
     return (
+      element.closest('.a1right-vditor-widget') ||
       element.closest('[aria-label="markdown field"]') ||
       element.closest('.CodeMirror') ||
       element.closest('[class*="MarkdownControl"]') ||
@@ -3092,7 +3104,7 @@
 
   const refreshAllRichTextCodeBlocks = () => {
     const decoratedEditables = [...document.querySelectorAll('#nc-root [class*="EditorControl"] [contenteditable="true"]')]
-      .filter((editable) => editable instanceof HTMLElement);
+      .filter((editable) => editable instanceof HTMLElement && !editable.closest('.a1right-vditor-widget'));
 
     decoratedEditables.forEach((editable) => {
       // Decap owns the rich-text subtree. Adding code controls to it makes React's
@@ -3378,6 +3390,19 @@
   const insertMarkdownSnippet = (root, snippet, richTextSelection = null, { appendParagraph = false } = {}) => {
     const normalizedSnippet = `${snippet || ''}`.trim();
     const sourceSnippet = appendParagraph ? `${normalizedSnippet}\n\n` : normalizedSnippet;
+    const wysiwyg = getWysiwygAdapter(root);
+    if (wysiwyg) {
+      wysiwyg.insertValue(sourceSnippet);
+      return {
+        ok: true,
+        locate: () => {
+          wysiwyg.focus();
+          wysiwyg.scrollIntoView?.();
+          pulseField(root, 'a1right-admin-field-guided');
+        },
+      };
+    }
+
     const codeMirror = getCodeMirrorInstance(root);
     if (codeMirror) {
       const doc = codeMirror.getDoc();

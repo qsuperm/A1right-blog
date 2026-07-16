@@ -2649,3 +2649,61 @@ body.admin-route--editor #nc-root [class*="ControlPaneContainer"] {
     padding-top: 6px;
   }
 }
+
+/* The Vditor widget owns its complete editing subtree. Keep integration styling
+   at its outer boundary so Decap and the editor never compete for DOM nodes. */
+#nc-root .a1right-admin-body-control .a1right-vditor-widget {
+  min-width: 0;
+  grid-column: 2;
+}
+
+#nc-root .a1right-vditor-widget .vditor {
+  overflow: hidden;
+  border: 1px solid rgba(32, 189, 145, .22);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, .94);
+  box-shadow: 0 14px 38px rgba(27, 79, 64, .08);
+}
+
+#nc-root .a1right-vditor-widget .vditor-toolbar {
+  border-bottom: 1px solid rgba(32, 189, 145, .16);
+  background: rgba(244, 250, 247, .96);
+}
+
+#nc-root .a1right-vditor-widget .vditor-toolbar__item button:hover,
+#nc-root .a1right-vditor-widget .vditor-toolbar__item button:focus-visible {
+  color: #0d7f61;
+  background: rgba(32, 189, 145, .1);
+}
+
+#nc-root .a1right-vditor-widget .vditor-wysiwyg {
+  padding: 28px 30px 56px;
+  color: #24332e;
+  background: transparent;
+  font-family: var(--font-sans, 'Noto Sans SC', 'Microsoft YaHei', sans-serif);
+  font-size: 16px;
+  line-height: 1.9;
+}
+
+#nc-root .a1right-vditor-widget .vditor-wysiwyg img {
+  max-width: min(100%, 920px);
+  margin: 18px 0;
+  border: 1px solid rgba(32, 189, 145, .16);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(27, 79, 64, .1);
+}
+
+#nc-root .a1right-vditor-widget .vditor-wysiwyg pre {
+  margin: 22px 0;
+  border-radius: 10px;
+}
+
+@media (max-width: 860px) {
+  #nc-root .a1right-admin-body-control .a1right-vditor-widget {
+    grid-column: 1;
+  }
+
+  #nc-root .a1right-vditor-widget .vditor-wysiwyg {
+    padding: 18px 16px 40px;
+  }
+}

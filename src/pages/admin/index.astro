@@ -21,7 +21,7 @@ const adminRuntime = JSON.stringify({
   mediaFolder: CMS.mediaFolder,
   publicFolder: CMS.publicFolder,
 });
-const adminAssetVersion = '20260716-slate-safe-editor-7';
+const adminAssetVersion = '20260717-vditor-editor-8';
 ---
 
 <!doctype html>
@@ -40,6 +40,7 @@ const adminAssetVersion = '20260716-slate-safe-editor-7';
     </script>
     <script is:inline src="/admin/vendor/marked.umd.js" defer></script>
     <script is:inline src="/admin/vendor/purify.min.js" defer></script>
+    <script is:inline src={`/admin/wysiwyg-widget.js?v=${adminAssetVersion}`}></script>
     <script is:inline src={`/admin/custom.js?v=${adminAssetVersion}`} defer></script>
     <style>
       :root {
@@ -236,10 +237,16 @@ const adminAssetVersion = '20260716-slate-safe-editor-7';
       window.addEventListener('hashchange', () => window.setTimeout(syncAdminState, 60));
       syncAdminState();
 
+      // Register custom widgets before Decap reads config.yml and renders fields.
+      window.CMS_MANUAL_INIT = true;
       const decapScript = document.createElement('script');
       decapScript.src = 'https://unpkg.com/decap-cms@3.14.1/dist/decap-cms.js';
       decapScript.defer = true;
-      decapScript.onload = syncAdminState;
+      decapScript.onload = () => {
+        window.__A1RIGHT_REGISTER_WYSIWYG__?.();
+        window.initCMS?.();
+        syncAdminState();
+      };
       decapScript.onerror = () => { if (loginStatus) loginStatus.textContent = '后台模块加载失败，请刷新页面重试'; };
       document.body.append(decapScript);
       window.setInterval(syncAdminState, 1200);
