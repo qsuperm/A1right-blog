@@ -33,7 +33,7 @@ const adminAssetVersion = '20260717-vditor-editor-8';
     <title>{SITE.name} · 后台管理</title>
     <link rel="icon" href="/favicon.ico?v=20260713-avatar" sizes="any" />
     <link rel="icon" type="image/png" sizes="256x256" href="/images/a1right-avatar-icon.png?v=20260713-avatar" />
-    <link href="/admin/config.yml" type="text/yaml" rel="cms-config-url" />
+    <link href={`/admin/config.yml?v=${adminAssetVersion}`} type="text/yaml" rel="cms-config-url" />
     <link rel="stylesheet" href={`/admin/custom.css?v=${adminAssetVersion}`} />
     <script is:inline define:vars={{ adminRuntime }}>
       window.__A1RIGHT_ADMIN__ = JSON.parse(adminRuntime);
