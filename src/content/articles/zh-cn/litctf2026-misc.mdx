@@ -36,11 +36,11 @@ draft: false
 
 ![](/images/uploads/1.png)
 
-![LitCTF2026misc题解 配图](blob:https://itsa1right.ink/fa40455d-f24e-496e-9e30-851db0069e20)
+![LitCTF2026misc题解 配图](/images/uploads/2-20260717-123237-eipix1.png)
 
 base64解码后得到flag
 
-LitCTF{lsb\_1s\_fun\_w1th\_b4s3\_64}
+`LitCTF{lsb\_1s\_fun\_w1th\_b4s3\_64}`
 
 # [LitCTF2026] lit\_rush\_qr
 
@@ -58,7 +58,7 @@ LitCTF{lsb\_1s\_fun\_w1th\_b4s3\_64}
 
 扫描第四个得到flag
 
-LitCTF{qr\_h1gh\_3rr\_c0r\_r3c0v3ry}
+`LitCTF{qr\_h1gh\_3rr\_c0r\_r3c0v3ry}`
 
 
 # [LitCTF2026] lit\_welcome
@@ -85,7 +85,7 @@ LitCTF{qr\_h1gh\_3rr\_c0r\_r3c0v3ry}
 >
 > 你收到一段奇怪的 **WAV**：听起来像老式调制解调器或短波噪声。它其实不是「坏掉的音频」，而是一种把 **图片编码进声音** 的协议——**SSTV（慢扫描电视）**。
 
-![LitCTF2026misc题解 配图](blob:https://itsa1right.ink/28ee0827-5d0a-47ac-b08f-e1fcbfcda972)
+![LitCTF2026misc题解 配图](/images/uploads/5-20260717-154137-jgm18h.png)
 
 附件是非常杂乱的音频
 
@@ -192,7 +192,7 @@ if __name__ == "__main__":
     main()
 ```
 
-![LitCTF2026misc题解 配图](blob:https://itsa1right.ink/a4cf954c-1ba9-44ce-80ce-63b0d655cd60)
+![LitCTF2026misc题解 配图](/images/uploads/9004137dc9db47d39f897a77f4b52dec-20260717-154752-fzigfc.png)
 
 验证码机制： 程序连接后会使用 secrets.choice 随机生成 8 位大写字母，要求用户输入其反转后的字符串（代码中使用 challenge[::-1] 进行校验）。这要求解题时必须动态处理输入，或者手动快速反应。
 
@@ -212,7 +212,7 @@ if __name__ == "__main__":
 
 得到flag
 
-![LitCTF2026misc题解 配图](blob:https://itsa1right.ink/d1c11ef5-6896-4391-a568-d78c6e6c1fb0)
+![LitCTF2026misc题解 配图](/images/uploads/image-20260717-154828-ryu18p.png)
 
 ## [LitCTF2026] lit\_pyjail\_unicode
 
@@ -373,17 +373,17 @@ out = eval(line) # 此时 out 的值就是数字 2，而不是字符串 "1+1"
 eval(line, {"__builtins__": __builtins__})
 ```
 
-这里只传了第二个参数（对应全局命名空间 globals）。 由于作者传入了一个自定义的字典 {"builtins": ...}，这就意味着原本程序里自带的所有全局变量、全局函数（比如程序里的 banned 函数、MAX_LINE 变量等）全部被清空了。
+这里只传了第二个参数（对应全局命名空间 globals）。 由于作者传入了一个自定义的字典 `{"builtins": ...}`，这就意味着原本程序里自带的所有全局变量、全局函数（比如程序里的 banned 函数、MAX_LINE 变量等）全部被清空了。
 
 如果你在 Payload 里尝试直接输入 banned，eval 就会报错 NameError: name 'banned' is not defined。作者这样做是为了防止你利用程序自带的变量去搞破坏。
 
 
-致命的后门：{"builtins": builtins}
+致命的后门：`{"builtins": builtins}`
 这是作者犯下的最严重的致命错误（也是为了故意留给选手的解题后门）。
 
 什么是 builtins？ 它是 Python 的内置函数库。你在写 Python 代码时，为什么不需要 import 就能直接使用 open()、print()、len()、str()、int()？就是因为这些函数全部存放在 builtins 这个底层大仓库里。
 
-这行代码做了什么？ 作者在清空全局变量的同时，通过 {"builtins": builtins} 把 Python 最顶层的、完整的内置函数库原封不动地又塞回给了你的执行环境。
+这行代码做了什么？ 作者在清空全局变量的同时，通过 `{"builtins": builtins}` 把 Python 最顶层的、完整的内置函数库原封不动地又塞回给了你的执行环境。
 
 🔓 为什么这导致了漏洞？
 既然完整的 builtins 还在，你在 eval() 里面就依然拥有至高无上的权力。你依然可以直接调用：
