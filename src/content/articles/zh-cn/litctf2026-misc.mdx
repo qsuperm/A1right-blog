@@ -13,10 +13,14 @@ tags:
   - LitCTF2026
   - misc
   - CTF
+visibility: public
+publishMode: now
 publishedAt: 2026-07-13
 updatedAt: 2026-07-13
 cover: images/uploads/图片-20260713-214133-rbeq37.png
 coverAlt: ""
+contentType: original
+allowRepost: allow-with-attribution
 pinned: false
 draft: false
 ---
@@ -31,3 +35,416 @@ draft: false
 我们利用zsteg得到一串base64字符
 
 ![](/images/uploads/1.png)
+
+![LitCTF2026misc题解 配图](blob:https://itsa1right.ink/fa40455d-f24e-496e-9e30-851db0069e20)
+
+base64解码后得到flag
+
+LitCTF{lsb\_1s\_fun\_w1th\_b4s3\_64}
+
+# [LitCTF2026] lit\_rush\_qr
+
+> #### 题目描述
+>
+> 附件里有一个「闪得很快」的 GIF。有人说自己好像瞥见了 **二维码** 的一角，但怎么也扫不出来……
+
+附件压缩之后是一个GIF文件
+
+我们对其分解帧
+
+看到二维码缺少定位符
+
+我们利用随波逐流自动化补定位符
+
+扫描第四个得到flag
+
+LitCTF{qr\_h1gh\_3rr\_c0r\_r3c0v3ry}
+
+
+# [LitCTF2026] lit\_welcome
+
+>
+>
+> ```undefined
+> 题目描述 
+> 组委会给你发了一张「欢迎」图片，说 flag 就在图里——可你一眼望去好像只有几行普普通通的欢迎语？
+> ```
+
+![LitCTF2026misc题解 配图](/images/uploads/3-20260717-153954-kahkur.png)
+
+附件是空白的照片,得到flag
+
+![LitCTF2026misc题解 配图](/images/uploads/4-20260717-154053-gfb619.png)
+
+
+
+# [LitCTF2026] lit\_sstv
+
+>
+> #### 题目描述
+>
+> 你收到一段奇怪的 **WAV**：听起来像老式调制解调器或短波噪声。它其实不是「坏掉的音频」，而是一种把 **图片编码进声音** 的协议——**SSTV（慢扫描电视）**。
+
+![LitCTF2026misc题解 配图](blob:https://itsa1right.ink/28ee0827-5d0a-47ac-b08f-e1fcbfcda972)
+
+附件是非常杂乱的音频
+
+没得到什么有用的信息
+
+由题目描述可知考察的是**无线电安全 / 慢扫描电视（SSTV, Slow-Scan Television）音频隐写与底层信号解调** .![LitCTF2026misc题解 配图](/images/uploads/6-20260717-154305-ktaxn9.png)
+
+我们使用在线工具来解调，得到flag
+
+
+# [LitCTF2026] lit\_pyjail\_reader
+
+>
+> #### 题目描述
+>
+> ez\_jail
+
+```
+#!/usr/bin/env python3
+"""LitCTF — 入门 Pyjail：验证码 + 按指引两次只读文件（无 RCE）。"""
+ 
+import secrets
+import socket
+import string
+import threading
+ 
+HOST = "0.0.0.0"
+PORT = 9999
+MAX_QUEUED = 64
+MAX_LINE = 512
+MAX_FILE = 4096
+ 
+ 
+def recv_line(conn: socket.socket) -> str:
+    data = bytearray()
+    while len(data) < MAX_LINE:
+        chunk = conn.recv(1)
+        if not chunk:
+            break
+        if chunk == b"\n":
+            break
+        data += chunk
+    return data.decode("utf-8", errors="replace").strip()
+ 
+ 
+def safe_read(path: str) -> str:
+    p = path.strip()
+    if not p or p.startswith("-") or "\x00" in p:
+        raise ValueError("invalid path")
+    with open(p, "r", errors="replace") as f:
+        return f.read(MAX_FILE)
+ 
+ 
+def handle(conn: socket.socket) -> None:
+    try:
+        conn.settimeout(120)
+        alphabet = string.ascii_uppercase
+        challenge = "".join(secrets.choice(alphabet) for _ in range(8))
+        conn.sendall(
+            f"Please enter the reverse of '{challenge}' to continue: ".encode()
+        )
+        ans = recv_line(conn)
+        if ans != challenge[::-1]:
+            conn.sendall(b"Wrong reverse string. Bye.\n")
+            return
+        conn.sendall(
+            b"Good.\n"
+            b"Step 1: read /app/where_is_flag.txt (it contains the flag path).\n"
+            b"Step 2: read that path.\n"
+            b"File path (1/2): "
+        )
+        p1 = recv_line(conn)
+        try:
+            c1 = safe_read(p1)
+        except Exception as e:
+            conn.sendall(f"Error: {e}\n".encode(errors="replace"))
+            return
+        conn.sendall(b"--- begin ---\n")
+        conn.sendall(c1.encode(errors="replace"))
+        conn.sendall(b"\n--- end ---\nFile path (2/2): ")
+        p2 = recv_line(conn)
+        try:
+            c2 = safe_read(p2)
+        except Exception as e:
+            conn.sendall(f"Error: {e}\n".encode(errors="replace"))
+            return
+        conn.sendall(c2.encode(errors="replace"))
+        conn.sendall(b"\n")
+    finally:
+        conn.close()
+ 
+ 
+def main() -> None:
+    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv.bind((HOST, PORT))
+    srv.listen(MAX_QUEUED)
+    while True:
+        client, _ = srv.accept()
+        threading.Thread(target=handle, args=(client,), daemon=True).start()
+ 
+ 
+if __name__ == "__main__":
+    main()
+```
+
+![LitCTF2026misc题解 配图](blob:https://itsa1right.ink/a4cf954c-1ba9-44ce-80ce-63b0d655cd60)
+
+验证码机制： 程序连接后会使用 secrets.choice 随机生成 8 位大写字母，要求用户输入其反转后的字符串（代码中使用 challenge[::-1] 进行校验）。这要求解题时必须动态处理输入，或者手动快速反应。
+
+文件读取过滤 (safe_read)： 分析 safe_read(path) 函数，作者虽然做了一些表面上的安全限制：
+
+裁剪首尾空格 (path.strip())
+
+禁止以 - 开头（防参数注入）
+
+禁止包含 \x00（防截断）
+
+限制最大读取 4096 字节（防 DoS 攻击）
+
+【关键漏洞点】：函数完全没有限制绝对路径，也没有限制目录遍历（如 ../）。这意味着只要传入一个合法的纯路径字符串，Python 就会通过 open() 原生读取该文件。
+
+执行流程： 程序设计了两次 recv_line 机会。第一步引导用户读取 /app/where_is_flag.txt，该文件内容为真正的 Flag 存储路径。第二步读取该真实路径，打印出 Flag。
+
+得到flag
+
+![LitCTF2026misc题解 配图](blob:https://itsa1right.ink/d1c11ef5-6896-4391-a568-d78c6e6c1fb0)
+
+## [LitCTF2026] lit\_pyjail\_unicode
+
+> #### 题目描述
+>
+> ezjail\_2
+
+
+
+附件：
+
+```python
+#!/usr/bin/env python3
+"""LitCTF — Unicode 标识符绕过：过滤检查原始源码字符串，解释器仍接受全角等价标识符。"""
+ 
+import re
+import socket
+import threading
+ 
+HOST = "0.0.0.0"
+PORT = 9999
+MAX_QUEUED = 64
+MAX_LINE = 240
+ 
+# 仅检查「你键入的文本」：ASCII 关键字用词边界，避免匹配到 important 等
+BANNED = re.compile(
+    r"\bimport\b|\bexec\b|\beval\b|\bopen\b|\bcompile\b|\bglobals\b|\blocals\b|__|"
+    r"\bgetattr\b|\bsetattr\b|\bdelattr\b|\bvars\b|\bbreakpoint\b|\binput\b|"
+    r"\bsubprocess\b|\bpty\b|os\.|sys\.|\bposix\b",
+    re.IGNORECASE,
+)
+ 
+ 
+def banned(raw: str) -> bool:
+    if "\\u" in raw or "\\U" in raw or "\\x" in raw:
+        return True
+    return BANNED.search(raw) is not None
+ 
+ 
+def handle(conn: socket.socket) -> None:
+    try:
+        conn.settimeout(60)
+        conn.sendall(
+            b"=== LitCTF pyjail unicode ===\n"
+            b"Send ONE line of Python. It will be eval() with full __builtins__.\n"
+            b"ASCII blacklist applies to your *source text* (see attachment jail.py).\n"
+            b"Goal: read /flag and get its str content.\n> "
+        )
+        raw = bytearray()
+        while len(raw) < MAX_LINE:
+            ch = conn.recv(1)
+            if not ch:
+                break
+            if ch == b"\n":
+                break
+            raw += ch
+        line = raw.decode("utf-8", errors="replace").strip()
+        if not line:
+            conn.sendall(b"empty\n")
+            return
+        if banned(line):
+            conn.sendall(b"disallowed pattern in source\n")
+            return
+        try:
+            out = eval(line, {"__builtins__": __builtins__})
+            conn.sendall(repr(out).encode(errors="replace") + b"\n")
+        except Exception as e:
+            conn.sendall(f"{type(e).__name__}: {e}\n".encode(errors="replace"))
+    finally:
+        conn.close()
+ 
+ 
+def main() -> None:
+    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    srv.bind((HOST, PORT))
+    srv.listen(MAX_QUEUED)
+    while True:
+        c, _ = srv.accept()
+        threading.Thread(target=handle, args=(c,), daemon=True).start()
+ 
+ 
+if __name__ == "__main__":
+    main()
+```
+
+这个题目是真正的 Python 沙箱逃逸题（Pyjail）了。它的核心考点非常硬核：**利用 Python**  **解释器在解析****源码时对 ** **Unicode**  **标识符的归一化****（Normalization****）特性，去绕过传统的黑名单过滤。**
+
+1. ### 核心代码审计
+
+#### 1.1 致命的沙箱入口：`eval()`
+
+我们先看业务逻辑的核心执行点：
+
+```
+out = eval(line, {"__builtins__": __builtins__})
+```
+
+这里使用了 `eval()` 函数，它会把你发送过去的字符串**当作 Python 代码来执行**。虽然作者把全局变量清空了，但保留了完整的 `builtins`（内置函数库，如 `open`、`import` 等都在里面）。只要能调用这些内置函数，就能轻松读取文件。
+
+#### 1.2 表面严苛的黑名单：`banned()`
+
+为了阻止你调用那些危险函数，作者设置了极其严格的正则黑名单：
+
+```
+
+
+BANNED = re.compile(
+    r"\bimport\b|\bexec\b|\beval\b|\bopen\b|\bcompile\b|\bglobals\b|\blocals\b|__|"r"\bgetattr\b|\bsetattr\b|\bdelattr\b|\bvars\b|\bbreakpoint\b|\binput\b|"r"\bsubprocess\b|\bpty\b|os\.|sys\.|\bposix\b",
+    re.IGNORECASE,
+)
+```
+
+
+* **禁止关键字**：`import`, `eval`, `open`, `exec` 等等，只要匹配到直接拒绝。
+* **禁止双下划线**：`__` 被禁，意味着你无法使用类似 `class`、`subclasses` 等传统的 Python 魔术方法逃逸链。
+* **禁止字面量转义**：
+
+```
+if "\\u" in raw or "\\U" in raw or "\\x" in raw: return True
+```
+
+* 这堵死了你企图用 `\x6f\x70\x65\x6e`（`open` 的十六进制转义）来绕过黑名单的路。
+
+
+核心漏洞：Python 源码解析与 Unicode 归一化
+既然黑名单如此完美，漏洞出在哪里？ 漏洞出在 「黑名单检查」与「Python 解释器执行」之间的时间差（解耦）。
+
+2.1 检查阶段（WAF）
+程序中的 banned(line) 检查的是你输入的原始 UTF-8 字节串。 正则引擎（re 模块）是非常死板的：它检查的 \bopen\b 只认识标准 ASCII 码中的 o(0x6F), p(0x70), e(0x65), n(0x6E)。如果你传入的不是这几个精准的 ASCII 码，正则就会认为“安全”，予以放行。
+
+2.2 执行阶段（Python 词法分析）
+当代码通过检查进入 eval(line) 时，Python 解释器开始大显身手。 根据 PEP 3131 规范，Python 允许在标识符（如变量名、函数名）中使用非 ASCII 的 Unicode 字符。为了让这些奇形怪状的字符能被正确识别，Python 在解析源码时，会先自动将所有的标识符进行 NFKC（兼容性正规形式）归一化。
+
+也就是说：一些外观极为相似、或者全角的 Unicode 字符，在进入 Python 内核准备执行的瞬间，会被解释器自动“揉碎、并重组”回标准的 ASCII 字符！
+
+核心动词：eval(line, ...)
+在 Python 中，eval() 是一个非常强大的内置函数。它的全称是 Evaluate（求值）。
+
+作用：它接收一个字符串作为参数，然后把这个字符串放进 Python 解释器里，当成合法的 Python 表达式去编译并执行。
+
+举个例子：
+
+```
+line = "1 + 1"
+out = eval(line) # 此时 out 的值就是数字 2，而不是字符串 "1+1"
+```
+
+在本题中，如果你输入了 `ｏｐｅｎ('/flag').ｒｅａｄ()`，经过 Unicode 还原后，`eval(line)` 就会在后台真正去调用系统的文件读取接口。
+
+1. ### 局部变量清空：隐式存在的 `{}`
+
+`eval()` 的完整标准语法其实是：`eval(expression, globals, locals)`。
+
+在这个题目里，作者写的是：
+
+```
+eval(line, {"__builtins__": __builtins__})
+```
+
+这里只传了第二个参数（对应全局命名空间 globals）。 由于作者传入了一个自定义的字典 {"builtins": ...}，这就意味着原本程序里自带的所有全局变量、全局函数（比如程序里的 banned 函数、MAX_LINE 变量等）全部被清空了。
+
+如果你在 Payload 里尝试直接输入 banned，eval 就会报错 NameError: name 'banned' is not defined。作者这样做是为了防止你利用程序自带的变量去搞破坏。
+
+
+致命的后门：{"builtins": builtins}
+这是作者犯下的最严重的致命错误（也是为了故意留给选手的解题后门）。
+
+什么是 builtins？ 它是 Python 的内置函数库。你在写 Python 代码时，为什么不需要 import 就能直接使用 open()、print()、len()、str()、int()？就是因为这些函数全部存放在 builtins 这个底层大仓库里。
+
+这行代码做了什么？ 作者在清空全局变量的同时，通过 {"builtins": builtins} 把 Python 最顶层的、完整的内置函数库原封不动地又塞回给了你的执行环境。
+
+🔓 为什么这导致了漏洞？
+既然完整的 builtins 还在，你在 eval() 里面就依然拥有至高无上的权力。你依然可以直接调用：
+
+open('/flag').read()
+
+import('os').system('ls')（当然，本题黑名单禁止了 import 和 os）
+
+生成全角的脚本
+
+```
+#!/usr/bin/env python3
+import sys
+ 
+ 
+def to_fullwidth(text: str) -> str:
+    result = []
+    for char in text:
+        code = ord(char)
+        # 处理小写字母 a-z 转换到全角
+        if 'a' <= char <= 'z':
+            result.append(chr(code + 65248))
+        # 处理大写字母 A-Z 转换到全角
+        elif 'A' <= char <= 'Z':
+            result.append(chr(code + 65248))
+        else:
+            # 保持符号（如 /, ', (, ), .）原样不变，因为题目中只有标识符需要全角
+            result.append(char)
+    return "".join(result)
+ 
+ 
+def main():
+    print("=== CTF Pyjail Unicode Payload 转换器 ===")
+    print("请输入你想转换的代码（直接回车退出）\n")
+ 
+    while True:
+        try:
+            user_input = input("输入原始代码 > ").strip()
+            if not user_input:
+                print("已退出。")
+                break
+ 
+            payload = to_fullwidth(user_input)
+            print("\n[+] 转换后的全角 Payload (直接复制下方内容):")
+            print("-" * 40)
+            print(payload)
+            print("-" * 40 + "\n")
+ 
+        except (KeyboardInterrupt, EOFError):
+            print("\n已退出。")
+            break
+ 
+ 
+if __name__ == "__main__":
+    main()
+```
+
+或者
+
+python3 -c "print(''.join(chr(ord(c) + 65248) for c in 'open'))"
+
+得到flag
+
+![LitCTF2026misc题解 配图](/images/uploads/image-20260717-155612-dfos1m.png)
