@@ -2,7 +2,8 @@
 import SearchOverlay from './SearchOverlay.astro';
 import ThemeToggle from './ThemeToggle.astro';
 import { SITE, UI, type Locale } from '../config';
-import { getCategoriesIndexUrl, getPostsIndexUrl, getTagsIndexUrl } from '../utils/articles';
+import { getCategoriesIndexUrl, getFriendsUrl, getPostsIndexUrl, getTagsIndexUrl } from '../utils/articles';
+import { FRIEND_PAGE_COPY } from '../data/friends';
 
 interface Props {
   locale: Locale;
@@ -19,6 +20,7 @@ const nav = [
   { href: postsHref, label: UI[locale].posts, icon: '▤' },
   { href: getCategoriesIndexUrl(locale), label: UI[locale].categories, icon: '♟' },
   { href: getTagsIndexUrl(locale), label: UI[locale].tags, icon: '⌗' },
+  { href: getFriendsUrl(locale), label: FRIEND_PAGE_COPY[locale].navLabel, icon: '∞' },
 ];
 ---
 

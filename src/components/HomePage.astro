@@ -1,12 +1,14 @@
 ---
 import PageViewBadge from './PageViewBadge.astro';
 import { SITE, UI, type Locale } from '../config';
+import { FRIEND_LINKS, FRIEND_PAGE_COPY, FRIEND_SELF_CARD } from '../data/friends';
 import {
   CATEGORY_META,
   formatDate,
   getArticleUrl,
   getArticlesByLocale,
   getCategoryUrl,
+  getFriendsUrl,
   getPostsIndexUrl,
   getTagUrl,
   getUniqueTagCount,
@@ -21,6 +23,9 @@ const postsHref = getPostsIndexUrl(locale);
 const articles = await getArticlesByLocale(locale);
 const totalTags = getUniqueTagCount(articles);
 const githubUrl = SITE.githubUrl.trim();
+const friendsHref = getFriendsUrl(locale);
+const friendCopy = FRIEND_PAGE_COPY[locale];
+const featuredFriends = FRIEND_LINKS.slice(0, 4);
 
 const categoryCounts = articles.reduce<Record<string, number>>((acc, entry) => {
   acc[entry.data.categoryKey] = (acc[entry.data.categoryKey] ?? 0) + 1;
@@ -236,6 +241,24 @@ const totalWords = articles.reduce((sum, entry) => sum + (entry.body ?? '').spli
         <div><dt>© {copy.license}</dt><dd>CC BY 4.0</dd></div>
         <div><dt>◎ {copy.language}</dt><dd>ZH / EN</dd></div>
       </dl>
+    </article>
+
+    <article class="fo-card fo-widget fo-friends-entry">
+      <div class="fo-friends-entry__head">
+        <h2 class="fo-widget-title">{friendCopy.entryTitle}</h2>
+        <span>{friendCopy.openStatus}</span>
+      </div>
+      <p>{friendCopy.entryText}</p>
+      <div class="fo-friends-entry__avatars" aria-hidden="true">
+        {(featuredFriends.length > 0 ? featuredFriends : [FRIEND_SELF_CARD]).map((item) => (
+          <img src={item.avatar} alt="" loading="lazy" />
+        ))}
+      </div>
+      <div class="fo-friends-entry__meta">
+        <strong>{FRIEND_LINKS.length}</strong>
+        <span>{locale === 'en' ? 'listed sites' : '已收录站点'}</span>
+      </div>
+      <a class="fo-soft-button" href={friendsHref}>{friendCopy.entryAction}</a>
     </article>
 
     <article class="fo-card fo-calendar">

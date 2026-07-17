@@ -1,0 +1,37 @@
+---
+import type { Locale } from '../config';
+import type { FriendLink } from '../data/friends';
+
+interface Props {
+  locale: Locale;
+  item: FriendLink;
+}
+
+const { locale, item } = Astro.props;
+---
+
+<article class="ff-card friend-card">
+  <div class="friend-card__header">
+    <img class="friend-card__avatar" src={item.avatar} alt={item.owner} loading="lazy" />
+    <div class="friend-card__meta">
+      <h2>{item.name}</h2>
+      <p>{item.owner}</p>
+    </div>
+    <a class="friend-card__visit" href={item.url} target="_blank" rel="noreferrer" aria-label={`Visit ${item.name}`}>↗</a>
+  </div>
+
+  <p class="friend-card__description">{item.description[locale]}</p>
+
+  {item.tags && item.tags.length > 0 && (
+    <div class="friend-card__tags">
+      {item.tags.map((tag) => (
+        <span>#{tag}</span>
+      ))}
+    </div>
+  )}
+
+  <div class="friend-card__footer">
+    <a href={item.url} target="_blank" rel="noreferrer">{item.url}</a>
+    {item.rss && <a href={item.rss} target="_blank" rel="noreferrer">RSS</a>}
+  </div>
+</article>

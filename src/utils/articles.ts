@@ -86,6 +86,10 @@ export function getPostsIndexUrl(locale: Locale) {
   return locale === 'en' ? '/en/posts' : '/posts';
 }
 
+export function getFriendsUrl(locale: Locale) {
+  return locale === 'en' ? '/en/friends' : '/friends';
+}
+
 export function getPostsPageUrl(locale: Locale, page: number) {
   const normalized = Math.max(1, Math.floor(page));
   return normalized === 1 ? getPostsIndexUrl(locale) : `${getPostsIndexUrl(locale)}/page/${normalized}`;

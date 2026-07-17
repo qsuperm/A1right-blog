@@ -331,6 +331,72 @@ ${toSelectOptions(allowRepostOptions)}
         hint: ${quote(contentHints.body)}`;
 };
 
+const createFriendsConfig = () => `  - name: "friend_links"
+    label: "\u53cb\u60c5\u94fe\u63a5"
+    label_singular: "\u53cb\u94fe"
+    description: "\u96c6\u4e2d\u7ba1\u7406\u53cb\u60c5\u94fe\u63a5\u6570\u636e\uff0c\u4fdd\u5b58\u540e\u4f1a\u540c\u6b65\u5230\u5bfc\u822a\u3001\u9996\u9875\u5165\u53e3\u548c /friends \u9875\u9762\u3002"
+    files:
+      - label: "\u53cb\u60c5\u94fe\u63a5"
+        name: "friend_links"
+        file: "src/data/friends.json"
+        format: "json"
+        editor:
+          preview: false
+        fields:
+          - label: "\u53cb\u94fe\u5217\u8868"
+            name: "links"
+            widget: "list"
+            label_singular: "\u53cb\u94fe"
+            summary: "{{fields.name}} / {{fields.owner}}"
+            collapsed: false
+            allow_add: true
+            allow_remove: true
+            allow_reorder: true
+            hint: "\u6bcf\u4e00\u9879\u5c31\u662f\u4e00\u4e2a\u53cb\u94fe\uff1b\u4fdd\u5b58\u540e\u4f1a\u81ea\u52a8\u540c\u6b65\u5230\u524d\u53f0\u53cb\u94fe\u9875\u3002"
+            fields:
+              - label: "\u7ad9\u70b9\u540d\u79f0"
+                name: "name"
+                widget: "string"
+              - label: "\u7ad9\u70b9\u5730\u5740"
+                name: "url"
+                widget: "string"
+                hint: "\u586b\u5199\u5b8c\u6574 https:// \u94fe\u63a5\u3002"
+              - label: "\u5934\u50cf\u5730\u5740"
+                name: "avatar"
+                widget: "string"
+                hint: "\u53ef\u586b\u5199\u7ad9\u5916\u5934\u50cf URL\uff0c\u6216\u4f60\u81ea\u5df1\u7ad9\u5185\u7684 /images/uploads/... \u8def\u5f84\u3002"
+              - label: "\u7ad9\u957f\u6635\u79f0"
+                name: "owner"
+                widget: "string"
+              - label: "\u7b80\u4ecb"
+                name: "description"
+                widget: "object"
+                fields:
+                  - label: "\u4e2d\u6587\u7b80\u4ecb"
+                    name: "zhCn"
+                    widget: "text"
+                  - label: "\u82f1\u6587\u7b80\u4ecb"
+                    name: "en"
+                    widget: "text"
+              - label: "\u6807\u7b7e"
+                name: "tags"
+                widget: "list"
+                required: false
+                allow_add: true
+                allow_remove: true
+                allow_reorder: true
+                collapsed: false
+                hint: "\u53ef\u9009\uff0c\u5efa\u8bae 1~4 \u4e2a\uff0c\u4f8b\u5982 Web / CTF / Blog\u3002"
+                field:
+                  label: "\u6807\u7b7e"
+                  name: "tag"
+                  widget: "string"
+              - label: "RSS\uff08\u53ef\u9009\uff09"
+                name: "rss"
+                widget: "string"
+                required: false
+                hint: "\u5982\u679c\u5bf9\u65b9\u6709 RSS\uff0c\u53ef\u586b\u5b8c\u6574\u94fe\u63a5\u3002"`;
+
 const config = `# Decap CMS config for A1right's blog
 local_backend: true
 locale: ${quote(CMS.locale)}
@@ -422,7 +488,8 @@ ${createCollection({
     yearGroup: 'Group by year',
   },
 })}
-`;
+
+${createFriendsConfig()}`;
 
 export const GET: APIRoute = async () =>
   new Response(`\uFEFF${config}`, {
