@@ -3,6 +3,8 @@
   const VDITOR_CDN = `https://unpkg.com/vditor@${VDITOR_VERSION}`;
   const LOCAL_UPLOAD_PREFIX = '/images/uploads/';
   const MAX_IMAGE_RETRIES = 8;
+  const MIN_EDITOR_HEIGHT = 260;
+  const MAX_EDITOR_HEIGHT = 860;
   let loader = null;
 
   const loadAsset = (tagName, url) =>
@@ -52,8 +54,8 @@
               cdn: VDITOR_CDN,
               i18n: 'zh_CN',
               mode: 'wysiwyg',
-              height: 620,
-              minHeight: 420,
+              height: 'auto',
+              minHeight: MIN_EDITOR_HEIGHT,
               cache: { enable: false },
               counter: { enable: true },
               toolbarConfig: { pin: true },
@@ -68,10 +70,12 @@
                 this.lastValue = this.getPersistedValue();
                 this.bindAdapter();
                 this.bindImageRecovery();
+                this.syncEditorViewport();
               },
               input: () => {
                 this.lastValue = this.getPersistedValue();
                 this.props.onChange(this.lastValue);
+                this.syncEditorViewport();
               },
             });
           })
@@ -86,6 +90,7 @@
           this.editor.setValue(nextValue);
           this.lastValue = nextValue;
           this.recoverBrokenImages();
+          this.syncEditorViewport();
         }
       },
       componentWillUnmount() {
@@ -109,6 +114,84 @@
       },
       getWysiwygRoot() {
         return this.host?.querySelector('.vditor-wysiwyg') || null;
+      },
+      getContentRoot() {
+        return this.host?.querySelector('.vditor-content') || null;
+      },
+      getHeadingElements() {
+        return [...(this.getWysiwygRoot()?.querySelectorAll('h1, h2, h3') || [])];
+      },
+      collectHeadingItems() {
+        const seen = new Map();
+        return this.getHeadingElements()
+          .map((element, index) => {
+            const text = `${element.textContent || ''}`.replace(/\s+/g, ' ').trim();
+            if (!text) return null;
+            const key = text.toLowerCase();
+            const occurrence = seen.get(key) || 0;
+            seen.set(key, occurrence + 1);
+            return {
+              index,
+              kind: 'vditor',
+              level: Number(element.tagName.slice(1)),
+              lineNumber: index,
+              text,
+              occurrence,
+            };
+          })
+          .filter(Boolean);
+      },
+      findHeadingElement(target = {}) {
+        const elements = this.getHeadingElements();
+        if (!elements.length) return null;
+
+        const requestedIndex = Number.isInteger(target?.index) ? target.index : -1;
+        if (requestedIndex >= 0 && elements[requestedIndex]) return elements[requestedIndex];
+
+        const normalizedText = `${target?.text || ''}`.replace(/\s+/g, ' ').trim().toLowerCase();
+        if (!normalizedText) return elements[0] || null;
+
+        const wantedOccurrence = Number.isInteger(target?.occurrence) ? target.occurrence : 0;
+        let matchedCount = 0;
+        for (const element of elements) {
+          const currentText = `${element.textContent || ''}`.replace(/\s+/g, ' ').trim().toLowerCase();
+          if (currentText !== normalizedText) continue;
+          if (matchedCount === wantedOccurrence) return element;
+          matchedCount += 1;
+        }
+
+        return elements.find((element) =>
+          `${element.textContent || ''}`.replace(/\s+/g, ' ').trim().toLowerCase() === normalizedText,
+        ) || null;
+      },
+      focusHeadingElement(element) {
+        if (!(element instanceof HTMLElement)) return false;
+        this.editor?.focus();
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+        const selection = window.getSelection();
+        if (selection) {
+          const range = document.createRange();
+          range.selectNodeContents(element);
+          range.collapse(true);
+          selection.removeAllRanges();
+          selection.addRange(range);
+        }
+
+        return true;
+      },
+      syncEditorViewport() {
+        const shell = this.host?.querySelector('.vditor');
+        const content = this.getContentRoot();
+        const root = this.getWysiwygRoot();
+        if (!(shell instanceof HTMLElement) || !(content instanceof HTMLElement) || !(root instanceof HTMLElement)) return;
+
+        const desiredHeight = Math.max(MIN_EDITOR_HEIGHT, Math.min(MAX_EDITOR_HEIGHT, root.scrollHeight + 40));
+        shell.style.height = 'auto';
+        content.style.height = `${desiredHeight}px`;
+        content.style.maxHeight = `${MAX_EDITOR_HEIGHT}px`;
+        content.style.overflowY = desiredHeight >= MAX_EDITOR_HEIGHT ? 'auto' : 'hidden';
+        root.style.minHeight = `${Math.max(MIN_EDITOR_HEIGHT - 40, 220)}px`;
       },
       getPersistedValue() {
         if (!this.editor) return '';
@@ -191,11 +274,14 @@
         if (!this.host || !this.editor) return;
         this.host.__a1rightVditor = {
           getValue: () => this.getPersistedValue(),
+          getHeadingItems: () => this.collectHeadingItems(),
+          scrollToHeading: (target) => this.focusHeadingElement(this.findHeadingElement(target)),
           setValue: (value) => {
             this.editor.setValue(value || '');
             this.lastValue = this.getPersistedValue();
             this.props.onChange(this.lastValue);
             this.recoverBrokenImages();
+            this.syncEditorViewport();
           },
           insertValue: (value, { appendParagraph = false } = {}) => {
             this.editor.focus();
@@ -207,6 +293,7 @@
               if (!this.editor) return;
               this.lastValue = this.getPersistedValue();
               this.props.onChange(this.lastValue);
+              this.syncEditorViewport();
             }, 0);
           },
           setImagePreviews: (uploads) => this.applyLocalImagePreviews(uploads),

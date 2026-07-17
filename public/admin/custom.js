@@ -170,6 +170,23 @@
     });
   };
 
+  const buildPublicationSyncHint = () => {
+    const inputs = getEditorManagedInputs();
+    const visibility = `${inputs.visibility?.value || 'public'}`.trim().toLowerCase();
+    const publishMode = `${inputs.publishMode?.value || 'now'}`.trim().toLowerCase();
+    const scheduledAt = `${inputs.scheduledAt?.value || ''}`.trim();
+
+    if (visibility === 'private') return '当前文章为私密，前台不会显示。';
+
+    if (publishMode === 'scheduled') {
+      return scheduledAt
+        ? `当前为定时发布，${formatDateTime(scheduledAt)} 之前前台不会显示。`
+        : '当前为定时发布，达到设定时间后才会进入前台。';
+    }
+
+    return '保存或发布后会先提交到 GitHub，Cloudflare 完成新部署后前台才会更新。';
+  };
+
   const clampNumber = (value, min = 0, max = 100) => Math.max(min, Math.min(max, value));
 
   const slugifyText = (value = '') => {
@@ -238,37 +255,60 @@
 
   const getCurrentEditorLocale = () => (/articles_en/i.test(window.location.hash || '') ? 'en' : 'zh-cn');
 
+  const normalizeHeadingText = (value = '') =>
+    `${value || ''}`
+      .replace(/\\([\\`*_{}\[\]()#+\-.!>])/g, '$1')
+      .replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .replace(/\*([^*]+)\*/g, '$1')
+      .replace(/_{1,2}([^_]+)_{1,2}/g, '$1')
+      .replace(/~~([^~]+)~~/g, '$1')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
   const parseHeadingLine = (line = '', lineNumber = 0) => {
     const matched = `${line || ''}`.match(/^\s*(#{1,3})\s+(.+?)\s*$/);
     if (!matched) return null;
 
     return {
       level: matched[1].length,
-      text: matched[2].trim(),
+      text: normalizeHeadingText(matched[2]),
       lineNumber,
     };
   };
 
   const getBodyHeadingItems = () => {
-    const editable = getBodyEditable();
-    const richTextHeadings = editable instanceof HTMLElement
-      ? [...editable.querySelectorAll('h1, h2, h3')]
-          .map((element, index) => ({
-            level: Number(element.tagName.slice(1)),
-            text: `${element.textContent || ''}`.replace(/\s+/g, ' ').trim(),
-            lineNumber: index,
-            kind: 'rich-text',
-          }))
-          .filter((heading) => heading.text)
-      : [];
+    const wysiwyg = getWysiwygAdapter();
+    if (typeof wysiwyg?.getHeadingItems === 'function') {
+      const headingItems = wysiwyg.getHeadingItems()
+        .map((item, index) => ({
+          ...item,
+          index,
+          text: normalizeHeadingText(item?.text || ''),
+        }))
+        .filter((item) => item.text);
+      if (headingItems.length) return headingItems;
+    }
 
-    if (richTextHeadings.length) return richTextHeadings;
-
+    const seen = new Map();
     return `${getBodyPlainText() || ''}`
       .replace(/\r\n/g, '\n')
       .split('\n')
       .map((line, index) => parseHeadingLine(line, index))
-      .filter(Boolean);
+      .filter(Boolean)
+      .map((item, index) => {
+        const key = item.text.toLowerCase();
+        const occurrence = seen.get(key) || 0;
+        seen.set(key, occurrence + 1);
+        return {
+          ...item,
+          index,
+          occurrence,
+        };
+      });
   };
 
   const extractFirstBodyImage = () => {
@@ -1072,8 +1112,6 @@
       <div class="a1right-admin-editor-panel__uploads"></div>
     `;
 
-    panel.innerHTML = '<div class="a1right-admin-editor-panel__restore" hidden></div>';
-
     panel.querySelectorAll('button').forEach((button) => {
       button.addEventListener('mousedown', (event) => event.preventDefault());
     });
@@ -1188,10 +1226,12 @@
         ? `本地草稿 ${formatRelativeTime(workflowState.lastAutoSavedAt)}`
         : '尚未写入本地草稿';
       const lastSynced = workflowState.lastSavedAt ? `最近同步 ${formatDateTime(workflowState.lastSavedAt)}` : '等待首次同步';
+      const publishHint = buildPublicationSyncHint();
       statusNode.innerHTML = `
         <span class="a1right-admin-status-pill ${workflowState.dirty ? 'is-dirty' : 'is-clean'}">${dirty}</span>
         <span class="a1right-admin-status-text">${savedText}</span>
         <span class="a1right-admin-status-text">${lastSynced}</span>
+        <span class="a1right-admin-status-text a1right-admin-status-text--hint">${publishHint}</span>
       `;
     }
 
@@ -1773,6 +1813,19 @@
     if (!target) return;
 
     const bodyRoot = getBodyFieldContainer();
+    const wysiwyg = getWysiwygAdapter(bodyRoot);
+    if (typeof wysiwyg?.scrollToHeading === 'function') {
+      const located = wysiwyg.scrollToHeading({
+        index: Number.isInteger(target.index) ? target.index : headingIndex,
+        text: target.text,
+        occurrence: target.occurrence || 0,
+      });
+      if (located) {
+        pulseField(resolveMarkdownRoot(bodyRoot), 'a1right-admin-field-guided');
+        return;
+      }
+    }
+
     const codeMirror = getCodeMirrorInstance(bodyRoot);
     if (codeMirror) {
       const position = { line: target.lineNumber, ch: 0 };
@@ -1923,6 +1976,7 @@
     showToast('正在同步到仓库，请稍等…', 'info', 1800);
     window.setTimeout(() => {
       markCleanAfterSync();
+      showToast('已提交到 GitHub，前台会在 Cloudflare 完成最新部署后更新。', 'success', 3200);
     }, 2600);
   };
 
@@ -3145,6 +3199,57 @@
     return /\bcode\b/.test(text) || text === '代码';
   };
 
+  const VDITOR_TOOLBAR_LABELS = [
+    '标题',
+    '加粗',
+    '斜体',
+    '删除线',
+    '插入链接',
+    '无序列表',
+    '有序列表',
+    '任务列表',
+    '减少缩进',
+    '增加缩进',
+    '引用块',
+    '分隔线',
+    '代码块',
+    '行内代码',
+    '表格',
+    '撤销',
+    '重做',
+    '编辑模式',
+    '双栏模式',
+    '预览模式',
+    '全屏',
+    '目录',
+  ];
+
+  const getToolbarHosts = () => [
+    ...document.querySelectorAll('#nc-root [class*="EditorToolbar"]'),
+    ...document.querySelectorAll('#nc-root .a1right-vditor-widget .vditor-toolbar'),
+  ];
+
+  const patchToolbarLabel = (button, label) => {
+    if (!(button instanceof HTMLButtonElement) || !label) return;
+    const currentTitle = `${button.getAttribute('title') || ''}`.trim();
+    const currentAria = `${button.getAttribute('aria-label') || ''}`.trim();
+    const titleLooksBroken = !currentTitle || /^undefined\b/i.test(currentTitle) || /^[a-z\s-]+(?:<[^>]+>)?$/i.test(currentTitle);
+    const ariaLooksBroken = !currentAria || /^undefined\b/i.test(currentAria) || /^[a-z\s-]+$/i.test(currentAria);
+    if (titleLooksBroken) button.setAttribute('title', label);
+    if (ariaLooksBroken) button.setAttribute('aria-label', label);
+  };
+
+  const localizeVditorToolbar = (toolbar) => {
+    if (!(toolbar instanceof Element)) return;
+    const buttons = [...toolbar.querySelectorAll('button')]
+      .filter((button) => button instanceof HTMLButtonElement)
+      .filter((button) => !button.closest('.a1right-admin-toolbar-workbench'));
+
+    buttons.forEach((button, index) => {
+      patchToolbarLabel(button, VDITOR_TOOLBAR_LABELS[index] || '编辑器功能');
+    });
+  };
+
   const findToolbarMenuTrigger = (toolbar, excludeButton = null) => {
     if (!(toolbar instanceof Element)) return null;
     return [...toolbar.querySelectorAll('button')]
@@ -3248,7 +3353,7 @@
   };
 
   const decorateToolbarWorkbench = () => {
-    document.querySelectorAll('#nc-root [class*="EditorToolbar"]').forEach((toolbar) => {
+    getToolbarHosts().forEach((toolbar) => {
       const workbench = ensureToolbarWorkbench(toolbar);
       if (!(workbench instanceof HTMLElement) || decoratorState.boundToolbarActionBars.has(workbench)) return;
       decoratorState.boundToolbarActionBars.add(workbench);
@@ -3309,6 +3414,9 @@
       decoratorState.toolbarRefreshRaf = 0;
       decorateToolbarCodeButtons();
       decorateToolbarWorkbench();
+      document.querySelectorAll('#nc-root .a1right-vditor-widget .vditor-toolbar').forEach((toolbar) => {
+        localizeVditorToolbar(toolbar);
+      });
     });
   };
 
