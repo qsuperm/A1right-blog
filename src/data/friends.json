@@ -1,3 +1,18 @@
 {
-  "links": []
+  "links": [
+    {
+      "name": "风雨盒子",
+      "url": "https://www.861586.xyz",
+      "avatar": "https://www.861586.xyz/upload/long.png",
+      "owner": "风雨盒子",
+      "description": {
+        "zhCn": "嘿哈，功夫练得响当当，一起来交流吧。",
+        "en": "Hey ha, let's sharpen our skills and learn from each other."
+      },
+      "tags": [
+        "Blog"
+      ],
+      "rss": "https://www.861586.xyz/rss.xml"
+    }
+  ]
 }
