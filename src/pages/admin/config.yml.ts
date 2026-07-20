@@ -53,8 +53,6 @@ const scheduledHint = '仅在“定时发布”时填写，格式为年月日 + 
 const contentTypeHint = '原创可设置转载协议；转载 / 翻译建议补充原文链接。';
 const sourceUrlHint = '如果是转载或翻译，请填写原文地址；原创可留空。';
 const allowRepostHint = '原创文章可在这里声明是否允许转载。';
-const defaultCover = '/images/uploads/cover-anime-hero-room.jpg';
-
 const toSelectOptions = (items: OptionItem[]) =>
   items.map((item) => `          - label: ${quote(item.label)}\n            value: ${quote(item.value)}`).join('\n');
 
@@ -290,7 +288,7 @@ ${toSelectOptions(publishOptions)}
       - label: ${quote(coverLabel)}
         name: "cover"
         widget: "image"
-        default: ${quote(defaultCover)}
+        required: false
         hint: ${quote(coverHint)}
       - label: ${quote(coverAltLabel)}
         name: "coverAlt"

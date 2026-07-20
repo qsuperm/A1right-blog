@@ -7,6 +7,12 @@ const optionalDate = z.preprocess((value) => (value === '' || value == null ? un
 const optionalUrl = z
   .preprocess((value) => (value == null ? '' : `${value}`.trim()), z.union([z.string().url(), z.literal('')]))
   .default('');
+const optionalCover = z
+  .preprocess(
+    (value) => (value == null || `${value}`.trim() === '' ? undefined : value),
+    z.string().default('/images/uploads/cover-anime-hero-room.jpg'),
+  )
+  .transform(normalizeMediaPath);
 
 const articles = defineCollection({
   loader: glob({
@@ -30,7 +36,7 @@ const articles = defineCollection({
     scheduledAt: optionalDate,
     publishedAt: z.coerce.date(),
     updatedAt: optionalDate,
-    cover: z.string().transform(normalizeMediaPath),
+    cover: optionalCover,
     coverAlt: z.string().optional().default(''),
     contentType: z.enum(['original', 'repost', 'translation']).default('original'),
     sourceUrl: optionalUrl,

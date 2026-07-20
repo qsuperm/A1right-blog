@@ -648,8 +648,16 @@
 
   const getStoredUser = () => {
     try {
-      const raw = window.localStorage.getItem('decap-cms-user');
-      return raw ? JSON.parse(raw) : null;
+      for (const key of ['decap-cms-user', 'netlify-cms-user']) {
+        const raw = window.localStorage.getItem(key);
+        if (!raw) continue;
+
+        const user = JSON.parse(raw);
+        if (user?.token) return user;
+        if (user?.user?.token) return user.user;
+      }
+
+      return null;
     } catch (error) {
       console.error('[a1right-admin] failed to parse decap auth user', error);
       return null;
@@ -2455,8 +2463,42 @@
     return true;
   };
 
+  const uploadLocalCoverFile = (root, file) => {
+    const resolvedRoot = resolveImageFieldRoot(root);
+    if (!(resolvedRoot instanceof Element) || !(file instanceof File)) return;
+
+    const coverAlt = buildAltText({ filename: file.name, kind: 'cover' });
+    setImageFieldPreviewState(resolvedRoot, {
+      fieldPath: getImageFieldValue(resolvedRoot),
+      filename: file.name,
+      previewUrl: rememberObjectUrl(file),
+      alt: coverAlt,
+      size: file.size,
+      description: '已选择本地封面图，正在上传到 GitHub。',
+    });
+    maybeFillCoverAlt(coverAlt);
+    void processImageSources({
+      context: { kind: 'image', root: resolvedRoot },
+      sources: [{ kind: 'file', file }],
+      origin: '本地上传',
+    });
+  };
+
+  const suppressNativeImageWidget = (root) => {
+    if (!(root instanceof Element)) return;
+
+    [...root.children].forEach((child) => {
+      if (child.classList.contains('a1right-admin-cover-preview')) return;
+      if (child.querySelector('input[type="file"], img, button')) {
+        child.classList.add('a1right-admin-native-image-control');
+      }
+    });
+  };
+
   const ensureImageFieldPreviewCard = (root) => {
     if (!(root instanceof Element)) return null;
+
+    suppressNativeImageWidget(root);
 
     let card = root.querySelector('.a1right-admin-cover-preview');
     if (card) return card;
@@ -2518,18 +2560,23 @@
     const actions = document.createElement('div');
     actions.className = 'a1right-admin-cover-preview__actions';
 
+    const localPicker = document.createElement('input');
+    localPicker.type = 'file';
+    localPicker.accept = 'image/*';
+    localPicker.hidden = true;
+    localPicker.dataset.a1rightCoverPicker = 'true';
+    localPicker.addEventListener('change', () => {
+      const file = localPicker.files?.[0];
+      localPicker.value = '';
+      if (file) uploadLocalCoverFile(root, file);
+    });
+
     const replaceButton = document.createElement('button');
     replaceButton.type = 'button';
     replaceButton.className = 'a1right-admin-cover-preview__action is-primary';
-    replaceButton.textContent = '替换图片';
-    replaceButton.addEventListener('click', async () => {
-      const focused = await focusImageFieldForReplacement(root);
-      if (!focused) {
-        showToast('暂时没有找到封面图输入框。', 'warn', 3200);
-        return;
-      }
-
-      showToast('已定位封面图，直接 Ctrl + V 就能替换。', 'info', 2800);
+    replaceButton.textContent = '选择图片';
+    replaceButton.addEventListener('click', () => {
+      localPicker.click();
     });
 
     const clearButton = document.createElement('button');
@@ -2562,7 +2609,7 @@
     actions.append(replaceButton, fromBodyButton, copyPathButton, clearButton);
     meta.append(path, open);
     body.append(eyebrow, title, description, insights, meta, actions);
-    card.append(media, body);
+    card.append(media, body, localPicker);
     root.append(card);
     return card;
   };
@@ -2693,6 +2740,7 @@
 
   const refreshAllImageFieldPreviews = () => {
     document.querySelectorAll('[aria-label="image field"]').forEach((root) => {
+      suppressNativeImageWidget(root);
       root.querySelectorAll('img').forEach((image) => {
         if (image.closest('.a1right-admin-cover-preview')) return;
 
@@ -4182,6 +4230,7 @@
     if (!(event.target instanceof Element)) return;
 
     if (event.target instanceof HTMLInputElement && event.target.type === 'file') {
+      if (event.target.dataset.a1rightCoverPicker === 'true') return;
       const imageRoot = getImageRootFromElement(event.target);
       const files = [...(event.target.files || [])].filter((file) => file.type.startsWith('image/'));
       if (imageRoot && files.length) {
