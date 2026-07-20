@@ -486,6 +486,18 @@
     return trimmed.replace(/^\/+/, '');
   };
 
+  const getSiteMediaFieldPath = (value = '') => {
+    const fieldPath = normalizeFieldPath(value);
+    if (!fieldPath || /^(https?:)?\/\//i.test(fieldPath)) return '';
+
+    // Decap sometimes resolves `images/uploads/...` relative to /admin.
+    // Keep only the media segment so both its own thumbnail and our card use
+    // the public site path instead of /admin/images/uploads/....
+    const marker = 'images/uploads/';
+    const markerIndex = fieldPath.toLowerCase().lastIndexOf(marker);
+    return markerIndex >= 0 ? fieldPath.slice(markerIndex) : fieldPath;
+  };
+
   const rememberObjectUrl = (source) => {
     if (!(source instanceof Blob)) return '';
 
@@ -2200,8 +2212,11 @@
       .find((item) => !item.closest('.a1right-admin-cover-preview') && item.getAttribute('src'));
 
     if (image instanceof HTMLImageElement) {
+      const rawSource = image.getAttribute('src') || '';
+      const fieldPath = getSiteMediaFieldPath(rawSource);
       return {
-        previewUrl: image.currentSrc || image.src || '',
+        previewUrl: fieldPath ? normalizeAssetUrl(fieldPath) : image.currentSrc || image.src || '',
+        fieldPath,
         alt: cleanDisplayText(image.alt || ''),
       };
     }
@@ -2678,6 +2693,15 @@
 
   const refreshAllImageFieldPreviews = () => {
     document.querySelectorAll('[aria-label="image field"]').forEach((root) => {
+      root.querySelectorAll('img').forEach((image) => {
+        if (image.closest('.a1right-admin-cover-preview')) return;
+
+        const fieldPath = getSiteMediaFieldPath(image.getAttribute('src') || '');
+        if (!fieldPath) return;
+
+        const publicUrl = normalizeAssetUrl(fieldPath);
+        if (image.getAttribute('src') !== publicUrl) image.setAttribute('src', publicUrl);
+      });
       renderImageFieldPreview(root);
     });
   };
