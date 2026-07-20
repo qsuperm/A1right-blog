@@ -2074,7 +2074,7 @@ body.admin-shell--cms-active::before {
   box-shadow: 0 16px 36px rgba(29, 68, 57, .08);
 }
 
-#nc-root [aria-label="image field"] > .a1right-admin-native-image-control {
+#nc-root .a1right-admin-native-image-control {
   display: none !important;
 }
 

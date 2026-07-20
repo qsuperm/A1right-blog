@@ -287,7 +287,7 @@ ${toSelectOptions(publishOptions)}
         time_format: false
       - label: ${quote(coverLabel)}
         name: "cover"
-        widget: "image"
+        widget: "string"
         required: false
         hint: ${quote(coverHint)}
       - label: ${quote(coverAltLabel)}

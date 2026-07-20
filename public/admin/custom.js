@@ -1731,6 +1731,7 @@
   };
 
   const getCoverFieldRoot = () =>
+    getControlContainerByLabel([/\u5c01\u9762\u56fe/, /cover image/i], [/\u63cf\u8ff0/, /alt/i]) ||
     document.querySelector('[aria-label="image field"]') ||
     (editorState.lastImageRoot instanceof Element ? editorState.lastImageRoot : null);
 
@@ -2014,7 +2015,11 @@
 
   const getImageRootFromElement = (element) => {
     if (!(element instanceof Element)) return null;
-    return element.closest('[aria-label="image field"]') || null;
+    const nativeImageRoot = element.closest('[aria-label="image field"]');
+    if (nativeImageRoot instanceof Element) return nativeImageRoot;
+
+    const coverRoot = getCoverFieldRoot();
+    return coverRoot instanceof Element && coverRoot.contains(element) ? coverRoot : null;
   };
 
   const syncMarkdownEditorState = (target) => {
@@ -2346,7 +2351,7 @@
     (root instanceof Element && root.isConnected ? root : null) ||
     (editorState.lastImageRoot instanceof Element && editorState.lastImageRoot.isConnected
       ? editorState.lastImageRoot
-      : null);
+      : getCoverFieldRoot());
 
   const findImageFieldTextInput = (root) => {
     if (!(root instanceof Element)) return null;
@@ -2739,7 +2744,10 @@
   };
 
   const refreshAllImageFieldPreviews = () => {
-    document.querySelectorAll('[aria-label="image field"]').forEach((root) => {
+    const coverRoot = getCoverFieldRoot();
+    if (!(coverRoot instanceof Element)) return;
+
+    [coverRoot].forEach((root) => {
       suppressNativeImageWidget(root);
       root.querySelectorAll('img').forEach((image) => {
         if (image.closest('.a1right-admin-cover-preview')) return;
