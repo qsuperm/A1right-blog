@@ -41,12 +41,12 @@
       "rss": "https://www.cnblogs.com/dxsm/rss"
     },
     {
-      "name": "D'b8Gr???",
+      "name": "D'b8Gr的小站",
       "url": "https://incldue.github.io",
       "avatar": "https://incldue.github.io/static/avatar/avatar1.png",
       "owner": "debu8ger",
       "description": {
-        "zhCn": "??CTFer????????????????????",
+        "zhCn": "一个 CTFer 的个人小站，记录网安学习经历、生活随笔。",
         "en": "I hack, therefore I am."
       },
       "tags": [
@@ -61,13 +61,23 @@
       "avatar": "https://img.hehaowen.com.cn/image/avatar/%E5%8B%87%E5%A4%AA.png",
       "owner": "2_haowen_V",
       "description": {
-        "zhCn": "?????????Linux???",
+        "zhCn": "计算机网络研究者、Linux 爱好者",
         "en": "Computer network researcher, Linux enthusiast"
       },
       "tags": [
-        "??????????"
+        "天行健君子以自强不息"
       ],
       "rss": "https://hehaowen.com.cn/atom.xml"
+    },
+    {
+      "name": "康可ing",
+      "url": "https://blog.yanxisishi.top/",
+      "avatar": "https://q1.qlogo.cn/g?b=qq&nk=3497863696&s=640",
+      "owner": "康可ing",
+      "description": {
+        "zhCn": "conquer, conquer, conquer...",
+        "en": "conquer, conquer, conquer..."
+      }
     }
   ]
 }
