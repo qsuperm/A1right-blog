@@ -13,6 +13,32 @@
         "Blog"
       ],
       "rss": "https://www.861586.xyz/rss.xml"
+    },
+    {
+      "name": "奶龙大王",
+      "url": "https://blog.nldw66.top/",
+      "avatar": "https://bee-reg-ab.imagency.cn/p/b9f9381de63efed997c6208a0eb6f696.jpg",
+      "owner": "奶龙大王",
+      "description": {
+        "zhCn": "会点密码的Web手",
+        "en": "A web hand who knows a bit of cryptography."
+      }
+    },
+    {
+      "name": "大雪深埋",
+      "url": "https://www.cnblogs.com/dxsm",
+      "avatar": "https://pic.cnblogs.com/avatar/3646580/20250518173721.png",
+      "owner": "大雪深埋",
+      "description": {
+        "zhCn": "以 CTF 与逆向题解为主的技术博客。",
+        "en": "A technical blog focused on CTF and reverse-engineering writeups."
+      },
+      "tags": [
+        "CTF",
+        "Reverse",
+        "Blog"
+      ],
+      "rss": "https://www.cnblogs.com/dxsm/rss"
     }
   ]
 }

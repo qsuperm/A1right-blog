@@ -8,6 +8,10 @@ interface Props {
 
 const { locale } = Astro.props;
 const articles = await getArticlesByLocale(locale);
+const overlaySummary =
+  locale === 'en'
+    ? 'Search titles, tags, summaries, and body snippets.'
+    : '搜索标题、标签、摘要与正文片段。';
 const searchData = articles.map((entry) => ({
   bodyText: stripMarkdown(entry.body ?? ''),
   title: entry.data.title,
@@ -52,16 +56,31 @@ const dialogId = `site-search-${locale}`;
   data-search-label={UI[locale].search}
   data-search-results-label={locale === 'en' ? 'Search results' : '搜索结果'}
   data-search-empty={UI[locale].searchEmpty}
+  data-search-empty-tip={
+    locale === 'en' ? 'Try title keywords, tags, or short body snippets.' : '可以试试文章标题、标签或正文片段关键词。'
+  }
   data-search-quick={UI[locale].searchRecent}
-  data-search-command-hint={UI[locale].searchHint}
-  data-search-nav-hint={locale === 'en' ? '↑ ↓ to switch' : '↑ ↓ 切换'}
-  data-search-enter-hint={locale === 'en' ? 'Enter to open' : 'Enter 直达'}
-  data-search-escape-hint={locale === 'en' ? 'Esc to close' : 'Esc 关闭'}
+  data-search-open-hint={locale === 'en' ? 'Open' : '打开'}
+  data-search-nav-hint={locale === 'en' ? 'Switch' : '切换'}
+  data-search-enter-hint={locale === 'en' ? 'Open result' : '直达'}
+  data-search-escape-hint={locale === 'en' ? 'Close' : '关闭'}
+  data-search-count-label={locale === 'en' ? 'results' : '条结果'}
   hidden
 >
   <div class="search-modal__backdrop" data-search-close></div>
   <div class="ff-card search-modal__panel" role="dialog" aria-modal="true" aria-label={UI[locale].search}>
-    <div class="search-modal__top">
+    <div class="search-modal__header">
+      <div class="search-modal__copy">
+        <span class="search-modal__eyebrow">{UI[locale].search}</span>
+        <p class="search-modal__summary">{overlaySummary}</p>
+      </div>
+      <button class="search-modal__close" type="button" data-search-close aria-label={UI[locale].close}>
+        <span aria-hidden="true">✕</span>
+        <span>{UI[locale].close}</span>
+      </button>
+    </div>
+    <label class="search-modal__field">
+      <span class="search-modal__fieldIcon" aria-hidden="true">⌕</span>
       <input
         class="search-modal__input"
         type="search"
@@ -69,9 +88,7 @@ const dialogId = `site-search-${locale}`;
         placeholder={UI[locale].searchPlaceholder}
         aria-label={UI[locale].searchPlaceholder}
       />
-      <button class="search-modal__close" type="button" data-search-close>{UI[locale].close}</button>
-    </div>
-    <p class="search-modal__hint">{UI[locale].searchHint}</p>
+    </label>
     <div class="search-modal__results" data-search-results></div>
   </div>
   <script is:inline type="application/json" id={searchDataId} set:html={JSON.stringify(searchData)}></script>
@@ -154,11 +171,13 @@ const dialogId = `site-search-${locale}`;
       const fallbackTitle = root.dataset.searchLabel || 'Search';
       const resultLabel = root.dataset.searchResultsLabel || fallbackTitle;
       const emptyLabel = root.dataset.searchEmpty || 'No matching content yet.';
+      const emptyTip = root.dataset.searchEmptyTip || '';
       const quickLabel = root.dataset.searchQuick || 'Quick picks';
-      const commandHint = root.dataset.searchCommandHint || 'Ctrl/⌘ + K';
+      const openHint = root.dataset.searchOpenHint || 'Open';
       const navHint = root.dataset.searchNavHint || '↑ ↓';
       const enterHint = root.dataset.searchEnterHint || 'Enter';
       const escapeHint = root.dataset.searchEscapeHint || 'Esc';
+      const countLabel = root.dataset.searchCountLabel || '';
       let activeIndex = -1;
       let currentMatches = [];
       let lastFocusedElement = null;
@@ -232,13 +251,24 @@ const dialogId = `site-search-${locale}`;
         activeIndex = currentMatches.length ? 0 : -1;
 
         if (!matched.length) {
-          results.innerHTML = `<div class="search-empty">${escapeSearchHtml(emptyLabel)}</div>`;
+          results.innerHTML = `
+            <div class="search-empty">
+              <span class="search-empty__icon" aria-hidden="true">⌕</span>
+              <strong>${escapeSearchHtml(emptyLabel)}</strong>
+              ${emptyTip ? `<p>${escapeSearchHtml(emptyTip)}</p>` : ''}
+            </div>
+          `;
           return;
         }
 
-        const title = normalized ? `${escapeSearchHtml(resultLabel)} · ${matched.length}` : escapeSearchHtml(quickLabel);
+        const title = normalized ? escapeSearchHtml(resultLabel) : escapeSearchHtml(quickLabel);
         results.innerHTML = `
-          <div class="search-results__title">${title}</div>
+          <div class="search-results__head">
+            <div class="search-results__title">
+              <strong>${title}</strong>
+              <small>${matched.length}${countLabel ? ` ${escapeSearchHtml(countLabel)}` : ''}</small>
+            </div>
+          </div>
           <div class="search-results__list" role="listbox" aria-label="${escapeSearchHtml(resultLabel)}">
             ${matched
               .map(({ doc }, index) => {
@@ -262,7 +292,7 @@ const dialogId = `site-search-${locale}`;
                       </div>
                       <strong>${highlightSearchText(doc.title, normalized)}</strong>
                       <p>${buildSearchSnippet(doc, normalized)}</p>
-                      <div class="search-result__tags">${tags}</div>
+                      ${tags ? `<div class="search-result__tags">${tags}</div>` : ''}
                     </div>
                   </a>
                 `;
@@ -270,10 +300,10 @@ const dialogId = `site-search-${locale}`;
               .join('')}
           </div>
           <div class="search-results__footer">
-            <span>${escapeSearchHtml(commandHint)}</span>
-            <span>${escapeSearchHtml(navHint)}</span>
-            <span>${escapeSearchHtml(enterHint)}</span>
-            <span>${escapeSearchHtml(escapeHint)}</span>
+            <span><kbd>Ctrl / ⌘ + K</kbd><small>${escapeSearchHtml(openHint)}</small></span>
+            <span><kbd>↑ ↓</kbd><small>${escapeSearchHtml(navHint)}</small></span>
+            <span><kbd>Enter</kbd><small>${escapeSearchHtml(enterHint)}</small></span>
+            <span><kbd>Esc</kbd><small>${escapeSearchHtml(escapeHint)}</small></span>
           </div>
         `;
 
