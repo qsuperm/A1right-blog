@@ -3908,7 +3908,9 @@
     const filename = buildFilename(file.name, file.type);
     const repoPath = `${mediaFolder}/${filename}`.replace(/^\/+/, '');
     const publicPath = `${publicFolderUrl}/${filename}`;
-    const fieldPath = `${publicFolder}/${filename}`;
+    // Store the same root-relative path that Astro serves. This prevents the
+    // native Decap widget from resolving the image below /admin.
+    const fieldPath = publicPath;
     const apiPath = repoPath.split('/').map(encodeURIComponent).join('/');
     const content = arrayBufferToBase64(await file.arrayBuffer());
 
@@ -3956,7 +3958,12 @@
     setActiveDropTarget(null);
     uploadState.busy = true;
     updateUploadOverlay({
-      label: origin === '拖拽' ? '正在处理拖拽图片' : '正在处理剪贴板图片',
+      label:
+        origin === '拖拽'
+          ? '正在处理拖拽图片'
+          : origin === '本地上传'
+            ? '正在处理本地图片'
+            : '正在处理剪贴板图片',
       meta: '准备上传…',
       step: context.kind === 'image' ? '目标：封面图区' : '目标：正文编辑器',
       progress: 12,
@@ -4000,7 +4007,12 @@
           filename: target.filename,
           previewUrl: target.previewUrl,
           alt: coverAlt,
-          description: origin === '拖拽' ? '刚刚通过拖拽上传，可直接检查封面视觉效果。' : '刚刚通过剪贴板上传，可直接检查封面视觉效果。',
+          description:
+            origin === '拖拽'
+              ? '刚刚通过拖拽上传，可直接检查封面视觉效果。'
+              : origin === '本地上传'
+                ? '刚刚通过本地选择上传，可直接检查封面视觉效果。'
+                : '刚刚通过剪贴板上传，可直接检查封面视觉效果。',
         });
 
         if (!applied) {
@@ -4170,8 +4182,23 @@
     if (!(event.target instanceof Element)) return;
 
     if (event.target instanceof HTMLInputElement && event.target.type === 'file') {
-      const previewed = previewSelectedImageFile(event.target);
-      if (previewed) {
+      const imageRoot = getImageRootFromElement(event.target);
+      const files = [...(event.target.files || [])].filter((file) => file.type.startsWith('image/'));
+      if (imageRoot && files.length) {
+        // Decap's built-in picker can write a filename before its upload has
+        // completed. Upload through the same GitHub path used by paste/drop so
+        // the field is never left pointing at a missing asset.
+        previewSelectedImageFile(event.target);
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        window.setTimeout(() => {
+          event.target.value = '';
+        }, 0);
+        void processImageSources({
+          context: { kind: 'image', root: imageRoot },
+          sources: files.map((file) => ({ kind: 'file', file })),
+          origin: '本地上传',
+        });
         setDirtyState(true);
         scheduleAutoDraftSave();
         scheduleEditorWorkflowRefresh();
