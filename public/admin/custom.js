@@ -8,6 +8,7 @@
     objectUrls: new Set(),
     imageFieldState: new WeakMap(),
     inlineImageSources: new Map(),
+    coverImageSources: new Map(),
   };
   const decoratorState = {
     richTextCodeRefreshRaf: 0,
@@ -485,6 +486,14 @@
 
     return trimmed.replace(/^\/+/, '');
   };
+
+  const cacheCoverImagePreview = (fieldPath = '', previewUrl = '') => {
+    const key = normalizeFieldPath(fieldPath);
+    if (key && previewUrl) previewState.coverImageSources.set(key, previewUrl);
+  };
+
+  const getCachedCoverImagePreview = (fieldPath = '') =>
+    previewState.coverImageSources.get(normalizeFieldPath(fieldPath)) || '';
 
   const getSiteMediaFieldPath = (value = '') => {
     const fieldPath = normalizeFieldPath(value);
@@ -2492,9 +2501,14 @@
   const suppressNativeImageWidget = (root) => {
     if (!(root instanceof Element)) return;
 
+    root.classList.add('a1right-admin-cover-field');
+
     [...root.children].forEach((child) => {
       if (child.classList.contains('a1right-admin-cover-preview')) return;
-      if (child.querySelector('input[type="file"], img, button')) {
+      if (
+        child.matches('input:not([data-a1right-cover-picker]), textarea, img, button') ||
+        child.querySelector('input:not([data-a1right-cover-picker]), textarea, img, button')
+      ) {
         child.classList.add('a1right-admin-native-image-control');
       }
     });
@@ -2628,7 +2642,7 @@
     const state = override || getStoredImageFieldPreview(root) || {};
     const domPreview = getImageFieldDomPreview(root) || {};
     const fieldPath = state.fieldPath || getImageFieldValue(root) || domPreview.fieldPath || '';
-    const previewUrl = state.previewUrl || domPreview.previewUrl || normalizeAssetUrl(fieldPath);
+    const previewUrl = state.previewUrl || getCachedCoverImagePreview(fieldPath) || domPreview.previewUrl || normalizeAssetUrl(fieldPath);
     const alt = state.alt || domPreview.alt || getCoverAltFieldValue() || buildAltText({ filename: fieldPath, kind: 'cover' });
 
     const image = card.querySelector('.a1right-admin-cover-preview__image');
@@ -2739,6 +2753,8 @@
         : {}),
       ...nextState,
     });
+
+    cacheCoverImagePreview(nextState.fieldPath, nextState.previewUrl);
 
     renderImageFieldPreview(resolvedRoot, previewState.imageFieldState.get(resolvedRoot));
   };
@@ -4055,6 +4071,7 @@
 
       if (context.kind === 'image') {
         const target = uploads[0];
+        cacheCoverImagePreview(target.fieldPath, target.previewUrl);
         const applied = await applyImageFieldValue(context.root, target.fieldPath);
         const coverAlt = buildAltText({ filename: target.filename, kind: 'cover' });
         maybeFillCoverAlt(coverAlt);
