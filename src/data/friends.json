@@ -39,6 +39,35 @@
         "Blog"
       ],
       "rss": "https://www.cnblogs.com/dxsm/rss"
+    },
+    {
+      "name": "D'b8Gr???",
+      "url": "https://incldue.github.io",
+      "avatar": "https://incldue.github.io/static/avatar/avatar1.png",
+      "owner": "debu8ger",
+      "description": {
+        "zhCn": "??CTFer????????????????????",
+        "en": "I hack, therefore I am."
+      },
+      "tags": [
+        "Re",
+        "AI",
+        "CTF"
+      ]
+    },
+    {
+      "name": "2_haowen_V",
+      "url": "https://hehaowen.com.cn",
+      "avatar": "https://img.hehaowen.com.cn/image/avatar/%E5%8B%87%E5%A4%AA.png",
+      "owner": "2_haowen_V",
+      "description": {
+        "zhCn": "?????????Linux???",
+        "en": "Computer network researcher, Linux enthusiast"
+      },
+      "tags": [
+        "??????????"
+      ],
+      "rss": "https://hehaowen.com.cn/atom.xml"
     }
   ]
 }
