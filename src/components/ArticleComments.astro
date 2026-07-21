@@ -1,0 +1,54 @@
+---
+import type { Locale } from '../config';
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const title = locale === 'en' ? 'Comments' : '评论区';
+---
+
+<section class="article-comments" aria-labelledby="article-comments-title">
+  <div class="article-comments__head">
+    <h2 id="article-comments-title">{title}</h2>
+  </div>
+  <div class="article-comments__thread" data-utterances-thread></div>
+</section>
+
+<script is:inline>
+  (() => {
+    const mount = () => {
+      const thread = document.querySelector('[data-utterances-thread]');
+      if (!(thread instanceof HTMLElement) || thread.dataset.ready === 'true') return;
+
+      thread.dataset.ready = 'true';
+      const getTheme = () => (document.documentElement.dataset.theme === 'dark' ? 'github-dark' : 'github-light');
+      const syncTheme = () => {
+        thread.querySelector('iframe')?.contentWindow?.postMessage(
+          { type: 'set-theme', theme: getTheme() },
+          'https://utteranc.es',
+        );
+      };
+
+      const script = document.createElement('script');
+      script.src = 'https://utteranc.es/client.js';
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      script.setAttribute('repo', 'qsuperm/A1right-blog');
+      script.setAttribute('issue-term', 'pathname');
+      script.setAttribute('label', 'comment');
+      script.setAttribute('theme', getTheme());
+      script.addEventListener('load', syncTheme, { once: true });
+      thread.append(script);
+
+      new MutationObserver(syncTheme).observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-theme'],
+      });
+    };
+
+    mount();
+    document.addEventListener('astro:page-load', mount);
+  })();
+</script>

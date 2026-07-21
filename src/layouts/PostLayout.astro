@@ -1,5 +1,6 @@
 ---
 import BaseLayout from './BaseLayout.astro';
+import ArticleComments from '../components/ArticleComments.astro';
 import PageViewBadge from '../components/PageViewBadge.astro';
 import { SITE, type Locale } from '../config';
 import {
@@ -147,6 +148,8 @@ const breadcrumbStructuredData = buildBreadcrumbJsonLd([
             <div class="ff-card article-nav__card article-nav__card--empty"></div>
           )}
         </div>
+
+        <ArticleComments locale={locale} />
       </article>
 
       <aside class="article-aside">

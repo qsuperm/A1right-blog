@@ -1481,6 +1481,27 @@ body.search-open {
   visibility: hidden;
 }
 
+.article-comments {
+  margin-top: 30px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+}
+
+.article-comments__head h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.12rem;
+}
+
+.article-comments__thread {
+  min-height: 180px;
+  margin-top: 14px;
+}
+
+.article-comments__thread .utterances {
+  max-width: 100%;
+}
+
 .breadcrumbs {
   margin-bottom: 14px;
 }
