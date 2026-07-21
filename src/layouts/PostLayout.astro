@@ -33,7 +33,7 @@ const { entry, locale, headings, Content, readingMinutes, previous, next, altern
 const homeHref = getLocaleHome(locale);
 const backHref = `${homeHref}#posts`;
 const postsHref = locale === 'en' ? '/en/posts' : '/posts';
-const toc = headings.filter((heading) => heading.depth >= 2 && heading.depth <= 3);
+const toc = headings.filter((heading) => heading.depth >= 1 && heading.depth <= 3);
 const seoTitle = entry.data.seoTitle ?? entry.data.title;
 const seoDescription = entry.data.seoDescription ?? entry.data.excerpt;
 const authorName = entry.data.author ?? SITE.author;

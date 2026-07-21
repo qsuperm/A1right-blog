@@ -1411,8 +1411,21 @@ body.search-open {
   font-size: 0.92rem;
 }
 
+.article-toc__item--depth-1 a {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.article-toc__item--depth-2 {
+  padding-left: 12px;
+}
+
 .article-toc__item--depth-3 {
-  padding-left: 14px;
+  padding-left: 24px;
+}
+
+.article-content :is(h1, h2, h3) {
+  scroll-margin-top: 112px;
 }
 
 .article-meta-list {
