@@ -1,6 +1,6 @@
 export const SITE = {
   name: 'A1right的小窝', englishName: "A1right's Corner", author: 'A1right', githubUrl: 'https://github.com/qsuperm',
-  provisionalUrl: 'https://itsa1right.ink', avatarText: 'A1', socialImage: '/images/anime-hero-city.jpg',
+  provisionalUrl: 'https://itsa1right.ink', launchedAt: '2026-07-11T00:00:00+08:00', avatarText: 'A1', socialImage: '/images/anime-hero-city.jpg',
   subtitles: { 'zh-cn': '记录 Web 安全、CTF 题解与 Agent 渗透实验', en: 'Web security, CTF writeups, and agent pentest experiments' },
   descriptions: {
     'zh-cn': 'A1right 的网络安全博客，聚焦 Web 安全、CTF 题解和 Agent 渗透，采用 Firefly 风格首页与轻量静态部署。',

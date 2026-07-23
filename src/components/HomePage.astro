@@ -67,7 +67,7 @@ const copy = isEnglish ? {
   liveStatus: 'Live',
   autoUpdate: 'Auto update',
   viewHint: 'Counters refresh automatically when visitors open pages.',
-  posts: 'Articles', categories: 'Categories', tags: 'Tags', words: 'Total words', uptime: 'Running', activity: 'Last active',
+  posts: 'Articles', categories: 'Categories', tags: 'Tags', words: 'Total words', uptime: 'Site age', activity: 'Last updated',
   categoryTitle: 'Categories', tagTitle: 'Tags', days: 'days', today: 'Today',
   month: `${calendarYear}/${String(calendarMonth + 1).padStart(2, '0')}`,
 } : {
@@ -86,12 +86,17 @@ const copy = isEnglish ? {
   liveStatus: '实时',
   autoUpdate: '自动更新',
   viewHint: '有访客打开页面时，统计卡片会自动刷新。', 
-  posts: '文章', categories: '分类', tags: '标签', words: '总字数', uptime: '运行时长', activity: '最后活动',
+  posts: '文章', categories: '分类', tags: '标签', words: '总字数', uptime: '建站时长', activity: '最近更新',
   categoryTitle: '分类', tagTitle: '标签', days: '天', today: '今天',
   month: `${calendarYear}年${calendarMonth + 1}月`,
 };
 
 const totalWords = articles.reduce((sum, entry) => sum + (entry.body ?? '').split(/\s+/).length, 0);
+const latestActivityAt = articles.reduce<Date | null>((latest, entry) => {
+  const activityAt = entry.data.updatedAt ?? entry.data.publishedAt;
+  return !latest || activityAt > latest ? activityAt : latest;
+}, null);
+const latestActivityLabel = latestActivityAt ? formatDate(latestActivityAt, locale) : '暂无更新';
 ---
 
 <section class="fo-banner">
@@ -224,8 +229,8 @@ const totalWords = articles.reduce((sum, entry) => sum + (entry.body ?? '').spli
         <div><dt>▧ {copy.words}</dt><dd>{totalWords.toLocaleString()}</dd></div>
         <div><dt>✦ {copy.todayViews}</dt><dd><PageViewBadge daily locale={locale} mode="full" /></dd></div>
         <div><dt>◔ {copy.totalViews}</dt><dd><PageViewBadge total locale={locale} mode="full" /></dd></div>
-        <div><dt>◴ {copy.uptime}</dt><dd>1 {copy.days}</dd></div>
-        <div><dt>⌁ {copy.activity}</dt><dd>{copy.today}</dd></div>
+        <div><dt>◴ {copy.uptime}</dt><dd data-site-uptime data-site-uptime-start={SITE.launchedAt} data-site-uptime-unit={copy.days}>--</dd></div>
+        <div><dt>⌁ {copy.activity}</dt><dd>{latestActivityLabel}</dd></div>
       </dl>
     </article>
 
@@ -302,4 +307,22 @@ const totalWords = articles.reduce((sum, entry) => sum + (entry.body ?? '').spli
 
   bindBannerTypewriter();
   document.addEventListener('astro:page-load', bindBannerTypewriter);
+</script>
+
+<script is:inline define:vars={{ launchedAt: SITE.launchedAt }}>
+  (() => {
+    const updateSiteUptime = () => {
+      const startedAt = new Date(launchedAt).getTime();
+      if (!Number.isFinite(startedAt)) return;
+
+      const days = Math.max(1, Math.floor((Date.now() - startedAt) / 86_400_000) + 1);
+      document.querySelectorAll('[data-site-uptime]').forEach((element) => {
+        const unit = element.dataset.siteUptimeUnit || '天';
+        element.textContent = `${days.toLocaleString()} ${unit}`;
+      });
+    };
+
+    updateSiteUptime();
+    window.setInterval(updateSiteUptime, 60 * 60 * 1000);
+  })();
 </script>
