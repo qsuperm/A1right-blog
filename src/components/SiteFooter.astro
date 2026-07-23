@@ -1,5 +1,6 @@
 ---
 import { SITE, UI, type Locale } from '../config';
+import { siGithub } from 'simple-icons';
 
 interface Props { locale: Locale; }
 
@@ -11,13 +12,13 @@ const hasGithub = SITE.githubUrl.trim().length > 0;
 <footer class="site-footer">
   <div class="site-footer__inner">
     <div class="site-footer__brand">
-      <p class="site-footer__title">{locale === 'en' ? SITE.englishName : SITE.name}</p>
+      <p class="site-footer__title">{SITE.name}</p>
       <p class="site-footer__copy">{UI[locale].footerNote}</p>
     </div>
     <div class="site-footer__meta">
       <span>© 2026-{currentYear}</span><span>{SITE.author}</span>
-      {hasGithub && <a href={SITE.githubUrl} target="_blank" rel="noreferrer">GitHub</a>}
-      <a href="https://github.com/CuteLeaf/Firefly" target="_blank" rel="noreferrer">Theme: Firefly</a>
+      <span>记录 · 复盘 · 成长</span>
+      {hasGithub && <a href={SITE.githubUrl} target="_blank" rel="noreferrer" aria-label="GitHub" title="GitHub"><span class="github-mark" aria-hidden="true" set:html={siGithub.svg}></span></a>}
     </div>
   </div>
 </footer>

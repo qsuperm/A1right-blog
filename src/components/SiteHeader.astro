@@ -1,6 +1,7 @@
 ﻿---
 import SearchOverlay from './SearchOverlay.astro';
 import ThemeToggle from './ThemeToggle.astro';
+import { siGithub } from 'simple-icons';
 import { SITE, UI, type Locale } from '../config';
 import { getCategoriesIndexUrl, getFriendsUrl, getPostsIndexUrl, getTagsIndexUrl } from '../utils/articles';
 import { FRIEND_PAGE_COPY } from '../data/friends';
@@ -39,8 +40,8 @@ const nav = [
     <div class="site-header__actions">
       <SearchOverlay locale={locale} />
       {hasGithub && (
-        <a class="site-header__link site-header__link--github" href={SITE.githubUrl} target="_blank" rel="noreferrer">
-          ◉
+        <a class="site-header__link site-header__link--github" href={SITE.githubUrl} target="_blank" rel="noreferrer" aria-label="GitHub" title="GitHub">
+          <span class="github-mark" aria-hidden="true" set:html={siGithub.svg}></span>
         </a>
       )}
       <ThemeToggle locale={locale} />

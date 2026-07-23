@@ -67,9 +67,7 @@ const copy = isEnglish ? {
   liveStatus: 'Live',
   autoUpdate: 'Auto update',
   viewHint: 'Counters refresh automatically when visitors open pages.',
-  siteInfo: 'Site information',
   posts: 'Articles', categories: 'Categories', tags: 'Tags', words: 'Total words', uptime: 'Running', activity: 'Last active',
-  platform: 'Build platform', version: 'Blog version', license: 'Article license', language: 'Language',
   categoryTitle: 'Categories', tagTitle: 'Tags', days: 'days', today: 'Today',
   month: `${calendarYear}/${String(calendarMonth + 1).padStart(2, '0')}`,
 } : {
@@ -88,9 +86,7 @@ const copy = isEnglish ? {
   liveStatus: '实时',
   autoUpdate: '自动更新',
   viewHint: '有访客打开页面时，统计卡片会自动刷新。', 
-  siteInfo: '站点信息',
   posts: '文章', categories: '分类', tags: '标签', words: '总字数', uptime: '运行时长', activity: '最后活动',
-  platform: '构建平台', version: '博客版本', license: '文章许可', language: '站点语言',
   categoryTitle: '分类', tagTitle: '标签', days: '天', today: '今天',
   month: `${calendarYear}年${calendarMonth + 1}月`,
 };
@@ -233,22 +229,10 @@ const totalWords = articles.reduce((sum, entry) => sum + (entry.body ?? '').spli
       </dl>
     </article>
 
-    <article class="fo-card fo-widget fo-info-widget">
-      <h2 class="fo-widget-title">{copy.siteInfo}</h2>
-      <dl>
-        <div><dt>⌁ {copy.platform}</dt><dd>Cloudflare</dd></div>
-        <div><dt>✣ {copy.version}</dt><dd>Astro 7</dd></div>
-        <div><dt>© {copy.license}</dt><dd>CC BY 4.0</dd></div>
-        <div><dt>◎ {copy.language}</dt><dd>ZH / EN</dd></div>
-      </dl>
-    </article>
-
     <article class="fo-card fo-widget fo-friends-entry">
       <div class="fo-friends-entry__head">
         <h2 class="fo-widget-title">{friendCopy.entryTitle}</h2>
-        <span>{friendCopy.openStatus}</span>
       </div>
-      <p>{friendCopy.entryText}</p>
       <div class="fo-friends-entry__avatars" aria-hidden="true">
         {(featuredFriends.length > 0 ? featuredFriends : [FRIEND_SELF_CARD]).map((item) => (
           <img src={item.avatar} alt="" loading="lazy" />

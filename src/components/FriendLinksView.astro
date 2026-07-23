@@ -1,6 +1,6 @@
 ---
 import type { Locale } from '../config';
-import { FRIEND_LINKS, FRIEND_PAGE_COPY, FRIEND_SELF_CARD } from '../data/friends';
+import { FRIEND_LINKS, FRIEND_PAGE_COPY } from '../data/friends';
 import TaxonomyLayout from '../layouts/TaxonomyLayout.astro';
 import { getFriendsUrl } from '../utils/articles';
 import { buildCollectionPageJsonLd } from '../utils/seo';
@@ -13,7 +13,7 @@ interface Props {
 const { locale } = Astro.props;
 const copy = FRIEND_PAGE_COPY[locale];
 const title = copy.title;
-const description = copy.description;
+const description = '';
 const path = getFriendsUrl(locale);
 const breadcrumbs =
   locale === 'en'
@@ -38,21 +38,14 @@ const keywords =
     ? ['friend links', 'personal blogroll', 'security blog', 'A1right']
     : ['友情链接', '博客友链', '网络安全博客', 'A1right'];
 
-const siteInfoRows = [
-  { label: copy.siteInfoLabels.name, value: FRIEND_SELF_CARD.name },
-  { label: copy.siteInfoLabels.url, value: FRIEND_SELF_CARD.url, href: FRIEND_SELF_CARD.url },
-  { label: copy.siteInfoLabels.owner, value: FRIEND_SELF_CARD.owner },
-  { label: copy.siteInfoLabels.avatar, value: `${FRIEND_SELF_CARD.url}${FRIEND_SELF_CARD.avatar}`, href: `${FRIEND_SELF_CARD.url}${FRIEND_SELF_CARD.avatar}` },
-  { label: copy.siteInfoLabels.summary, value: FRIEND_SELF_CARD.description[locale] },
-];
 ---
 
 <TaxonomyLayout
   locale={locale}
   title={title}
   description={description}
-  eyebrow={copy.eyebrow}
-  stats={[`${FRIEND_LINKS.length} ${locale === 'en' ? 'sites listed' : '位友邻'}`, ...copy.stats]}
+  eyebrow="友链"
+  stats={[`${FRIEND_LINKS.length} 位友邻`]}
   breadcrumbs={breadcrumbs}
   keywords={keywords}
   structuredData={structuredData}
@@ -68,48 +61,6 @@ const siteInfoRows = [
           <code>src/data/friends.ts</code>
         </article>
       )}
-    </div>
-
-    <div class="friends-panels">
-      <article class="ff-card friends-panel friends-panel--exchange">
-        <div class="friends-panel__head">
-          <div>
-            <p>{copy.navLabel}</p>
-            <h2>{copy.exchangeTitle}</h2>
-          </div>
-          <span>{copy.openStatus}</span>
-        </div>
-        <p>{copy.exchangeText}</p>
-        <ul class="friends-panel__list">
-          {copy.exchangeRules.map((item) => (
-            <li>{item}</li>
-          ))}
-        </ul>
-      </article>
-
-      <article class="ff-card friends-panel friends-panel--site">
-        <div class="friends-site-card">
-          <img src={FRIEND_SELF_CARD.avatar} alt={FRIEND_SELF_CARD.owner} />
-          <div>
-            <p>{FRIEND_SELF_CARD.owner}</p>
-            <h2>{FRIEND_SELF_CARD.name}</h2>
-          </div>
-        </div>
-        <div class="friends-panel__copy">
-          <p>{copy.sectionTitle}</p>
-          <span>{copy.sectionHint}</span>
-        </div>
-        <dl class="friends-site-meta">
-          {siteInfoRows.map((item) => (
-            <div>
-              <dt>{item.label}</dt>
-              <dd>
-                {item.href ? <a href={item.href} target="_blank" rel="noreferrer">{item.value}</a> : item.value}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </article>
     </div>
   </section>
 </TaxonomyLayout>

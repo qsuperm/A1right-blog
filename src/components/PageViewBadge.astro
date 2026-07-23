@@ -1,4 +1,5 @@
 ---
+import { Eye } from '@lucide/astro';
 import type { Locale } from '../config';
 
 interface Props {
@@ -37,7 +38,7 @@ const resolvedLabel = daily ? dailyLabel : total ? totalLabel : label;
   data-pageview-label={resolvedLabel}
   aria-live="polite"
 >
-  <span class="pageview-badge__icon" aria-hidden="true">◔</span>
+  <span class="pageview-badge__icon" aria-hidden="true"><Eye size={14} stroke-width={2.2} /></span>
   <span class="pageview-badge__label">{resolvedLabel}</span>
   <strong class="pageview-badge__value">--</strong>
 </span>

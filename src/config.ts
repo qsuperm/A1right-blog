@@ -15,7 +15,7 @@ export const UI = {
     home: '首页', posts: '文章流', categories: '分类', categoriesHub: '分类页', lab: '实验区', tags: '标签', tagsHub: '标签页', latest: '最新文章', sticky: '置顶内容', featured: '推荐分类', github: 'GitHub',
     search: '搜索', searchShort: '搜索', searchPlaceholder: '搜索标题、摘要、标签或正文片段…', searchEmpty: '没有找到匹配内容，试试换一个关键词。', searchRecent: '快速查看',
     searchHint: 'Ctrl/⌘ + K 打开，↑↓ 切换，Enter 直达，Esc 关闭', close: '关闭', switchLanguage: 'English', switchLanguageLabel: '切换到英文', themeLabel: '切换明暗主题',
-    footerNote: 'Astro + Pagefind + Cloudflare Workers，把安全笔记做成清爽的 Firefly 风格个人站。',
+    footerNote: '把每一次练习、复盘与新发现，整理成可以回看的记录。',
   },
   en: {
     home: 'Home', posts: 'Stories', categories: 'Categories', categoriesHub: 'Categories', lab: 'Lab', tags: 'Tags', tagsHub: 'Tags', latest: 'Latest Posts', sticky: 'Pinned', featured: 'Featured Categories', github: 'GitHub',

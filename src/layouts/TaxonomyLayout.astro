@@ -53,7 +53,7 @@ const structuredDataItems = [
     <article class="ff-card taxonomy-hero">
       <p class="taxonomy-hero__eyebrow">{eyebrow}</p>
       <h1>{title}</h1>
-      <p class="taxonomy-hero__description">{description}</p>
+      {description && <p class="taxonomy-hero__description">{description}</p>}
       {stats.length > 0 && (
         <div class="taxonomy-hero__stats">
           {stats.map((item) => (
