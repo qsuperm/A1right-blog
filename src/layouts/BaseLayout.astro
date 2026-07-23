@@ -10,7 +10,6 @@ interface Props {
   locale?: Locale;
   title?: string;
   description?: string;
-  alternatePath?: string | null;
   socialImage?: string;
   type?: 'website' | 'article';
   keywords?: string[];
@@ -21,18 +20,15 @@ const {
   locale = 'zh-cn',
   title,
   description = SITE.descriptions[locale],
-  alternatePath,
   socialImage = SITE.socialImage,
   type = 'website',
   keywords = [],
   structuredData,
 } = Astro.props;
 
-const siteName = locale === 'en' ? SITE.englishName : SITE.name;
+const siteName = SITE.name;
 const pageTitle = title ? `${title} | ${siteName}` : siteName;
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
-const resolvedAlternatePath = alternatePath === undefined ? (locale === 'en' ? '/' : '/en') : alternatePath;
-const alternateUrl = resolvedAlternatePath ? new URL(resolvedAlternatePath, Astro.site) : null;
 const socialImageUrl = new URL(socialImage, Astro.site);
 const structuredDataItems = Array.isArray(structuredData)
   ? structuredData
@@ -62,7 +58,6 @@ const structuredDataItems = Array.isArray(structuredData)
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={socialImageUrl} />
     <link rel="canonical" href={canonicalUrl} />
-    {alternateUrl && <link rel="alternate" hreflang={locale === 'en' ? 'zh-CN' : 'en'} href={alternateUrl} />}
     <link rel="icon" href="/favicon.ico?v=20260713-avatar" sizes="any" />
     <link rel="icon" type="image/png" sizes="256x256" href="/images/a1right-avatar-icon.png?v=20260713-avatar" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=20260713-avatar" />

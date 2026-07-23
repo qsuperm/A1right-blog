@@ -27,10 +27,9 @@ interface Props {
   readingMinutes: number;
   previous?: ArticleEntry;
   next?: ArticleEntry;
-  alternatePath?: string;
 }
 
-const { entry, locale, headings, Content, readingMinutes, previous, next, alternatePath } = Astro.props;
+const { entry, locale, headings, Content, readingMinutes, previous, next } = Astro.props;
 const homeHref = getLocaleHome(locale);
 const backHref = `${homeHref}#posts`;
 const postsHref = locale === 'en' ? '/en/posts' : '/posts';
@@ -44,11 +43,9 @@ const updatedLabel = locale === 'en' ? 'Updated' : '更新';
 const readingLabel = locale === 'en' ? `${readingMinutes} min read` : `${readingMinutes} 分钟阅读`;
 const tocLabel = locale === 'en' ? 'On this page' : '本页目录';
 const metaLabel = locale === 'en' ? 'Article meta' : '文章信息';
-const languageLabel = locale === 'en' ? 'Language' : '语言切换';
 const previousLabel = locale === 'en' ? 'Previous post' : '上一篇';
 const nextLabel = locale === 'en' ? 'Next post' : '下一篇';
 const backLabel = locale === 'en' ? 'Back to homepage feed' : '返回首页文章流';
-const switchLabel = locale === 'en' ? 'Read the Chinese version' : '查看英文版本';
 const authorLabel = locale === 'en' ? 'Author' : '作者';
 
 const articleStructuredData = {
@@ -86,7 +83,6 @@ const breadcrumbStructuredData = buildBreadcrumbJsonLd([
   locale={locale}
   title={seoTitle}
   description={seoDescription}
-  alternatePath={alternatePath}
   socialImage={entry.data.cover}
   type="article"
   keywords={entry.data.tags}
@@ -197,13 +193,6 @@ const breadcrumbStructuredData = buildBreadcrumbJsonLd([
             </div>
           </dl>
         </section>
-
-        {alternatePath && (
-          <section class="ff-card article-panel">
-            <h2>{languageLabel}</h2>
-            <a class="article-switch" href={alternatePath}>{switchLabel}</a>
-          </section>
-        )}
       </aside>
     </div>
   </section>

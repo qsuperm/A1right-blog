@@ -117,8 +117,8 @@ const createCollection = ({
       ];
 
   const localeFieldLabel = '语言代码';
-  const translationKeyLabel = '翻译组 Key';
-  const translationKeyHint = '同一篇文章的中英文版本要共用同一个 translationKey，这样文章详情页才能互相切换。';
+  const translationKeyLabel = '文章 Key';
+  const translationKeyHint = '文章的稳定标识，建议使用英文短链，例如 simple-file-upload-pentest。';
   const routeSlugLabel = isEnglish ? '英文路由 Slug' : '中文路由 Slug';
   const routeSlugHint = isEnglish
     ? '建议使用英文短链，例如 sql-login-bypass，最终会生成 /en/posts/routeSlug。'
@@ -456,37 +456,6 @@ ${createCollection({
     yearGroup: '按年份分组',
   },
 })}
-${createCollection({
-  name: 'articles_en',
-  label: 'English Articles',
-  labelSingular: 'English Article',
-  description: 'Manage English articles here. Public URLs will be generated under /en/posts/routeSlug.',
-  folder: 'src/content/articles/en',
-  locale: 'en',
-  previewPath: 'en/posts/{{fields.routeSlug}}',
-  contentHints: {
-    title: 'Use the final English title here. The hero card, detail page, and SEO title will reuse it by default.',
-    excerpt: 'Keep it concise and within 256 characters. Search results and SEO description will reuse it by default.',
-    body: 'Markdown / MDX is supported here, including code blocks, tables, formulas, iframe videos, and images.',
-    coverAlt: 'Optional. Add an English image description here, for example “Anime character in a neon-lit city at dusk”. If left blank, the post title will be used as fallback.',
-  },
-  categories: [
-    { label: 'Web Security', value: 'web-security' },
-    { label: 'CTF Writeups', value: 'ctf-writeup' },
-    { label: 'Agent Pentest', value: 'agent-pentest' },
-  ],
-  categoryLabels: ['Web Security', 'CTF Writeups', 'Agent Pentest'],
-  filterLabels: {
-    drafts: 'Drafts',
-    pinned: 'Pinned',
-    web: 'Web Security',
-    ctf: 'CTF Writeups',
-    agent: 'Agent Pentest',
-    categoryGroup: 'Group by category',
-    yearGroup: 'Group by year',
-  },
-})}
-
 ${createFriendsConfig()}`;
 
 export const GET: APIRoute = async () =>

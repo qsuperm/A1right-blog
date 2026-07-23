@@ -28,7 +28,6 @@ const isEnglish = locale === 'en';
 const homeHref = locale === 'en' ? '/en' : '/';
 const archiveHref = getPostsIndexUrl(locale);
 const pageHref = getPostsPageUrl(locale, currentPage);
-const alternatePath = getPostsPageUrl(locale === 'en' ? 'zh-cn' : 'en', currentPage);
 const totalArticles = allArticles.length;
 const title = isEnglish
   ? currentPage === 1
@@ -78,7 +77,6 @@ const structuredData = buildCollectionPageJsonLd({
   description={description}
   eyebrow={isEnglish ? 'Archive' : 'Archive'}
   stats={stats}
-  alternatePath={alternatePath}
   breadcrumbs={breadcrumbs}
   keywords={keywords}
   structuredData={structuredData}

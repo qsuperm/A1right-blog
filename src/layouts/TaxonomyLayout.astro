@@ -12,7 +12,6 @@ interface Props {
   stats?: string[];
   backHref?: string;
   backLabel?: string;
-  alternatePath?: string | null;
   breadcrumbs?: BreadcrumbItem[];
   keywords?: string[];
   structuredData?: Record<string, unknown> | Array<Record<string, unknown>>;
@@ -26,7 +25,6 @@ const {
   stats = [],
   backHref,
   backLabel,
-  alternatePath,
   breadcrumbs = [],
   keywords = [],
   structuredData,
@@ -42,7 +40,6 @@ const structuredDataItems = [
   locale={locale}
   title={title}
   description={description}
-  alternatePath={alternatePath}
   keywords={keywords}
   structuredData={structuredDataItems}
 >

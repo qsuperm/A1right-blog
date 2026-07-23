@@ -3,7 +3,7 @@ export const SITE = {
   provisionalUrl: 'https://itsa1right.ink', avatarText: 'A1', socialImage: '/images/anime-hero-city.jpg',
   subtitles: { 'zh-cn': '记录 Web 安全、CTF 题解与 Agent 渗透实验', en: 'Web security, CTF writeups, and agent pentest experiments' },
   descriptions: {
-    'zh-cn': 'A1right 的双语网络安全博客，聚焦 Web 安全、CTF 题解和 Agent 渗透，采用 Firefly 风格首页与轻量静态部署。',
+    'zh-cn': 'A1right 的网络安全博客，聚焦 Web 安全、CTF 题解和 Agent 渗透，采用 Firefly 风格首页与轻量静态部署。',
     en: 'A bilingual Astro security blog focused on web security, CTF writeups, and agent pentest notes, with a Firefly-inspired homepage.',
   },
 } as const;

@@ -11,7 +11,6 @@ interface Props {
 
 const { locale } = Astro.props;
 const homeHref = locale === 'en' ? '/en' : '/';
-const switchHref = locale === 'en' ? '/' : '/en';
 const postsHref = getPostsIndexUrl(locale);
 const hasGithub = SITE.githubUrl.trim().length > 0;
 
@@ -28,7 +27,7 @@ const nav = [
   <div class="site-header__inner">
     <a class="site-logo" href={homeHref} aria-label={SITE.author}>
       <img class="site-logo__mark" src="/images/a1right-avatar-icon.png?v=20260713-avatar" alt="" aria-hidden="true" />
-      <span class="site-logo__text">{locale === 'en' ? SITE.englishName : SITE.name}</span>
+      <span class="site-logo__text">{SITE.name}</span>
     </a>
 
     <nav class="site-nav" aria-label="Primary navigation">
@@ -44,9 +43,6 @@ const nav = [
           ◉
         </a>
       )}
-      <a class="site-header__link site-header__link--language" href={switchHref} aria-label={UI[locale].switchLanguageLabel}>
-        文
-      </a>
       <ThemeToggle locale={locale} />
     </div>
   </div>

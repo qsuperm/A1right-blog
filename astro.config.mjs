@@ -10,13 +10,6 @@ export default defineConfig({
   site: 'https://itsa1right.ink',
   output: 'static',
   trailingSlash: 'never',
-  i18n: {
-    defaultLocale: 'zh-cn',
-    locales: ['zh-cn', 'en'],
-    routing: {
-      prefixDefaultLocale: false,
-    },
-  },
   markdown: {
     remarkPlugins: [remarkMath],
     rehypePlugins: [rehypeMathjax],

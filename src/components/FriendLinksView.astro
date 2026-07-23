@@ -15,7 +15,6 @@ const copy = FRIEND_PAGE_COPY[locale];
 const title = copy.title;
 const description = copy.description;
 const path = getFriendsUrl(locale);
-const alternatePath = locale === 'en' ? '/friends' : '/en/friends';
 const breadcrumbs =
   locale === 'en'
     ? [
@@ -54,7 +53,6 @@ const siteInfoRows = [
   description={description}
   eyebrow={copy.eyebrow}
   stats={[`${FRIEND_LINKS.length} ${locale === 'en' ? 'sites listed' : '位友邻'}`, ...copy.stats]}
-  alternatePath={alternatePath}
   breadcrumbs={breadcrumbs}
   keywords={keywords}
   structuredData={structuredData}

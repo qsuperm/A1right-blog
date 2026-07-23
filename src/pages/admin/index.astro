@@ -5,7 +5,6 @@ export const prerender = true;
 
 const quickLinks = [
   { label: '返回博客', href: '/', external: false },
-  { label: '英文首页', href: '/en', external: false },
   { label: 'GitHub 仓库', href: `https://github.com/${CMS.repo}`, external: true },
 ];
 
@@ -116,7 +115,7 @@ const adminAssetVersion = '20260720-cover-preview-cache-16';
 
       @media (max-width: 760px) {
         .admin-login { padding: 0 12px 24px; }
-        .admin-login__navbar { padding: 0 14px; }.admin-login__navlinks a:nth-child(2) { display: none; }
+        .admin-login__navbar { padding: 0 14px; }
         .admin-login__frame { margin-top: 28px; }.admin-login__card { grid-template-columns: 1fr; }
         .admin-login__profile { border-right: 0; border-bottom: 1px solid var(--line); }
         .admin-login__avatar { max-height: 260px; }.admin-login__content { padding: 28px 22px; }
@@ -144,7 +143,7 @@ const adminAssetVersion = '20260720-cover-preview-cache-16';
           <div class="admin-login__content">
             <div class="admin-login__badge">FIREFLY · CONTENT STUDIO</div>
             <h1 class="admin-login__title">登录博客后台</h1>
-            <p class="admin-login__summary">通过 GitHub 登录后，可以在线写文章、上传图片并发布中英文安全笔记。</p>
+            <p class="admin-login__summary">通过 GitHub 登录后，可以在线写文章、上传图片并发布安全笔记。</p>
             <div class="admin-login__meta"><span>{CMS.repo}</span><span>{CMS.branch}</span><span>Decap CMS</span></div>
             <div class="admin-login__cta">
               <button class="admin-login__trigger" id="admin-login-trigger" type="button" disabled>使用 GitHub 登录</button>
@@ -167,7 +166,7 @@ const adminAssetVersion = '20260720-cover-preview-cache-16';
 
       const translations = new Map([
         ['Content', '文章管理'], ['Media', '图片库'], ['Collections', '内容栏目'],
-        ['New Chinese Post', '新建中文文章'], ['New English Post', '新建英文文章'],
+        ['New Chinese Post', '新建文章'],
       ]);
       const attributeTranslations = new Map([
         ['Account options dropdown', '账户菜单'], ['List view option', '列表视图'], ['Grid view option', '卡片视图'],
