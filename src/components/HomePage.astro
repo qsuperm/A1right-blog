@@ -92,7 +92,10 @@ const copy = isEnglish ? {
   month: `${calendarYear}年${calendarMonth + 1}月`,
 };
 
-const totalWords = articles.reduce((sum, entry) => sum + (entry.body ?? '').split(/\s+/).length, 0);
+const totalWords = articles.reduce(
+  (sum, entry) => sum + getArticleWordCountFromText(entry.body ?? ''),
+  0,
+);
 const latestActivityAt = articles.reduce<Date | null>((latest, entry) => {
   const activityAt = entry.data.updatedAt ?? entry.data.publishedAt;
   return !latest || activityAt > latest ? activityAt : latest;
