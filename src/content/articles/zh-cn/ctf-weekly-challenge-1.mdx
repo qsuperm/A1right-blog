@@ -1,0 +1,268 @@
+---
+translationKey: ctf-weekly-challenge-1
+locale: zh-cn
+routeSlug: ctf-weekly-challenge-1
+title: CTF+每周挑战1
+excerpt: 记录 CTF+ 每周挑战中的文件上传、PHP 包装器、通配符注入与 SSTI 题目解法。
+author: A1right
+seoTitle: CTF+每周挑战1：文件上传、PHP Include 与 SSTI 题解
+seoDescription: 本文记录 CTF+每周挑战1中的多道 Web 题目，包括文件上传、php://input、通配符注入、PHP 文件读取和 Jinja2 SSTI。
+categoryKey: ctf-writeup
+category: CTF 题解
+tags:
+  - CTF
+  - Web安全
+  - PHP
+  - 文件上传
+  - SSTI
+visibility: public
+publishMode: now
+publishedAt: 2026-08-07
+updatedAt: 2026-08-07
+cover: /images/uploads/ctf-weekly-challenge-1-cover.jpg
+coverAlt: 蓝天白云下的二次元人物插画
+contentType: original
+allowRepost: allow-with-attribution
+pinned: false
+draft: false
+---
+
+## 我只想要你的 PNG！
+
+### 题目描述
+
+> 上传你的头像！虽然上传了我也不想用，也不想让你看。
+
+![题目页面](/images/uploads/ctf-weekly-challenge-1-01.png)
+
+进入题目后发现上传文件功能，我们先正常上传一张 PNG 图片进行测试。
+
+![上传测试图片](/images/uploads/ctf-weekly-challenge-1-02.png)
+
+![上传结果](/images/uploads/ctf-weekly-challenge-1-03.png)
+
+上传后可以看到返回了图片地址，看起来像是经过 MD5 处理。尝试访问失败，这说明后端可能会立即删除上传图片；又因为地址具有随机性，无法进行条件竞争。
+
+在前端源码中发现了提示：
+
+![前端源码提示](/images/uploads/ctf-weekly-challenge-1-04.png)
+
+![源码线索](/images/uploads/ctf-weekly-challenge-1-05.png)
+
+访问之后可以看到前面上传的测试 PNG。
+
+![访问测试文件](/images/uploads/ctf-weekly-challenge-1-06.png)
+
+![文件访问结果](/images/uploads/ctf-weekly-challenge-1-07.png)
+
+发现文件名中的命令可以被执行，于是将一句话木马写入文件名中，再使用蚁剑连接。
+
+![构造上传文件名](/images/uploads/ctf-weekly-challenge-1-08.png)
+
+![上传请求结果](/images/uploads/ctf-weekly-challenge-1-09.png)
+
+成功连接后，在根目录下的 `ffllaagg` 文件中得到 Flag。
+
+## PHPinclude-labs-level7
+
+### 题目描述
+
+```text
+php 协议：php://input
+```
+
+![题目源码](/images/uploads/ctf-weekly-challenge-1-10.png)
+
+代码已经说明：如果 GET 参数中存在 `wrappers`，PHP 就会把请求 body 中的内容当成 PHP 文件执行。
+
+但不能直接在 URL 中传参，因为 `php://input` 读取的是 HTTP Body，而不是 URL 参数。
+
+![构造请求参数](/images/uploads/ctf-weekly-challenge-1-11.png)
+
+![命令执行结果](/images/uploads/ctf-weekly-challenge-1-12.png)
+
+成功发现 `flag.php`，直接读取后被提示不要有侥幸心理。
+
+![读取 flag.php](/images/uploads/ctf-weekly-challenge-1-13.png)
+
+既然提示 Flag 在根目录下，同时不要存在侥幸心理，就说明需要读取根目录下以 `fl` 开头的文件。
+
+![读取根目录文件](/images/uploads/ctf-weekly-challenge-1-14.png)
+
+成功得到 Flag。
+
+## 放开我的变量
+
+### 题目描述
+
+```text
+本人不太喜欢 PHP 8（）。
+```
+
+![题目页面](/images/uploads/ctf-weekly-challenge-1-15.png)
+
+我特别喜欢看《棋魂》，当然这和题目没有关系。
+
+先使用 dirsearch 扫描路径。
+
+![dirsearch 扫描结果](/images/uploads/ctf-weekly-challenge-1-16.png)
+
+访问 `robots.txt`，查看是否存在有用信息。
+
+![robots.txt](/images/uploads/ctf-weekly-challenge-1-17.png)
+
+访问 `/asdback.php`。
+
+![asdback.php](/images/uploads/ctf-weekly-challenge-1-18.png)
+
+发现了最终源码。以 POST 方式发送参数后，服务端会运行传入的 `cmd`：
+
+```text
+__0xGame2025phpPsAux=system('ls -la /');
+```
+
+传入后发现根目录存在 Flag，但它是普通文件，只有 root 才能读取。
+
+![根目录文件权限](/images/uploads/ctf-weekly-challenge-1-19.png)
+
+![权限限制](/images/uploads/ctf-weekly-challenge-1-20.png)
+
+读取 `start.sh`，发现它做两件事：
+
+1. 后台每 5 秒复制一次 `primary` 到 `marstream`。
+2. 前台启动 Apache 网站服务。
+
+```sh
+cp -P * /var/www/html/marstream/
+```
+
+把 `primary` 里的内容复制到 `marstream`。
+
+```sh
+chmod 755 -R /var/www/html/marstream/
+```
+
+把 `marstream` 里的内容改成所有用户都可读。
+
+这个 root 脚本每 5 秒都会把 `primary` 目录里的内容复制到 `marstream` 目录。
+
+借助这个脚本可以进行通配符注入。本来 `-L` 只是一个文件名，但 `cp` 会把它当成命令参数。
+
+`cp -P` 表示：如果复制的是符号链接，不要追踪真实目标，只复制链接本身。
+
+`cp -L` 表示：如果遇到符号链接，要跟随链接读取真实文件内容。
+
+```php
+@unlink('/var/www/html/primary/-L');@unlink('/var/www/html/primary/--remove-destination');@unlink('/var/www/html/primary/flag');touch('/var/www/html/primary/-L');touch('/var/www/html/primary/--remove-destination');symlink('/flag','/var/www/html/primary/flag');echo 'ok';
+```
+
+![构造符号链接](/images/uploads/ctf-weekly-challenge-1-21.png)
+
+逐句解释：
+
+### `@unlink('/var/www/html/primary/-L');`
+
+删除旧的 `-L` 文件。如果之前已经创建过，再次创建可能报错；`@` 的作用是忽略错误显示。
+
+### `@unlink('/var/www/html/primary/flag');`
+
+删除旧的 `flag` 文件，避免文件冲突。
+
+### `touch('/var/www/html/primary/-L');`
+
+创建一个名为 `-L` 的空文件，内容无所谓，文件名才是关键。
+
+### `symlink('/flag','/var/www/html/primary/flag');`
+
+创建符号链接：
+
+```text
+/var/www/html/primary/flag -> /flag
+```
+
+也就是在 `primary` 目录中放置一个指向真正 `/flag` 文件的链接。
+
+### `echo 'ok';`
+
+输出执行成功提示。
+
+执行后，`primary` 目录大致如下：
+
+```text
+-L
+flag -> /flag
+```
+
+root 脚本随后执行：
+
+```sh
+cp -P -L flag /var/www/html/marstream/
+```
+
+于是 root 会读取 `/flag`，并将内容复制到 `/var/www/html/marstream/flag`，之后访问 `/marstream/flag` 即可读取。
+
+![访问复制后的文件](/images/uploads/ctf-weekly-challenge-1-22.png)
+
+得到 Flag。
+
+## PHPinclude-labs-level10
+
+### 题目描述
+
+```text
+文件系统函数简介：file_get_contents()
+```
+
+![题目源码](/images/uploads/ctf-weekly-challenge-1-23.png)
+
+传入：
+
+```text
+/?file=/flag
+```
+
+直接读取即可得到 Flag。
+
+## babyssti
+
+### 题目描述
+
+```text
+简单得不能再简单了。
+```
+
+![题目页面](/images/uploads/ctf-weekly-challenge-1-24.png)
+
+返回 `49`，说明存在 SSTI。
+
+![SSTI 测试](/images/uploads/ctf-weekly-challenge-1-25.png)
+
+![模板表达式测试](/images/uploads/ctf-weekly-challenge-1-26.png)
+
+返回 `HELLO 7777777`，说明模板引擎偏向 Jinja2。
+
+### 看 Flask 配置寻找线索
+
+![Flask 配置](/images/uploads/ctf-weekly-challenge-1-27.png)
+
+![模板对象](/images/uploads/ctf-weekly-challenge-1-28.png)
+
+![配置线索](/images/uploads/ctf-weekly-challenge-1-29.png)
+
+![对象属性](/images/uploads/ctf-weekly-challenge-1-30.png)
+
+因为 `lipsum` 是 Python 函数对象，可以访问：
+
+```jinja2
+{{ lipsum.__globals__ }}
+```
+
+![lipsum 全局变量](/images/uploads/ctf-weekly-challenge-1-31.png)
+
+其中存在关键的 `os`，可以调用系统命令。
+
+![os 模块](/images/uploads/ctf-weekly-challenge-1-32.png)
+
+发现存在 `flag.txt`，读取后得到 Flag。
+
+![读取 flag.txt](/images/uploads/ctf-weekly-challenge-1-33.png)
