@@ -6,6 +6,7 @@ import { SITE, type Locale } from '../config';
 import {
   formatDate,
   getArticleUrl,
+  getArticleWordCountFromText,
   getCategoryUrl,
   getLocaleHome,
   getTagUrl,
@@ -38,9 +39,11 @@ const seoTitle = entry.data.seoTitle ?? entry.data.title;
 const seoDescription = entry.data.seoDescription ?? entry.data.excerpt;
 const authorName = entry.data.author ?? SITE.author;
 const articleUrl = getArticleUrl(entry);
+const wordCount = getArticleWordCountFromText(entry.body ?? '');
 const publishedLabel = locale === 'en' ? 'Published' : '发布';
 const updatedLabel = locale === 'en' ? 'Updated' : '更新';
 const readingLabel = locale === 'en' ? `${readingMinutes} min read` : `${readingMinutes} 分钟阅读`;
+const wordCountLabel = locale === 'en' ? `${wordCount.toLocaleString()} words` : `字数 ${wordCount.toLocaleString()}`;
 const tocLabel = locale === 'en' ? 'On this page' : '本页目录';
 const metaLabel = locale === 'en' ? 'Article meta' : '文章信息';
 const previousLabel = locale === 'en' ? 'Previous post' : '上一篇';
@@ -97,6 +100,7 @@ const breadcrumbStructuredData = buildBreadcrumbJsonLd([
           <a class="article-hero__chip" href={getCategoryUrl(locale, entry.data.categoryKey)}>{entry.data.category}</a>
           <time datetime={entry.data.publishedAt.toISOString()}>{publishedLabel}: {formatDate(entry.data.publishedAt, locale)}</time>
           <span>{readingLabel}</span>
+          <span>{wordCountLabel}</span>
           <PageViewBadge path={articleUrl} locale={locale} />
           <span>{authorLabel}: {authorName}</span>
           {entry.data.updatedAt && (
@@ -186,6 +190,10 @@ const breadcrumbStructuredData = buildBreadcrumbJsonLd([
             <div>
               <dt>{locale === 'en' ? 'Views' : '浏览量'}</dt>
               <dd><PageViewBadge path={articleUrl} locale={locale} mode="full" /></dd>
+            </div>
+            <div>
+              <dt>{locale === 'en' ? 'Word count' : '字数'}</dt>
+              <dd>{wordCount.toLocaleString()}</dd>
             </div>
             <div>
               <dt>{locale === 'en' ? 'Tags' : '标签'}</dt>

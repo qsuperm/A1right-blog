@@ -1,7 +1,7 @@
 ﻿---
 import PageViewBadge from './PageViewBadge.astro';
 import type { Locale } from '../config';
-import { formatDate, getArticleUrl, getCategoryUrl, getTagUrl, type ArticleEntry } from '../utils/articles';
+import { formatDate, getArticleUrl, getArticleWordCountFromText, getCategoryUrl, getTagUrl, type ArticleEntry } from '../utils/articles';
 
 interface Props {
   entry: ArticleEntry;
@@ -22,6 +22,7 @@ const HeadingTag = headingTag;
       <a class="taxonomy-post__chip" href={getCategoryUrl(locale, entry.data.categoryKey)}>{entry.data.category}</a>
       <time datetime={entry.data.publishedAt.toISOString()}>{formatDate(entry.data.publishedAt, locale)}</time>
       <PageViewBadge path={getArticleUrl(entry)} locale={locale} />
+      <span>字数 {getArticleWordCountFromText(entry.body ?? '').toLocaleString()}</span>
     </div>
     <HeadingTag class="taxonomy-post__title">
       <a href={getArticleUrl(entry)}>{entry.data.title}</a>

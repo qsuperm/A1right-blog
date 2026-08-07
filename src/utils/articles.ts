@@ -142,6 +142,14 @@ export function getReadingMinutesFromText(text: string) {
   return Math.max(1, Math.ceil(minutes));
 }
 
+export function getArticleWordCountFromText(text: string) {
+  const plainText = stripMarkdown(text);
+  const cjkCount = (plainText.match(/[\u3400-\u9fff]/g) ?? []).length;
+  const latinWords = (plainText.replace(/[\u3400-\u9fff]/g, ' ').match(/[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)*/g) ?? []).length;
+
+  return cjkCount + latinWords;
+}
+
 export function getUniqueTagCount(entries: ArticleEntry[]) {
   return new Set(entries.flatMap((entry) => entry.data.tags)).size;
 }

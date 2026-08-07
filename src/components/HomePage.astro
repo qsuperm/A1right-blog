@@ -11,6 +11,7 @@ import {
   getFriendsUrl,
   getPostsIndexUrl,
   getTagUrl,
+  getArticleWordCountFromText,
   getUniqueTagCount,
 } from '../utils/articles';
 
@@ -183,6 +184,7 @@ const latestActivityLabel = latestActivityAt ? formatDate(latestActivityAt, loca
               <time datetime={post.data.publishedAt.toISOString()}>▢ {formatDate(post.data.publishedAt, locale)}</time>
               <a href={getCategoryUrl(locale, post.data.categoryKey)}>▤ {post.data.category}</a>
               <PageViewBadge path={getArticleUrl(post)} locale={locale} />
+              <span>字数 {getArticleWordCountFromText(post.body ?? '').toLocaleString()}</span>
             </div>
             <p>{post.data.excerpt}</p>
             <div class="fo-post-card__tags">{post.data.tags.map((tag) => <a href={getTagUrl(locale, tag)}>#{tag}</a>)}</div>
