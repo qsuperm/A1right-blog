@@ -102,6 +102,19 @@
         "CTF",
         "Blog"
       ]
+    },
+    {
+      "name": "\u7d2f\u4e86",
+      "url": "https://cd835.github.io/ZS/",
+      "avatar": "https://img2024.cnblogs.com/blog/3838669/202608/3838669-20260808002752655-626617498.jpg",
+      "owner": "cd835",
+      "description": {
+        "zhCn": "\u6211\u7684\u4e2a\u4eba\u535a\u5ba2\uff0c\u5206\u4eab\u6280\u672f\u4e0e\u751f\u6d3b\u3002",
+        "en": "A personal blog sharing technology and life."
+      },
+      "tags": [
+        "Blog"
+      ]
     }
   ]
 }
