@@ -88,6 +88,20 @@
         "zhCn": "我要成为喜提爱抚糕手",
         "en": "我要成为喜提爱抚糕手"
       }
+    },
+    {
+      "name": "\u53c1\u7396\u306e\u5c0f\u535a\u5ba2",
+      "url": "https://www.sanjiuctf.com/",
+      "avatar": "https://www.sanjiuctf.com/wp-content/uploads/2025/09/cropped-\u5fae\u4fe1\u56fe\u7247_20250930205739_185_24-180x180.jpg",
+      "owner": "\u53c1\u7396",
+      "description": {
+        "zhCn": "\u53c1\u7396\u7684\u5c0f\u535a\u5ba2\u55b5~~~",
+        "en": "Sanjiu's little blog, meow~~~"
+      },
+      "tags": [
+        "CTF",
+        "Blog"
+      ]
     }
   ]
 }
