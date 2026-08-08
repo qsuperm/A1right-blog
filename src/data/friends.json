@@ -115,6 +115,19 @@
       "tags": [
         "Blog"
       ]
+    },
+    {
+      "name": "HACKED",
+      "url": "https://blog.ss0t-hacked.top/",
+      "avatar": "/images/friends/ss0t-hacked-avatar.png",
+      "owner": "ss0t-hacked",
+      "description": {
+        "zhCn": "\u65e0\u8bba\u8def\u9014\u591a\u4e48\u9065\u8fdc\uff0c\u6211\u4eec\u7ec8\u5c06\u5728\u65c5\u9014\u5c3d\u5934\u518d\u6b21\u76f8\u9047",
+        "en": "No matter how far the journey, we will meet again at its end."
+      },
+      "tags": [
+        "Blog"
+      ]
     }
   ]
 }
