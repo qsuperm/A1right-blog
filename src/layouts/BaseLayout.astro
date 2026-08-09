@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import { SITE, type Locale } from '../config';
 import CursorFx from '../components/CursorFx.astro';
+import MotionEffects from '../components/MotionEffects.astro';
 import PageViewScript from '../components/PageViewScript.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
@@ -76,6 +77,7 @@ const structuredDataItems = Array.isArray(structuredData)
       <slot />
     </main>
     <SiteFooter locale={locale} />
+    <MotionEffects />
     <CursorFx />
     <PageViewScript />
   </body>

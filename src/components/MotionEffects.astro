@@ -1,0 +1,120 @@
+﻿<div class="a1-ambient" aria-hidden="true">
+  {Array.from({ length: 14 }).map((_, index) => <i style={`--a1-i:${index};--a1-x:${(index * 17 + 7) % 96}%;--a1-y:${(index * 29 + 9) % 92}%`}></i>)}
+</div>
+
+<style is:global>
+  .a1-ambient {
+    position: fixed;
+    z-index: 0;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  body > :not(.a1-ambient):not(.a1-orbit-cursor) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .a1-ambient i {
+    position: absolute;
+    width: clamp(3px, .35vw, 6px);
+    aspect-ratio: 1;
+    left: var(--a1-x);
+    top: var(--a1-y);
+    border-radius: 50%;
+    background: rgba(234, 249, 255, .9);
+    box-shadow: 0 0 8px rgba(120, 204, 235, .82), 0 0 22px rgba(125, 191, 255, .34);
+    opacity: .18;
+    animation: a1-ambient-float calc(9s + (var(--a1-i) % 5) * 1.7s) ease-in-out infinite;
+    animation-delay: calc(var(--a1-i) * -.9s);
+  }
+
+  :root[data-theme='light'] .a1-ambient i {
+    background: rgba(81, 166, 255, .94);
+    box-shadow: 0 0 8px rgba(72, 162, 255, .72), 0 0 22px rgba(117, 199, 255, .28);
+    opacity: .14;
+  }
+
+  html.a1-motion-ready .a1-motion-reveal {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0) scale(.987);
+    filter: blur(5px);
+    transition: opacity .62s cubic-bezier(.2,.72,.2,1), transform .62s cubic-bezier(.2,.72,.2,1), filter .62s ease;
+    transition-delay: var(--a1-motion-delay, 0ms);
+    will-change: opacity, transform, filter;
+  }
+
+  html.a1-motion-ready .a1-motion-reveal.is-revealed {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+    filter: blur(0);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .site-header__inner,
+    .site-footer__inner,
+    .glass-wall {
+      transition: transform .3s cubic-bezier(.2,.72,.2,1), box-shadow .3s ease, border-color .3s ease;
+    }
+
+    .site-header__inner:hover { transform: translateY(-2px); }
+    .glass-wall:hover { transform: translateY(-3px); }
+  }
+
+  @keyframes a1-ambient-float {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(.72); opacity: .08; }
+    45% { transform: translate3d(24px, -42px, 0) scale(1); opacity: .5; }
+    72% { transform: translate3d(-12px, -78px, 0) scale(.84); opacity: .2; }
+  }
+
+  @media (prefers-reduced-motion: reduce), (pointer: coarse) {
+    .a1-ambient { display: none; }
+    html.a1-motion-ready .a1-motion-reveal,
+    html.a1-motion-ready .a1-motion-reveal.is-revealed {
+      opacity: 1;
+      transform: none;
+      filter: none;
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  const canAnimate = !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    && !window.matchMedia('(pointer: coarse)').matches;
+
+  if (canAnimate) {
+    const root = document.documentElement;
+    const selector = [
+      'main .glass-wall',
+      'main .ff-card',
+      'main .taxonomy-section',
+      'main .article-comments',
+      'main .pagination-nav',
+    ].join(', ');
+    const targets = Array.from(document.querySelectorAll<HTMLElement>(selector));
+
+    root.classList.add('a1-motion-ready');
+    targets.forEach((element, index) => {
+      element.classList.add('a1-motion-reveal');
+      element.style.setProperty('--a1-motion-delay', `${Math.min(index % 6, 5) * 55}ms`);
+    });
+
+    const reveal = (element: HTMLElement) => element.classList.add('is-revealed');
+    if (!('IntersectionObserver' in window)) {
+      targets.forEach(reveal);
+    } else {
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          reveal(entry.target as HTMLElement);
+          observer.unobserve(entry.target);
+        });
+      }, { rootMargin: '0px 0px -6% 0px', threshold: 0.08 });
+
+      targets.forEach((element) => observer.observe(element));
+      window.addEventListener('pagehide', () => observer.disconnect(), { once: true });
+    }
+  }
+</script>
