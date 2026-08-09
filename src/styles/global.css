@@ -3456,3 +3456,41 @@ textarea,
     display: grid;
   }
 }
+
+/* Final shared-frame override: make every public content frame visibly read as glass. */
+.glass-wall {
+  border-color: color-mix(in srgb, #fff 58%, var(--line));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-strong) 34%, transparent), color-mix(in srgb, var(--surface) 18%, transparent)),
+    radial-gradient(circle at 5% 4%, color-mix(in srgb, var(--primary) 25%, transparent), transparent 31%),
+    radial-gradient(circle at 96% 98%, color-mix(in srgb, var(--accent) 21%, transparent), transparent 34%);
+  box-shadow: 0 30px 72px color-mix(in srgb, var(--text) 16%, transparent), inset 0 1px 0 rgba(255, 255, 255, .78);
+}
+
+.glass-wall::before {
+  z-index: 0;
+  opacity: .92;
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, .44), transparent 24%, transparent 68%, rgba(255, 255, 255, .2)),
+    repeating-linear-gradient(90deg, transparent 0 76px, rgba(255, 255, 255, .2) 77px 78px);
+}
+
+.glass-wall > * {
+  position: relative;
+  z-index: 1;
+}
+
+:root[data-theme='dark'] .glass-wall {
+  border-color: rgba(190, 222, 255, .18);
+  background:
+    linear-gradient(135deg, rgba(39, 57, 84, .42), rgba(20, 31, 53, .2)),
+    radial-gradient(circle at 5% 4%, rgba(83, 212, 214, .2), transparent 31%),
+    radial-gradient(circle at 96% 98%, rgba(165, 125, 235, .18), transparent 34%);
+  box-shadow: 0 30px 72px rgba(3, 8, 19, .42), inset 0 1px 0 rgba(238, 248, 255, .16);
+}
+
+:root[data-theme='dark'] .glass-wall::before {
+  background:
+    linear-gradient(115deg, rgba(203, 232, 255, .09), transparent 24%, transparent 68%, rgba(168, 192, 255, .06)),
+    repeating-linear-gradient(90deg, transparent 0 76px, rgba(207, 229, 255, .045) 77px 78px);
+}
