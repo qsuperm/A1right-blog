@@ -135,7 +135,7 @@
   const createCursorFx = () => {
     const fx = new BAClickFX({
       color: [224, 232, 244],
-      scale: 1.18,
+      scale: 1.06,
       opacity: 0.78,
       trailEnabled: true,
       trailAlways: true,
@@ -150,28 +150,28 @@
     fx.setDpr(2);
 
     // Click: layered halo, rotating arcs and a denser shard burst.
-    fx.setClickTotalLife(38);
-    fx.setClickScaleMul(1.46);
-    fx.setClickHaloRadius(132);
-    fx.setClickShardFlicker(6, 0.38);
-    fx.setSparksCount(10);
-    fx.setDiskSize(31);
-    fx.setDiskGlow(5.6, 0.23);
-    fx.setDiskTiming(16, 0.78, 0.28, 0.72);
-    fx.setRingRotationSpeed(0.018);
-    fx.setRingEmission(0.68);
-    fx.setRingWidth(1.15, 5.5);
-    fx.setRingAlpha(0.96);
+    fx.setClickTotalLife(29);
+    fx.setClickScaleMul(1.12);
+    fx.setClickHaloRadius(76);
+    fx.setClickShardFlicker(7, 0.42);
+    fx.setSparksCount(6);
+    fx.setDiskSize(24);
+    fx.setDiskGlow(4.1, 0.14);
+    fx.setDiskTiming(13, 0.8, 0.3, 0.7);
+    fx.setRingRotationSpeed(0.014);
+    fx.setRingEmission(0.45);
+    fx.setRingWidth(0.86, 3.35);
+    fx.setRingAlpha(0.84);
     fx.setRingDelay(1);
-    fx.setRingMaxLife(38);
-    fx.setRingPostDiskGrow(34);
-    fx.setRingGlowRadiusAdd(74);
-    fx.setRingSoftGlowRadiusAdd(126);
-    fx.setRingArcLength(5.3, 1.3);
-    fx.setRingSegmentCount(3, 5);
-    fx.setRingSegmentDetail(0.42, 0.52, 0.5, 1.55);
-    fx.setRingRotationJitter(0.8, 2.1);
-    fx.setRingRadiusJitter(0.35, 1.15);
+    fx.setRingMaxLife(29);
+    fx.setRingPostDiskGrow(22);
+    fx.setRingGlowRadiusAdd(46);
+    fx.setRingSoftGlowRadiusAdd(82);
+    fx.setRingArcLength(4.75, 1.05);
+    fx.setRingSegmentCount(2, 3);
+    fx.setRingSegmentDetail(0.18, 0.42, 0.58, 1.28);
+    fx.setRingRotationJitter(0.56, 1.45);
+    fx.setRingRadiusJitter(0.24, 0.72);
 
     // Trail: a wider luminous ribbon with scattered, flickering particles.
     fx.setTrailBrightness(1);
