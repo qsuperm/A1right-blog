@@ -3494,3 +3494,24 @@ textarea,
     linear-gradient(115deg, rgba(203, 232, 255, .09), transparent 24%, transparent 68%, rgba(168, 192, 255, .06)),
     repeating-linear-gradient(90deg, transparent 0 76px, rgba(207, 229, 255, .045) 77px 78px);
 }
+
+/* One background language across the public site: exactly the friends-page glass wall. */
+body,
+body:has(.friends-shell) {
+  background:
+    radial-gradient(ellipse at 6% 12%, rgba(125, 205, 220, .34), transparent 34rem),
+    radial-gradient(ellipse at 92% 16%, rgba(255, 210, 169, .32), transparent 30rem),
+    radial-gradient(ellipse at 62% 88%, rgba(159, 178, 244, .22), transparent 38rem),
+    linear-gradient(135deg, #e7f0f3 0%, #f7f8f7 48%, #e8edf7 100%);
+  background-attachment: fixed;
+}
+
+:root[data-theme='dark'] body,
+:root[data-theme='dark'] body:has(.friends-shell) {
+  background:
+    radial-gradient(ellipse at 8% 10%, rgba(75, 191, 193, .15), transparent 36rem),
+    radial-gradient(ellipse at 92% 18%, rgba(166, 127, 224, .16), transparent 32rem),
+    radial-gradient(ellipse at 52% 92%, rgba(56, 104, 180, .16), transparent 38rem),
+    linear-gradient(135deg, #101725 0%, #171e30 48%, #12182a 100%);
+  background-attachment: fixed;
+}
