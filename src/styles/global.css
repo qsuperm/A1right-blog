@@ -1793,9 +1793,41 @@ body.search-open {
   gap: 18px;
 }
 
+.friends-shell {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  max-width: 1040px;
+  margin: 26px auto 0;
+  padding: 24px;
+  border: 1px solid color-mix(in srgb, var(--line) 62%, #fff 38%);
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--surface-strong) 58%, transparent), color-mix(in srgb, var(--surface) 42%, transparent)),
+    radial-gradient(circle at 4% 0%, color-mix(in srgb, var(--primary) 20%, transparent), transparent 30%),
+    radial-gradient(circle at 96% 100%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 32%);
+  box-shadow: 0 28px 64px color-mix(in srgb, var(--text) 12%, transparent), inset 0 1px 0 color-mix(in srgb, #fff 72%, transparent);
+  backdrop-filter: blur(28px) saturate(145%);
+  -webkit-backdrop-filter: blur(28px) saturate(145%);
+}
+
+.friends-shell::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  opacity: 0.72;
+  background:
+    linear-gradient(115deg, color-mix(in srgb, #fff 38%, transparent), transparent 26%, transparent 70%, color-mix(in srgb, #fff 16%, transparent)),
+    repeating-linear-gradient(90deg, transparent 0 78px, color-mix(in srgb, #fff 10%, transparent) 79px 80px);
+  pointer-events: none;
+}
+
 .friends-grid {
+  position: relative;
+  z-index: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 18px;
 }
 
@@ -1806,15 +1838,48 @@ body.search-open {
 }
 
 .friend-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
   display: grid;
-  gap: 14px;
+  grid-template-columns: 72px minmax(0, 1fr) auto;
+  align-items: center;
+  min-height: 154px;
+  gap: 18px;
+  padding: 18px 20px;
+  border: 1px solid color-mix(in srgb, var(--line) 72%, var(--primary) 28%);
+  background:
+    linear-gradient(118deg, color-mix(in srgb, var(--surface-strong) 88%, transparent), color-mix(in srgb, var(--surface) 72%, transparent)),
+    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--primary) 16%, transparent), transparent 34%);
+  box-shadow: 0 18px 42px color-mix(in srgb, var(--text) 10%, transparent), inset 0 1px 0 color-mix(in srgb, #fff 54%, transparent);
+  backdrop-filter: blur(22px) saturate(135%);
+  -webkit-backdrop-filter: blur(22px) saturate(135%);
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.friend-card::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: -1px;
+  opacity: 0;
+  background: linear-gradient(108deg, color-mix(in srgb, var(--primary) 20%, transparent), transparent 34%, color-mix(in srgb, var(--accent) 16%, transparent));
+  transition: opacity 0.22s ease;
+  pointer-events: none;
+}
+
+.friend-card:hover {
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--primary) 52%, var(--line));
+  box-shadow: 0 24px 50px color-mix(in srgb, var(--text) 15%, transparent), inset 0 1px 0 color-mix(in srgb, #fff 62%, transparent);
+}
+
+.friend-card:hover::before {
+  opacity: 1;
 }
 
 .friend-card__header {
-  display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 14px;
+  min-width: 0;
 }
 
 .friend-card__avatar,
@@ -1826,6 +1891,21 @@ body.search-open {
   object-fit: cover;
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
+}
+
+.friend-card__avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 22px;
+  border-color: color-mix(in srgb, var(--line) 68%, #fff 32%);
+  box-shadow: 0 12px 26px color-mix(in srgb, var(--text) 15%, transparent);
+}
+
+.friend-card__body {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(3.3em, 1fr) 26px;
+  gap: 8px;
 }
 
 .friend-card__meta h2,
@@ -1843,34 +1923,81 @@ body.search-open {
   color: var(--muted);
 }
 
+.friend-card__meta p {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow: hidden;
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.friend-card__meta p span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: color-mix(in srgb, var(--muted) 78%, var(--primary));
+}
+
+.friend-card__meta p i {
+  font-style: normal;
+  opacity: 0.45;
+}
+
+.friend-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
 .friend-card__visit {
-  width: 38px;
-  height: 38px;
+  min-height: 40px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 12px;
-  border: 1px solid var(--line);
-  background: var(--surface-muted);
+  gap: 8px;
+  padding: 0 13px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--line));
+  background: color-mix(in srgb, var(--primary-soft) 74%, transparent);
   color: var(--primary-deep);
+  font-size: 0.8rem;
+  font-weight: 800;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+
+.friend-card__visit b {
   font-size: 1rem;
-  transition: transform 0.18s ease, border-color 0.18s ease;
+  line-height: 1;
+  transition: transform 0.18s ease;
 }
 
 .friend-card__visit:hover {
-  transform: translateY(-2px);
-  border-color: color-mix(in srgb, var(--primary) 38%, var(--line));
+  transform: translateY(-2px) scale(1.02);
+  border-color: color-mix(in srgb, var(--primary) 58%, var(--line));
+  background: color-mix(in srgb, var(--primary-soft) 94%, transparent);
+}
+
+.friend-card__visit:hover b {
+  transform: translate(2px, -2px);
 }
 
 .friend-card__description {
   margin: 0;
   color: var(--muted);
+  line-height: 1.65;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .friend-card__tags {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-items: center;
+  min-height: 26px;
 }
 
 .friend-card__tags span,
@@ -1883,6 +2010,31 @@ body.search-open {
   color: var(--primary-deep);
   font-size: 0.78rem;
   font-weight: 700;
+}
+
+.friend-card__tags span {
+  padding: 4px 8px;
+  background: color-mix(in srgb, var(--surface-muted) 72%, transparent);
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  font-size: 0.72rem;
+}
+
+.friend-card__rss {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+  border-radius: 14px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+
+.friend-card__rss:hover {
+  border-color: color-mix(in srgb, var(--primary) 52%, var(--line));
+  color: var(--primary-deep);
 }
 
 .friend-card__footer {
@@ -2429,6 +2581,45 @@ body.search-open {
     radial-gradient(circle at 10% 18%, rgba(123, 216, 193, .07), transparent 27rem),
     radial-gradient(circle at 88% 42%, rgba(158, 181, 255, .08), transparent 26rem),
     var(--fo-page-bg);
+}
+
+body:has(.friends-shell) {
+  background:
+    radial-gradient(ellipse at 6% 12%, rgba(125, 205, 220, .34), transparent 34rem),
+    radial-gradient(ellipse at 92% 16%, rgba(255, 210, 169, .32), transparent 30rem),
+    radial-gradient(ellipse at 62% 88%, rgba(159, 178, 244, .22), transparent 38rem),
+    linear-gradient(135deg, #e7f0f3 0%, #f7f8f7 48%, #e8edf7 100%);
+  background-attachment: fixed;
+}
+
+:root[data-theme='dark'] body:has(.friends-shell) {
+  background:
+    radial-gradient(ellipse at 8% 10%, rgba(75, 191, 193, .15), transparent 36rem),
+    radial-gradient(ellipse at 92% 18%, rgba(166, 127, 224, .16), transparent 32rem),
+    radial-gradient(ellipse at 52% 92%, rgba(56, 104, 180, .16), transparent 38rem),
+    linear-gradient(135deg, #101725 0%, #171e30 48%, #12182a 100%);
+  background-attachment: fixed;
+}
+
+/* Site-wide frosted-glass wall: every public page shares the friends-page atmosphere. */
+body {
+  background:
+    radial-gradient(ellipse at 5% 8%, rgba(116, 203, 221, .34), transparent 34rem),
+    radial-gradient(ellipse at 95% 14%, rgba(255, 209, 165, .30), transparent 31rem),
+    radial-gradient(ellipse at 58% 96%, rgba(153, 175, 240, .24), transparent 40rem),
+    repeating-linear-gradient(90deg, transparent 0 78px, rgba(255, 255, 255, .16) 79px 80px),
+    linear-gradient(135deg, #e7f0f3 0%, #f7f8f7 48%, #e8edf7 100%);
+  background-attachment: fixed;
+}
+
+:root[data-theme='dark'] body {
+  background:
+    radial-gradient(ellipse at 8% 9%, rgba(70, 184, 190, .17), transparent 36rem),
+    radial-gradient(ellipse at 93% 16%, rgba(158, 120, 222, .17), transparent 32rem),
+    radial-gradient(ellipse at 50% 94%, rgba(54, 102, 181, .18), transparent 40rem),
+    repeating-linear-gradient(90deg, transparent 0 92px, rgba(203, 226, 255, .025) 93px 94px),
+    linear-gradient(135deg, #101725 0%, #171e30 48%, #12182a 100%);
+  background-attachment: fixed;
 }
 
 :root[data-theme='dark'] .site-header__inner { background: rgba(34, 40, 59, .86); }
@@ -3051,9 +3242,14 @@ body {
 
 @media (max-width: 640px) {
   .friends-grid { grid-template-columns: 1fr; }
-  .friend-card__header { grid-template-columns: 48px minmax(0, 1fr) auto; }
+  .friends-shell { margin-top: 20px; padding: 14px; border-radius: 22px; }
+  .friend-card { grid-template-columns: 52px minmax(0, 1fr); min-height: 0; gap: 14px; padding: 16px; align-items: start; }
+  .friend-card__body { grid-template-rows: auto minmax(3.3em, 1fr) 26px; }
+  .friend-card__actions { grid-column: 2; justify-content: flex-start; }
   .friend-card__avatar,
-  .friends-site-card img { width: 48px; height: 48px; border-radius: 14px; }
+  .friends-site-card img { width: 52px; height: 52px; border-radius: 16px; }
+  .friend-card__visit { min-height: 36px; padding: 0 11px; }
+  .friend-card__rss { min-height: 36px; }
   .friends-site-meta div { grid-template-columns: 1fr; gap: 4px; }
   .site-logo__text { font-size: .92rem; }.site-header__actions { gap: 3px; }.site-header__link--github { display: none; }
   .fo-banner { height: 470px; }.fo-banner__text { padding: 18px 15px 100px; }.fo-banner__text h1 { font-size: 2.25rem; }.fo-banner__typewriter { width: min(94vw, 440px); min-height: 8.6em; margin-top: 13px; font-size: .95rem; line-height: 1.58; }.fo-banner__typewriter-line { min-height: 1.58em; }.fo-banner__down { bottom: 108px; font-size: 2.7rem; }
