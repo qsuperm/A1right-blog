@@ -1,5 +1,5 @@
 ﻿<div class="a1-ambient" aria-hidden="true">
-  {Array.from({ length: 14 }).map((_, index) => <i style={`--a1-i:${index};--a1-x:${(index * 17 + 7) % 96}%;--a1-y:${(index * 29 + 9) % 92}%`}></i>)}
+  {Array.from({ length: 14 }).map((_, index) => <i style={`--a1-i:${index};--a1-x:${(index * 17 + 7) % 96}%;--a1-y:${(index * 29 + 9) % 92}%;--a1-duration:${9 + (index % 5) * 1.7}s;--a1-delay:${index * -.9}s`}></i>)}
 </div>
 
 <style is:global>
@@ -26,8 +26,8 @@
     background: rgba(234, 249, 255, .9);
     box-shadow: 0 0 8px rgba(120, 204, 235, .82), 0 0 22px rgba(125, 191, 255, .34);
     opacity: .18;
-    animation: a1-ambient-float calc(9s + (var(--a1-i) % 5) * 1.7s) ease-in-out infinite;
-    animation-delay: calc(var(--a1-i) * -.9s);
+    animation: a1-ambient-float var(--a1-duration) ease-in-out infinite;
+    animation-delay: var(--a1-delay);
   }
 
   :root[data-theme='light'] .a1-ambient i {
@@ -54,8 +54,8 @@
     background: #fff5b8;
     box-shadow: 0 0 8px 2px rgba(255, 236, 151, .84), 0 0 24px 5px rgba(255, 212, 104, .26);
     opacity: 0;
-    animation: a1-banner-firefly calc(4.5s + (var(--a1-i) % 5) * 1.1s) ease-in-out infinite;
-    animation-delay: calc(var(--a1-i) * -.56s);
+    animation: a1-banner-firefly var(--a1-duration) ease-in-out infinite;
+    animation-delay: var(--a1-delay);
   }
 
   :root[data-theme='light'] .fo-banner__particles i {

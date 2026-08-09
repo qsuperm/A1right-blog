@@ -107,7 +107,7 @@ const latestActivityLabel = latestActivityAt ? formatDate(latestActivityAt, loca
   <div class="fo-banner__image" aria-hidden="true"></div>
   <div class="fo-banner__dim" aria-hidden="true"></div>
   <div class="fo-banner__particles" aria-hidden="true">
-    {Array.from({ length: 16 }).map((_, index) => <i style={`--a1-i:${index};--a1-x:${(index * 23 + 4) % 96}%;--a1-y:${(index * 31 + 8) % 76}%`}></i>)}
+    {Array.from({ length: 16 }).map((_, index) => <i style={`--a1-i:${index};--a1-x:${(index * 23 + 4) % 96}%;--a1-y:${(index * 31 + 8) % 76}%;--a1-duration:${4.5 + (index % 5) * 1.1}s;--a1-delay:${index * -.56}s`}></i>)}
   </div>
   <div class="fo-banner__text">
     <h1>{copy.bannerTitle}</h1>
