@@ -3515,3 +3515,46 @@ body:has(.friends-shell) {
     linear-gradient(135deg, #101725 0%, #171e30 48%, #12182a 100%);
   background-attachment: fixed;
 }
+
+/* Wide-screen article reading layout: keep the TOC fixed while giving text, code and screenshots room. */
+@media (min-width: 1100px) {
+  .article-shell {
+    width: min(1480px, calc(100vw - 48px));
+  }
+
+  .article-hero {
+    grid-template-columns: minmax(0, 1.25fr) minmax(400px, 520px);
+    gap: 30px;
+    padding: 30px;
+  }
+
+  .article-layout {
+    grid-template-columns: minmax(0, 1fr) 312px;
+    gap: 28px;
+  }
+
+  .article-content-card {
+    padding: 34px 38px;
+  }
+
+  .article-content :is(h2, h3, h4),
+  .article-content :is(p, li, blockquote) {
+    max-width: 92ch;
+  }
+}
+
+.article-content p:has(> img),
+.article-content figure:has(> img) {
+  max-width: none;
+}
+
+.article-content :is(p, figure) > img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  border: 1px solid color-mix(in srgb, var(--line) 88%, transparent);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--text) 12%, transparent);
+  image-rendering: auto;
+}
