@@ -121,7 +121,7 @@
     const root = document.documentElement;
     const selector = [
       'main .glass-wall',
-      'main .ff-card',
+      'main .ff-card:not(.article-content-card)',
       'main .taxonomy-section',
       'main .article-comments',
       'main .pagination-nav',
@@ -144,7 +144,7 @@
           reveal(entry.target as HTMLElement);
           observer.unobserve(entry.target);
         });
-      }, { rootMargin: '0px 0px -6% 0px', threshold: 0.08 });
+      }, { rootMargin: '0px 0px -3% 0px', threshold: 0 });
 
       targets.forEach((element) => observer.observe(element));
       window.addEventListener('pagehide', () => observer.disconnect(), { once: true });
