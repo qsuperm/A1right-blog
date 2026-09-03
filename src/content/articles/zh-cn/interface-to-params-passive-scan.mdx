@@ -1,0 +1,61 @@
+---
+translationKey: interface-to-params-passive-scan
+locale: zh-cn
+routeSlug: interface-to-params-passive-scan
+title: 笔记---从接口提取到参数名收集、被动漏扫工具
+excerpt: 记录从接口提取、参数名收集到被动漏扫工具使用的学习笔记。
+author: A1right
+seoTitle: 从接口提取到参数名收集、被动漏扫工具
+seoDescription: A1right 整理接口提取、参数名收集与被动漏扫工具相关的 Web 安全学习笔记。
+categoryKey: web-security
+category: Web 安全
+tags:
+  - Web 基础
+  - 接口安全
+  - 参数收集
+  - 被动扫描
+visibility: public
+publishMode: now
+publishedAt: 2026-09-03
+updatedAt: 2026-09-03
+cover: /images/uploads/cover-anime-hero-room.jpg
+coverAlt: Web 安全学习笔记封面
+contentType: original
+allowRepost: allow-with-attribution
+pinned: false
+draft: false
+---
+
+# 笔记
+
+# 从接口提取到参数名收集、被动漏扫
+
+## 课程地址
+
+[API Fuzz 武器开发实战：从接口提取到参数名收集、被动漏扫](https://www.bilibili.com/video/BV1WKaSz5EYn?vd_source=1fa00d8993e1819e0455f61279762dd2)
+
+## 基于 JS 的 API Fuzz
+
+### 1. findsomething
+
+[Chrome Web Store：findsomething](https://chromewebstore.google.com/detail/findsomething/kfhniponecokdefffkpagipffdefeldb)
+
+![findsomething 使用截图](/images/uploads/interface-params-01.png)
+
+### 2. 雪瞳
+
+[SnowEyes Releases](https://github.com/SickleSec/SnowEyes/releases/tag/v0.3.0)
+
+![雪瞳使用截图 1](/images/uploads/interface-params-02.png)
+
+![雪瞳使用截图 2](/images/uploads/interface-params-03.png)
+
+### 3. Multiple URL Opener
+
+[Chrome Web Store：Multiple URL Opener](https://chromewebstore.google.com/detail/multiple-url-opener/jfanmjbbnmijbkhgnkpbaclkfeliinob?hl=zh-CN&utm_source=ext_sidebar)
+
+![Multiple URL Opener 使用截图](/images/uploads/interface-params-04.png)
+
+> 1. 对于基于 body、JSON 格式发包的请求体，可以针对对应的参数名和参数值进行 Fuzz。
+> 2. 可以尝试将参数置空，观察服务端的响应变化。
+> 3. 根据具体漏洞类型准备测试字典和 payload，也可以联动 Burp Suite 进行验证。
