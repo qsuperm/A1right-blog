@@ -7,8 +7,8 @@ excerpt: 复盘一次授权测试中的存储型 XSS 链路，从前台表单存
 author: A1right
 seoTitle: 存储 XSS 实战：从表单到管理员会话劫持
 seoDescription: A1right 记录存储型 XSS 授权测试复盘，覆盖注入点确认、触发环境、外带脚本、Cookie 安全属性与修复建议。
-categoryKey: web-security
-category: Web 安全
+categoryKey: agent-pentest
+category: WEB渗透测试
 tags:
   - Web 基础
   - XSS
