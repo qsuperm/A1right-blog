@@ -22,12 +22,12 @@ const categories = categoryKeys.map((key) => {
 });
 
 const title = '分类导航';
-const description = `按主题浏览 A1right 的网络安全文章，目前共 ${articles.length} 篇、${categories.length} 个分类，覆盖 Web 安全、CTF 题解和 Agent 渗透。`;
+const description = `按主题浏览 A1right 的网络安全文章，目前共 ${articles.length} 篇、${categories.length} 个分类，覆盖 Web 安全、CTF 题解和 WEB渗透测试。`;
 const breadcrumbs = [
   { label: '首页', href: '/' },
   { label: '分类', href: '/categories' },
 ];
-const keywords = ['分类导航', '网络安全博客', 'Web 安全', 'CTF 题解', 'Agent 渗透'];
+const keywords = ['分类导航', '网络安全博客', 'Web 安全', 'CTF 题解', 'WEB渗透测试'];
 const structuredData = buildCollectionPageJsonLd({
   title,
   description,

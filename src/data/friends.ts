@@ -50,7 +50,7 @@ export const FRIEND_SELF_CARD = {
   owner: 'A1right',
   description: {
     'zh-cn': '\u7f51\u7edc\u5b89\u5168\u3001CTF \u4e0e Agent \u6e17\u900f\u5b66\u4e60\u8bb0\u5f55\u3002',
-    en: 'A bilingual notebook for web security, CTF writeups, and agent pentest notes.',
+    en: 'A bilingual notebook for web security, CTF writeups, and web pentest notes.',
   },
 } as const;
 

@@ -37,8 +37,8 @@ const title = isEnglish
     ? '文章归档'
     : `文章归档 · 第 ${currentPage} 页`;
 const description = isEnglish
-  ? `Browse all ${totalArticles} posts across web security, CTF writeups, and agent pentest notes. You are on page ${currentPage} of ${totalPages}.`
-  : `按时间浏览当前全部 ${totalArticles} 篇文章，涵盖 Web 安全、CTF 题解和 Agent 渗透。当前是第 ${currentPage} / ${totalPages} 页。`;
+  ? `Browse all ${totalArticles} posts across web security, CTF writeups, and web pentest notes. You are on page ${currentPage} of ${totalPages}.`
+  : `按时间浏览当前全部 ${totalArticles} 篇文章，涵盖 Web 安全、CTF 题解和 WEB渗透测试。当前是第 ${currentPage} / ${totalPages} 页。`;
 const breadcrumbs =
   currentPage === 1
     ? [
@@ -54,8 +54,8 @@ const stats = isEnglish
   ? [`${totalArticles} posts`, `${articles.length} on this page`, `Page ${currentPage} / ${totalPages}`]
   : [`${totalArticles} 篇文章`, `本页 ${articles.length} 篇`, `第 ${currentPage} / ${totalPages} 页`];
 const keywords = isEnglish
-  ? ['post archive', 'web security blog', 'ctf writeups', 'agent pentest', 'Astro blog']
-  : ['文章归档', '网络安全博客', 'Web 安全', 'CTF 题解', 'Agent 渗透'];
+  ? ['post archive', 'web security blog', 'ctf writeups', 'web pentest', 'Astro blog']
+  : ['文章归档', '网络安全博客', 'Web 安全', 'CTF 题解', 'WEB渗透测试'];
 const categoryCards = (Object.keys(CATEGORY_META) as (keyof typeof CATEGORY_META)[]).map((key) => ({
   href: getCategoryUrl(locale, key),
   title: CATEGORY_META[key][locale].name,

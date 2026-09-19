@@ -443,15 +443,15 @@ ${createCollection({
   categories: [
     { label: 'Web 安全', value: 'web-security' },
     { label: 'CTF 题解', value: 'ctf-writeup' },
-    { label: 'Agent 渗透', value: 'agent-pentest' },
+    { label: 'WEB渗透测试', value: 'agent-pentest' },
   ],
-  categoryLabels: ['Web 安全', 'CTF 题解', 'Agent 渗透'],
+  categoryLabels: ['Web 安全', 'CTF 题解', 'WEB渗透测试'],
   filterLabels: {
     drafts: '草稿',
     pinned: '置顶',
     web: 'Web 安全',
     ctf: 'CTF 题解',
-    agent: 'Agent 渗透',
+    agent: 'WEB渗透测试',
     categoryGroup: '按分类分组',
     yearGroup: '按年份分组',
   },

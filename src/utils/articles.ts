@@ -29,11 +29,11 @@ export const CATEGORY_META = {
   },
   'agent-pentest': {
     'zh-cn': {
-      name: 'Agent 渗透',
+      name: 'WEB渗透测试',
       desc: '围绕工具调用链、浏览器自动化、MCP 接缝与可复现观察点整理实验。',
     },
     en: {
-      name: 'Agent Pentest',
+      name: 'Web Pentest',
       desc: 'Notes around toolchains, browser automation, MCP seams, and reproducible checkpoints.',
     },
   },
