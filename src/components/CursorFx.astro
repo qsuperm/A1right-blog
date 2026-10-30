@@ -1,288 +1,156 @@
-<div class="a1-orbit-cursor" aria-hidden="true">
-  <span class="a1-orbit-cursor__ring"><i></i></span>
+<div class="a1-cursor" aria-hidden="true">
+  <span class="a1-cursor__dot"></span>
 </div>
 
 <style is:global>
-  html.a1-orbit-cursor-active,
-  html.a1-orbit-cursor-active body,
-  html.a1-orbit-cursor-active body * {
+  html.a1-cursor-active,
+  html.a1-cursor-active body,
+  html.a1-cursor-active body * {
     cursor: none !important;
   }
 
-  html.a1-orbit-cursor-active :is(input, textarea, [contenteditable='true']) {
+  html.a1-cursor-active :is(input, textarea, [contenteditable='true']) {
     cursor: text !important;
   }
 
-  .a1-orbit-cursor {
+  .a1-cursor {
     position: fixed;
     z-index: 2147483647;
     top: 0;
     left: 0;
-    width: 32px;
-    height: 32px;
+    width: 34px;
+    height: 34px;
     display: grid;
     place-items: center;
     pointer-events: none;
     opacity: 0;
     transform: translate3d(-50%, -50%, 0);
-    transition: opacity .16s ease;
+    transition: opacity .14s ease;
     will-change: transform;
   }
 
-  .a1-orbit-cursor.is-visible { opacity: 1; }
-  .a1-orbit-cursor__ring {
+  .a1-cursor.is-visible { opacity: 1; }
+  .a1-cursor.is-text { opacity: 0; }
+
+  .a1-cursor__dot {
     position: relative;
-    width: 26px;
-    height: 26px;
-    border: 1.5px solid rgba(227, 241, 255, .92);
+    width: 8px;
+    height: 8px;
+    display: block;
     border-radius: 50%;
-    box-shadow: 0 0 8px rgba(213, 236, 255, .88), 0 0 23px rgba(148, 201, 255, .35), inset 0 0 7px rgba(255, 255, 255, .3);
-    transition: width .18s ease, height .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+    background: #e8fbff;
+    box-shadow: 0 0 7px rgba(203, 242, 255, .98), 0 0 18px rgba(112, 203, 236, .4);
+    transition: width .18s ease, height .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease;
   }
 
-  .a1-orbit-cursor__ring::before,
-  .a1-orbit-cursor__ring::after {
+  .a1-cursor__dot::before {
     content: '';
     position: absolute;
-    border-radius: 999px;
-    background: currentColor;
-    box-shadow: 0 0 8px currentColor;
+    inset: -8px;
+    border: 1px solid rgba(184, 231, 247, .55);
+    border-radius: 50%;
+    opacity: .62;
+    transform: scale(.72);
+    transition: opacity .18s ease, transform .18s ease, border-color .18s ease;
   }
 
-  .a1-orbit-cursor__ring::before { width: 5px; height: 1px; top: -1px; left: 50%; transform: translateX(-50%); }
-  .a1-orbit-cursor__ring::after { width: 1px; height: 5px; left: -1px; top: 50%; transform: translateY(-50%); }
-  .a1-orbit-cursor__ring i { position: absolute; inset: 9px; border-radius: 50%; background: currentColor; box-shadow: 0 0 10px currentColor; }
-
-  .a1-orbit-cursor.is-interactive .a1-orbit-cursor__ring {
-    width: 38px;
-    height: 38px;
-    border-color: rgba(255, 236, 177, .95);
-    color: #ffe7a5;
-    box-shadow: 0 0 11px rgba(255, 229, 157, .88), 0 0 30px rgba(255, 191, 108, .42), inset 0 0 9px rgba(255, 236, 183, .36);
-    transform: rotate(45deg);
+  .a1-cursor.is-interactive .a1-cursor__dot {
+    width: 26px;
+    height: 26px;
+    border: 1px solid rgba(255, 236, 177, .92);
+    background: rgba(255, 236, 177, .08);
+    box-shadow: 0 0 10px rgba(255, 228, 151, .72), 0 0 24px rgba(255, 190, 102, .26), inset 0 0 9px rgba(255, 237, 181, .18);
   }
 
-  .a1-orbit-cursor.is-pressed .a1-orbit-cursor__ring { transform: scale(.72) rotate(120deg); }
-  .a1-orbit-cursor.is-text { opacity: 0; }
-
-  :root[data-theme='light'] .a1-orbit-cursor__ring {
-    color: #2998ff;
-    border-color: rgba(50, 151, 255, .92);
-    box-shadow: 0 0 8px rgba(44, 147, 255, .86), 0 0 23px rgba(65, 159, 255, .3), inset 0 0 7px rgba(220, 243, 255, .76);
+  .a1-cursor.is-interactive .a1-cursor__dot::before {
+    inset: 4px;
+    border-color: rgba(255, 246, 212, .72);
+    opacity: 1;
+    transform: scale(1) rotate(45deg);
   }
 
-  :root[data-theme='light'] .a1-orbit-cursor.is-interactive .a1-orbit-cursor__ring {
-    color: #187ce7;
-    border-color: rgba(28, 137, 244, .96);
-    box-shadow: 0 0 11px rgba(32, 143, 248, .84), 0 0 30px rgba(76, 168, 255, .4), inset 0 0 9px rgba(220, 243, 255, .8);
+  .a1-cursor.is-pressed .a1-cursor__dot {
+    transform: scale(.72);
+  }
+
+  :root[data-theme='light'] .a1-cursor__dot {
+    background: #238de9;
+    box-shadow: 0 0 7px rgba(37, 149, 239, .78), 0 0 18px rgba(75, 174, 255, .28);
+  }
+
+  :root[data-theme='light'] .a1-cursor__dot::before {
+    border-color: rgba(47, 148, 239, .62);
+  }
+
+  :root[data-theme='light'] .a1-cursor.is-interactive .a1-cursor__dot {
+    border-color: rgba(32, 132, 223, .9);
+    background: rgba(68, 163, 243, .09);
+    box-shadow: 0 0 10px rgba(41, 143, 233, .6), 0 0 24px rgba(80, 168, 247, .22), inset 0 0 9px rgba(203, 237, 255, .52);
   }
 
   @media (pointer: coarse), (prefers-reduced-motion: reduce) {
-    .a1-orbit-cursor { display: none; }
+    .a1-cursor { display: none; }
   }
 </style>
 
 <script>
-  import { BAClickFX } from 'ba-click-fx';
-
-  type CursorFxHandle = BAClickFX | null;
-
-  const globalWindow = window as Window & {
-    __A1RIGHT_BA_CURSOR__?: CursorFxHandle;
-  };
-
-  const getThemePreset = (theme: string) => {
-    if (theme === 'light') {
-      return {
-        color: [76, 157, 255] as [number, number, number],
-        opacity: 0.8,
-        trailWhiteMix: 0.48,
-        ringWhiteMix: 0.7,
-        ringColorEndWhiteMix: 0.86,
-        trailGlowAlpha: 0.28,
-        trailSoftGlowAlpha: 0.13,
-        ringGlowAlpha: 0.29,
-        ringSoftGlowAlpha: 0.17,
-      };
-    }
-
-    return {
-      color: [225, 237, 255] as [number, number, number],
-      opacity: 0.78,
-      trailWhiteMix: 0.96,
-      ringWhiteMix: 1,
-      ringColorEndWhiteMix: 1,
-      trailGlowAlpha: 0.25,
-      trailSoftGlowAlpha: 0.12,
-      ringGlowAlpha: 0.27,
-      ringSoftGlowAlpha: 0.16,
-    };
-  };
-
-  const applyThemePreset = (fx: BAClickFX, theme: string) => {
-    const preset = getThemePreset(theme);
-    fx.setColor(...preset.color);
-    fx.setOpacity(preset.opacity);
-    fx.setTrailWhiteMix(preset.trailWhiteMix);
-    fx.setRingWhiteMix(preset.ringWhiteMix);
-    fx.setRingColorEndWhiteMix(preset.ringColorEndWhiteMix);
-    fx.setTrailGlowAlpha(preset.trailGlowAlpha);
-    fx.setTrailSoftGlowAlpha(preset.trailSoftGlowAlpha);
-    fx.setRingGlowAlpha(preset.ringGlowAlpha);
-    fx.setRingSoftGlowAlpha(preset.ringSoftGlowAlpha);
-  };
-
-  const createCursorFx = () => {
-    const fx = new BAClickFX({
-      color: [224, 232, 244],
-      scale: 1.06,
-      opacity: 0.78,
-      trailEnabled: true,
-      trailAlways: true,
-      clickEnabled: true,
-      touchAction: 'auto',
-    });
-
-    fx.setGlow(true);
-    fx.setFakeGlow(true);
-    fx.setClickFakeGlow(true);
-    fx.setSpeed(0.82, 0.9);
-    fx.setDpr(2);
-
-    // Click: layered halo, rotating arcs and a denser shard burst.
-    fx.setClickTotalLife(29);
-    fx.setClickScaleMul(1.12);
-    fx.setClickHaloRadius(76);
-    fx.setClickShardFlicker(7, 0.42);
-    fx.setSparksCount(6);
-    fx.setDiskSize(24);
-    fx.setDiskGlow(4.1, 0.14);
-    fx.setDiskTiming(13, 0.8, 0.3, 0.7);
-    fx.setRingRotationSpeed(0.014);
-    fx.setRingEmission(0.45);
-    fx.setRingWidth(0.86, 3.35);
-    fx.setRingAlpha(0.84);
-    fx.setRingDelay(1);
-    fx.setRingMaxLife(29);
-    fx.setRingPostDiskGrow(22);
-    fx.setRingGlowRadiusAdd(46);
-    fx.setRingSoftGlowRadiusAdd(82);
-    fx.setRingArcLength(4.75, 1.05);
-    fx.setRingSegmentCount(2, 3);
-    fx.setRingSegmentDetail(0.18, 0.42, 0.58, 1.28);
-    fx.setRingRotationJitter(0.56, 1.45);
-    fx.setRingRadiusJitter(0.24, 0.72);
-
-    // Trail: a wider luminous ribbon with scattered, flickering particles.
-    fx.setTrailBrightness(1);
-    fx.setTrailWidth(3.7, 2.05);
-    fx.setTrailLength(1250, 5200);
-    fx.setTrailLife(30, 48);
-    fx.setTrailSmooth(0.42);
-    fx.setTrailGradientChunk(1.05);
-    fx.setTrailCoreWidth(0.52, 0.86);
-    fx.setTrailHotWidth(0.22, 0.38);
-    fx.setTrailRibbon(2.5, 0.13);
-    fx.setTrailGlowRadius(28);
-    fx.setTrailGlowIntensity(0.24);
-    fx.setTrailGlowWidthMul(2.35);
-    fx.setTrailSoftGlowWidthMul(4.6);
-    fx.setTrailRailWidth(0.28, 0.46);
-    fx.setTrailLayerAlpha(1, 0.86, 0.58, 0.3, 0.14, 0.07);
-    fx.setMaxShards(92);
-    fx.setShardSpacing(76);
-    fx.setShardChance(0.1, 0.34);
-    fx.setShardLargeChance(0.68);
-    fx.setMoveSparkChance(0.012);
-    fx.setTrailShardFlicker(6, 0.38, 0.28);
-    fx.setTrailShardOffset(3, 48);
-    return fx;
-  };
-
-  const syncCursorFxTheme = () => {
-    const fx = globalWindow.__A1RIGHT_BA_CURSOR__;
-    if (!fx) return;
-    const theme = document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
-    applyThemePreset(fx, theme);
-  };
-
-  const initCursorFx = () => {
+  const initCursor = () => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     if (window.matchMedia('(pointer: coarse)').matches) return;
 
-    const orbitCursor = document.querySelector<HTMLElement>('.a1-orbit-cursor');
-    let orbitFrame = 0;
-    let orbitX = -100;
-    let orbitY = -100;
+    const cursor = document.querySelector<HTMLElement>('.a1-cursor');
+    if (!cursor) return;
 
-    const renderOrbit = () => {
-      orbitFrame = 0;
-      orbitCursor?.style.setProperty('transform', `translate3d(calc(${orbitX}px - 50%), calc(${orbitY}px - 50%), 0)`);
+    let frame = 0;
+    let x = -100;
+    let y = -100;
+
+    const render = () => {
+      frame = 0;
+      cursor.style.setProperty('transform', `translate3d(calc(${x}px - 50%), calc(${y}px - 50%), 0)`);
     };
 
-    const syncOrbitState = (target: EventTarget | null) => {
+    const updateState = (target: EventTarget | null) => {
       const element = target instanceof Element ? target : null;
       const isText = Boolean(element?.closest("input:not([type='button']):not([type='submit']):not([type='reset']), textarea, [contenteditable='true']"));
       const isInteractive = Boolean(element?.closest('a, button, [role="button"], summary, select, label, input:not([type="text"]):not([type="search"]):not([type="email"]):not([type="password"]), [data-cursor-interactive]'));
-      orbitCursor?.classList.toggle('is-text', isText);
-      orbitCursor?.classList.toggle('is-interactive', !isText && isInteractive);
+      cursor.classList.toggle('is-text', isText);
+      cursor.classList.toggle('is-interactive', !isText && isInteractive);
     };
 
-    const onPointerMove = (event: PointerEvent) => {
-      orbitX = event.clientX;
-      orbitY = event.clientY;
-      orbitCursor?.classList.add('is-visible');
-      syncOrbitState(event.target);
-      if (!orbitFrame) orbitFrame = window.requestAnimationFrame(renderOrbit);
+    const onMove = (event: PointerEvent) => {
+      x = event.clientX;
+      y = event.clientY;
+      cursor.classList.add('is-visible');
+      updateState(event.target);
+      if (!frame) frame = window.requestAnimationFrame(render);
     };
-    const onPointerDown = () => orbitCursor?.classList.add('is-pressed');
-    const onPointerUp = () => orbitCursor?.classList.remove('is-pressed');
-    const onPointerLeave = () => orbitCursor?.classList.remove('is-visible');
-    const onPointerEnter = () => orbitCursor?.classList.add('is-visible');
+    const onDown = () => cursor.classList.add('is-pressed');
+    const onUp = () => cursor.classList.remove('is-pressed');
+    const onLeave = () => cursor.classList.remove('is-visible');
+    const onEnter = () => cursor.classList.add('is-visible');
 
-    document.documentElement.classList.add('a1-orbit-cursor-active');
-    window.addEventListener('pointermove', onPointerMove, { passive: true });
-    window.addEventListener('pointerdown', onPointerDown, { passive: true });
-    window.addEventListener('pointerup', onPointerUp, { passive: true });
-    document.documentElement.addEventListener('pointerleave', onPointerLeave);
-    document.documentElement.addEventListener('pointerenter', onPointerEnter);
+    document.documentElement.classList.add('a1-cursor-active');
+    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('pointerdown', onDown, { passive: true });
+    window.addEventListener('pointerup', onUp, { passive: true });
+    document.documentElement.addEventListener('pointerleave', onLeave);
+    document.documentElement.addEventListener('pointerenter', onEnter);
 
-    globalWindow.__A1RIGHT_BA_CURSOR__?.destroy?.();
-
-    const fx = createCursorFx();
-    globalWindow.__A1RIGHT_BA_CURSOR__ = fx;
-    syncCursorFxTheme();
-
-    const observer = new MutationObserver(() => {
-      syncCursorFxTheme();
-    });
-
-    observer.observe(document.documentElement, {
-      attributes: true,
-      attributeFilter: ['data-theme'],
-    });
-
-    window.addEventListener(
-      'pagehide',
-      () => {
-        observer.disconnect();
-        if (orbitFrame) window.cancelAnimationFrame(orbitFrame);
-        window.removeEventListener('pointermove', onPointerMove);
-        window.removeEventListener('pointerdown', onPointerDown);
-        window.removeEventListener('pointerup', onPointerUp);
-        document.documentElement.removeEventListener('pointerleave', onPointerLeave);
-        document.documentElement.removeEventListener('pointerenter', onPointerEnter);
-        document.documentElement.classList.remove('a1-orbit-cursor-active');
-        globalWindow.__A1RIGHT_BA_CURSOR__?.destroy?.();
-        globalWindow.__A1RIGHT_BA_CURSOR__ = null;
-      },
-      { once: true },
-    );
+    window.addEventListener('pagehide', () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('pointerup', onUp);
+      document.documentElement.removeEventListener('pointerleave', onLeave);
+      document.documentElement.removeEventListener('pointerenter', onEnter);
+      document.documentElement.classList.remove('a1-cursor-active');
+    }, { once: true });
   };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initCursorFx, { once: true });
+    document.addEventListener('DOMContentLoaded', initCursor, { once: true });
   } else {
-    initCursorFx();
+    initCursor();
   }
 </script>
