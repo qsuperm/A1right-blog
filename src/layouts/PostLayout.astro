@@ -45,6 +45,7 @@ const updatedLabel = locale === 'en' ? 'Updated' : '更新';
 const readingLabel = locale === 'en' ? `${readingMinutes} min read` : `${readingMinutes} 分钟阅读`;
 const wordCountLabel = locale === 'en' ? `${wordCount.toLocaleString()} words` : `字数 ${wordCount.toLocaleString()}`;
 const tocLabel = locale === 'en' ? 'On this page' : '本页目录';
+const tocEyebrow = locale === 'en' ? 'Reading map' : '阅读导航';
 const metaLabel = locale === 'en' ? 'Article meta' : '文章信息';
 const previousLabel = locale === 'en' ? 'Previous post' : '上一篇';
 const nextLabel = locale === 'en' ? 'Next post' : '下一篇';
@@ -154,15 +155,26 @@ const breadcrumbStructuredData = buildBreadcrumbJsonLd([
 
       <aside class="article-aside">
         {toc.length > 0 && (
-          <section class="ff-card article-panel">
-            <h2>{tocLabel}</h2>
-            <ul class="article-toc">
-              {toc.map((heading) => (
+          <section class="ff-card article-panel article-panel--toc" data-article-toc>
+            <div class="article-toc__header">
+              <div>
+                <p>{tocEyebrow}</p>
+                <h2>{tocLabel}</h2>
+              </div>
+              <span class="article-toc__count" aria-label={locale === 'en' ? `${toc.length} sections` : `${toc.length} 个章节`}>{String(toc.length).padStart(2, '0')}</span>
+            </div>
+            <div class="article-toc__viewport">
+              <ul class="article-toc">
+                {toc.map((heading, index) => (
                 <li class={`article-toc__item article-toc__item--depth-${heading.depth}`}>
-                  <a href={`#${heading.slug}`}>{heading.text}</a>
+                  <a data-toc-link href={`#${heading.slug}`}>
+                    <span class="article-toc__number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+                    <span class="article-toc__text">{heading.text}</span>
+                  </a>
                 </li>
               ))}
-            </ul>
+              </ul>
+            </div>
           </section>
         )}
 
@@ -205,3 +217,44 @@ const breadcrumbStructuredData = buildBreadcrumbJsonLd([
     </div>
   </section>
 </BaseLayout>
+
+<script>
+  const tocRoot = document.querySelector<HTMLElement>('[data-article-toc]');
+  const tocLinks = Array.from(tocRoot?.querySelectorAll<HTMLAnchorElement>('[data-toc-link]') ?? []);
+
+  if (tocLinks.length > 0 && 'IntersectionObserver' in window) {
+    const linksById = new Map(tocLinks.map((link) => [decodeURIComponent(link.hash.slice(1)), link]));
+    const visibleHeadings = new Map<string, number>();
+
+    const activate = (id: string) => {
+      tocLinks.forEach((link) => link.classList.toggle('is-active', link.hash === `#${encodeURIComponent(id)}` || decodeURIComponent(link.hash.slice(1)) === id));
+    };
+
+    const updateActive = () => {
+      const [id] = [...visibleHeadings.entries()].sort(([, topA], [, topB]) => topA - topB)[0] ?? [];
+      if (id) activate(id);
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const id = (entry.target as HTMLElement).id;
+        if (!id) return;
+        if (entry.isIntersecting) visibleHeadings.set(id, entry.boundingClientRect.top);
+        else visibleHeadings.delete(id);
+      });
+      updateActive();
+    }, { rootMargin: '-15% 0px -68% 0px', threshold: 0 });
+
+    linksById.forEach((link, id) => {
+      const heading = document.getElementById(id);
+      if (heading) observer.observe(heading);
+      link.addEventListener('click', () => activate(id));
+    });
+
+    const initialId = decodeURIComponent(window.location.hash.slice(1));
+    if (initialId && linksById.has(initialId)) activate(initialId);
+    else activate(linksById.keys().next().value ?? '');
+
+    window.addEventListener('pagehide', () => observer.disconnect(), { once: true });
+  }
+</script>
