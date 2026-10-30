@@ -1392,10 +1392,11 @@ body.search-open {
   display: grid;
   gap: 18px;
   align-content: start;
+  align-self: start;
   min-height: 0;
   position: sticky;
   top: 92px;
-  max-height: calc(100svh - 116px);
+  height: calc(100svh - 116px);
   padding-right: 6px;
   overflow-y: auto;
   scrollbar-color: color-mix(in srgb, var(--fo-primary) 38%, transparent) transparent;
@@ -2801,6 +2802,13 @@ body {
     linear-gradient(115deg, color-mix(in srgb, #fff 38%, transparent), transparent 26%, transparent 70%, color-mix(in srgb, #fff 16%, transparent)),
     repeating-linear-gradient(90deg, transparent 0 78px, color-mix(in srgb, #fff 10%, transparent) 79px 80px);
   pointer-events: none;
+}
+
+/* Keep the desktop TOC pinned to the viewport while the article scrolls.
+   The shared glass frame normally clips decorative layers, which would otherwise
+   make it the sticky element's non-scrolling scroll container. */
+.article-shell.glass-wall {
+  overflow: visible;
 }
 
 .article-shell.glass-wall,
