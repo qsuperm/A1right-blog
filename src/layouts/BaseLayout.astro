@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import { SITE, type Locale } from '../config';
+import BrightnessControl from '../components/BrightnessControl.astro';
 import CursorFx from '../components/CursorFx.astro';
 import MotionEffects from '../components/MotionEffects.astro';
 import PageLoader from '../components/PageLoader.astro';
@@ -80,6 +81,7 @@ const structuredDataItems = Array.isArray(structuredData)
     </main>
     <SiteFooter locale={locale} />
     <MotionEffects />
+    <BrightnessControl />
     <CursorFx />
     <PageViewScript />
   </body>
