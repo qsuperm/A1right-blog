@@ -1,0 +1,169 @@
+<div class="a1-page-loader" role="status" aria-live="polite" aria-label="页面正在加载">
+  <div class="a1-page-loader__core">
+    <div class="a1-page-loader__orbit" aria-hidden="true">
+      <span></span>
+      <i></i>
+    </div>
+    <p class="a1-page-loader__brand">A1RIGHT</p>
+    <p class="a1-page-loader__message">LOADING<span aria-hidden="true">...</span></p>
+  </div>
+</div>
+
+<style is:global>
+  html.a1-page-loading,
+  html.a1-page-loading body {
+    overflow: hidden;
+  }
+
+  .a1-page-loader {
+    position: fixed;
+    z-index: 2147483646;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background:
+      radial-gradient(circle at 50% 42%, rgba(111, 223, 199, 0.14), transparent 16rem),
+      radial-gradient(circle at 48% 62%, rgba(242, 167, 209, 0.11), transparent 22rem),
+      rgba(10, 15, 27, 0.96);
+    color: #f4fbff;
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.42s ease, visibility 0.42s step-end;
+  }
+
+  :root[data-theme='light'] .a1-page-loader {
+    background:
+      radial-gradient(circle at 50% 42%, rgba(32, 174, 136, 0.22), transparent 16rem),
+      radial-gradient(circle at 48% 62%, rgba(238, 167, 201, 0.22), transparent 22rem),
+      rgba(239, 248, 250, 0.97);
+    color: #15332e;
+  }
+
+  .a1-page-loader.is-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .a1-page-loader__core {
+    display: grid;
+    justify-items: center;
+    gap: 14px;
+    text-align: center;
+  }
+
+  .a1-page-loader__orbit {
+    position: relative;
+    width: 86px;
+    aspect-ratio: 1;
+    border: 1px solid rgba(159, 234, 222, 0.34);
+    border-radius: 50%;
+    box-shadow: 0 0 18px rgba(105, 224, 199, 0.32), inset 0 0 18px rgba(105, 224, 199, 0.12);
+    animation: a1-loader-spin 1.25s linear infinite;
+  }
+
+  .a1-page-loader__orbit::before,
+  .a1-page-loader__orbit::after,
+  .a1-page-loader__orbit span,
+  .a1-page-loader__orbit i {
+    content: '';
+    position: absolute;
+    display: block;
+    border-radius: 999px;
+  }
+
+  .a1-page-loader__orbit::before {
+    inset: 11px;
+    border: 1px solid rgba(242, 167, 209, 0.5);
+    border-left-color: transparent;
+    border-bottom-color: transparent;
+    transform: rotate(34deg);
+  }
+
+  .a1-page-loader__orbit::after {
+    top: -4px;
+    left: calc(50% - 4px);
+    width: 8px;
+    height: 8px;
+    background: #a9f7e4;
+    box-shadow: 0 0 12px #a9f7e4, 0 0 26px rgba(105, 224, 199, 0.8);
+  }
+
+  .a1-page-loader__orbit span {
+    inset: 23px;
+    border: 1px solid rgba(169, 247, 228, 0.35);
+    border-right-color: transparent;
+    border-top-color: transparent;
+  }
+
+  .a1-page-loader__orbit i {
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    margin: -5px;
+    background: #f4b4d9;
+    box-shadow: 0 0 13px #f4b4d9;
+  }
+
+  .a1-page-loader__brand,
+  .a1-page-loader__message {
+    margin: 0;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-weight: 800;
+    letter-spacing: 0.24em;
+  }
+
+  .a1-page-loader__brand {
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    text-shadow: 0 0 14px rgba(169, 247, 228, 0.4);
+  }
+
+  .a1-page-loader__message {
+    color: rgba(221, 239, 240, 0.72);
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+  }
+
+  :root[data-theme='light'] .a1-page-loader__message {
+    color: rgba(21, 51, 46, 0.68);
+  }
+
+  @keyframes a1-loader-spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .a1-page-loader,
+    .a1-page-loader__orbit {
+      animation: none;
+      transition-duration: 0.01ms;
+    }
+  }
+</style>
+
+<script>
+  const root = document.documentElement;
+  const loader = document.querySelector<HTMLElement>('.a1-page-loader');
+  let completed = false;
+
+  root.classList.add('a1-page-loading');
+
+  const finishLoading = () => {
+    if (completed) return;
+    completed = true;
+    root.classList.remove('a1-page-loading');
+    loader?.classList.add('is-hidden');
+    window.setTimeout(() => loader?.remove(), 500);
+  };
+
+  const revealWhenReady = () => window.setTimeout(finishLoading, 180);
+  if (document.readyState === 'complete') {
+    revealWhenReady();
+  } else {
+    window.addEventListener('load', revealWhenReady, { once: true });
+  }
+
+  window.setTimeout(finishLoading, 2800);
+</script>

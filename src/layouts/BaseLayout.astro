@@ -3,6 +3,7 @@ import '../styles/global.css';
 import { SITE, type Locale } from '../config';
 import CursorFx from '../components/CursorFx.astro';
 import MotionEffects from '../components/MotionEffects.astro';
+import PageLoader from '../components/PageLoader.astro';
 import PageViewScript from '../components/PageViewScript.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SiteHeader from '../components/SiteHeader.astro';
@@ -71,6 +72,7 @@ const structuredDataItems = Array.isArray(structuredData)
     <title>{pageTitle}</title>
   </head>
   <body>
+    <PageLoader />
     <a class="skip-link" href="#main-content">Skip to content</a>
     <SiteHeader locale={locale} />
     <main id="main-content" data-pagefind-body>
