@@ -1,4 +1,4 @@
-﻿<div class="a1-ambient" aria-hidden="true">
+<div class="a1-ambient" aria-hidden="true">
   {Array.from({ length: 14 }).map((_, index) => <i style={`--a1-i:${index};--a1-x:${(index * 17 + 7) % 96}%;--a1-y:${(index * 29 + 9) % 92}%;--a1-duration:${9 + (index % 5) * 1.7}s;--a1-delay:${index * -.9}s`}></i>)}
 </div>
 
@@ -11,7 +11,7 @@
     pointer-events: none;
   }
 
-  body > :not(.a1-ambient):not(.a1-orbit-cursor) {
+  body > :not(.a1-ambient):not(.a1-orbit-cursor):not(.a1-cursor) {
     position: relative;
     z-index: 1;
   }
@@ -151,3 +151,4 @@
     }
   }
 </script>
+
