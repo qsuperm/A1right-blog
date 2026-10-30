@@ -1422,7 +1422,7 @@ body.search-open {
 
 .article-panel--toc {
   padding: 0;
-  min-height: clamp(560px, calc(100svh - 116px), 860px);
+  min-height: calc(100svh - 116px);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -1590,7 +1590,7 @@ body.search-open {
 
 @media (max-width: 980px) {
   .article-panel--toc {
-    min-height: clamp(520px, calc(100svh - 136px), 760px);
+    min-height: calc(100svh - 136px);
   }
 }
 
