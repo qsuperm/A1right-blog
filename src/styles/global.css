@@ -1475,6 +1475,7 @@ body.search-open {
   flex: 1;
   overflow: auto;
   overscroll-behavior: contain;
+  scroll-behavior: smooth;
   scrollbar-color: color-mix(in srgb, var(--primary) 45%, transparent) transparent;
   scrollbar-width: thin;
 }
@@ -1483,6 +1484,10 @@ body.search-open {
 .article-toc__viewport::-webkit-scrollbar-thumb {
   border-radius: 999px;
   background: color-mix(in srgb, var(--primary) 45%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .article-toc__viewport { scroll-behavior: auto; }
 }
 
 .article-toc {

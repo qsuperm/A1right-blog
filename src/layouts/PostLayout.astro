@@ -221,13 +221,25 @@ const breadcrumbStructuredData = buildBreadcrumbJsonLd([
 <script>
   const tocRoot = document.querySelector<HTMLElement>('[data-article-toc]');
   const tocLinks = Array.from(tocRoot?.querySelectorAll<HTMLAnchorElement>('[data-toc-link]') ?? []);
+  const tocViewport = tocRoot?.querySelector<HTMLElement>('.article-toc__viewport');
 
   if (tocLinks.length > 0 && 'IntersectionObserver' in window) {
     const linksById = new Map(tocLinks.map((link) => [decodeURIComponent(link.hash.slice(1)), link]));
     const visibleHeadings = new Map<string, number>();
+    let activeId = '';
 
     const activate = (id: string) => {
-      tocLinks.forEach((link) => link.classList.toggle('is-active', link.hash === `#${encodeURIComponent(id)}` || decodeURIComponent(link.hash.slice(1)) === id));
+      if (!id || id === activeId) return;
+      activeId = id;
+      const activeLink = linksById.get(id);
+      tocLinks.forEach((link) => link.classList.toggle('is-active', link === activeLink));
+
+      if (activeLink && tocViewport) {
+        window.requestAnimationFrame(() => {
+          const nextTop = activeLink.offsetTop - (tocViewport.clientHeight - activeLink.offsetHeight) * 0.42;
+          tocViewport.scrollTo({ top: Math.max(0, nextTop), behavior: 'smooth' });
+        });
+      }
     };
 
     const updateActive = () => {
