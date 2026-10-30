@@ -1247,8 +1247,53 @@ body.search-open {
 }
 
 .article-hero__meta {
+  align-items: center;
+  column-gap: 0;
+  row-gap: 8px;
   color: var(--muted);
   font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.article-hero__meta > :is(time, span) {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  white-space: nowrap;
+  border-left: 1px solid color-mix(in srgb, var(--line-strong) 84%, transparent);
+}
+
+.article-hero__meta > .article-hero__chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding-block: 0;
+}
+
+.article-hero__meta > .pageview-badge {
+  gap: 5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.article-hero__meta > .pageview-badge .pageview-badge__icon {
+  display: grid;
+  place-items: center;
+}
+
+@media (max-width: 640px) {
+  .article-hero__meta {
+    column-gap: 4px;
+    row-gap: 6px;
+  }
+
+  .article-hero__meta > :is(time, span) {
+    min-height: 28px;
+    padding: 0 8px;
+    border-left: 0;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--surface-muted) 72%, transparent);
+  }
 }
 
 .article-hero__chip,
@@ -1492,41 +1537,30 @@ body.search-open {
 }
 
 .article-toc {
-  position: relative;
   min-height: 100%;
   margin: 0;
   padding: 10px 10px 12px;
   list-style: none;
   display: grid;
-  gap: 3px;
-  align-content: space-between;
+  gap: 6px;
+  align-content: start;
 }
 
-.article-toc::before {
-  content: '';
-  position: absolute;
-  top: 16px;
-  bottom: 24px;
-  left: 28px;
-  width: 1px;
-  background: color-mix(in srgb, var(--line-strong) 78%, transparent);
-}
-
-.article-toc__item { position: relative; }
+.article-toc__item { min-width: 0; }
 
 .article-toc__item a {
-  position: relative;
   display: grid;
-  grid-template-columns: 29px minmax(0, 1fr);
-  align-items: center;
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: start;
   gap: 8px;
-  min-height: 36px;
-  padding: 7px 9px 7px 4px;
+  min-height: 38px;
+  padding: 8px 10px 8px 8px;
   border: 1px solid transparent;
   border-radius: 10px;
   color: var(--muted);
   font-size: .86rem;
-  line-height: 1.42;
+  line-height: 1.48;
+  text-align: left;
   transition: color .18s ease, background .18s ease, border-color .18s ease, transform .18s ease;
 }
 
@@ -1538,32 +1572,19 @@ body.search-open {
 }
 
 .article-toc__number {
-  position: relative;
-  z-index: 1;
-  width: 29px;
+  display: block;
+  padding-top: 2px;
   color: color-mix(in srgb, var(--muted) 76%, transparent);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: .66rem;
+  font-variant-numeric: tabular-nums;
   font-weight: 800;
+  line-height: 1.48;
   text-align: center;
 }
 
-.article-toc__number::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 6px;
-  height: 6px;
-  border: 2px solid var(--surface-strong);
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--muted) 54%, transparent);
-  box-sizing: border-box;
-  transform: translate(-50%, -50%);
-  transition: width .18s ease, height .18s ease, background .18s ease, box-shadow .18s ease;
-}
-
 .article-toc__text {
+  min-width: 0;
   overflow: hidden;
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -1575,8 +1596,8 @@ body.search-open {
   font-weight: 800;
 }
 
-.article-toc__item--depth-2 { margin-left: 9px; }
-.article-toc__item--depth-3 { margin-left: 18px; }
+.article-toc__item--depth-2 { margin-left: 4px; }
+.article-toc__item--depth-3 { margin-left: 8px; }
 .article-toc__item--depth-3 a { font-size: .82rem; }
 
 .article-toc__item a.is-active {
@@ -1586,12 +1607,8 @@ body.search-open {
   font-weight: 800;
 }
 
-.article-toc__item a.is-active .article-toc__number { color: var(--primary-deep); }
-.article-toc__item a.is-active .article-toc__number::after {
-  width: 11px;
-  height: 11px;
-  background: var(--primary);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary-soft) 96%, transparent), 0 0 12px color-mix(in srgb, var(--primary) 66%, transparent);
+.article-toc__item a.is-active .article-toc__number {
+  color: var(--primary-deep);
 }
 
 @media (max-width: 980px) {
