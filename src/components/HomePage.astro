@@ -25,8 +25,8 @@ const postsHref = getPostsIndexUrl(locale);
 const articles = await getArticlesByLocale(locale);
 const totalTags = getUniqueTagCount(articles);
 const githubUrl = SITE.githubUrl.trim();
-const qqNumber = '3223771807';
-const wechatId = 'qm0608';
+const qqEncoded = 'MzIyMzc3MTgwNw==';
+const wechatEncoded = 'cW0wNjA4MTY=';
 const friendsHref = getFriendsUrl(locale);
 const friendCopy = FRIEND_PAGE_COPY[locale];
 const featuredFriends = FRIEND_LINKS.slice(0, 4);
@@ -150,15 +150,15 @@ const latestActivityLabel = latestActivityAt ? formatDate(latestActivityAt, loca
       <p>{copy.role}</p>
       <p class="fo-profile-card__bio">{copy.bio}</p>
       <div class="fo-profile-card__contacts" aria-label={locale === 'en' ? 'Contact details' : '联系方式'}>
-        <a class="fo-profile-card__contact" href={`https://wpa.qq.com/msgrd?v=3&uin=${qqNumber}&site=qq&menu=yes`} target="_blank" rel="noreferrer" aria-label={`QQ: ${qqNumber}`} title={`QQ：${qqNumber}`}>
+        <a class="fo-profile-card__contact" data-contact-base64={qqEncoded} data-contact-type="qq" target="_blank" rel="noreferrer" aria-label="QQ" title="QQ">
           <span class="fo-profile-card__contact-icon" aria-hidden="true" set:html={siQq.svg}></span>
           <span>QQ</span>
-          <strong>{qqNumber}</strong>
+          <strong data-contact-value>···</strong>
         </a>
-        <div class="fo-profile-card__contact" aria-label={`微信: ${wechatId}`} title={`微信：${wechatId}`}>
+        <div class="fo-profile-card__contact" data-contact-base64={wechatEncoded} data-contact-type="wechat" aria-label="微信" title="微信">
           <span class="fo-profile-card__contact-icon" aria-hidden="true" set:html={siWechat.svg}></span>
           <span>微信</span>
-          <strong>{wechatId}</strong>
+          <strong data-contact-value>···</strong>
         </div>
       </div>
       <div class="fo-profile-card__socials">
@@ -348,4 +348,24 @@ const latestActivityLabel = latestActivityAt ? formatDate(latestActivityAt, loca
     updateSiteUptime();
     window.setInterval(updateSiteUptime, 60 * 60 * 1000);
   })();
+</script>
+<script>
+  const hydrateProfileContacts = () => {
+    document.querySelectorAll<HTMLElement>('[data-contact-base64]').forEach((element) => {
+      const encoded = element.dataset.contactBase64;
+      if (!encoded) return;
+      try {
+        const value = window.atob(encoded);
+        element.querySelector<HTMLElement>('[data-contact-value]')?.replaceChildren(value);
+        const label = `${element.dataset.contactType === 'qq' ? 'QQ' : '微信'}：${value}`;
+        element.setAttribute('aria-label', label);
+        element.setAttribute('title', label);
+        if (element.dataset.contactType === 'qq' && element instanceof HTMLAnchorElement) {
+          element.href = `https://wpa.qq.com/msgrd?v=3&uin=${encodeURIComponent(value)}&site=qq&menu=yes`;
+        }
+      } catch { }
+    });
+  };
+  hydrateProfileContacts();
+  document.addEventListener('astro:page-load', hydrateProfileContacts);
 </script>
