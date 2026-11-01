@@ -128,6 +128,35 @@
       "tags": [
         "Blog"
       ]
+    },
+    {
+      "name": "凝核 Nucleus",
+      "url": "https://blog.poachedegg.cn",
+      "avatar": "https://blog.poachedegg.cn/favicon.svg",
+      "owner": "黄景豪",
+      "description": {
+        "zhCn": "技术博客、趁手工具与摸鱼小游戏，凝而聚之，核而生光。",
+        "en": "A hub for technical writing, practical tools, and casual mini games."
+      },
+      "tags": [
+        "Blog",
+        "Tools"
+      ]
+    },
+    {
+      "name": "chzu老张的小白之路",
+      "url": "https://www.zjz946649.top",
+      "avatar": "https://www.zjz946649.top/favicon.svg",
+      "owner": "张锦洲",
+      "description": {
+        "zhCn": "记录网络安全学习的点滴，分享 CTF、渗透与开发技术笔记。",
+        "en": "A personal blog documenting cybersecurity learning, with notes on CTF, pentesting, and development."
+      },
+      "tags": [
+        "CTF",
+        "Web",
+        "Blog"
+      ]
     }
   ]
 }
