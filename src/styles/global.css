@@ -246,6 +246,10 @@ main {
   gap: 14px;
 }
 
+.site-nav-toggle {
+  display: none;
+}
+
 .site-nav a,
 .site-header__link {
   color: var(--muted);
