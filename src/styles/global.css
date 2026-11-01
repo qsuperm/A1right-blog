@@ -4313,3 +4313,11 @@ body,
   .theme-toggle,
   .site-nav-toggle { transition: none; }
 }
+
+/* Keep post covers clean: no hover portal / arrow overlay. */
+.fo-post-card__cover::after,
+.fo-post-card:hover .fo-post-card__cover::after,
+.fo-post-card__cover span,
+.fo-post-card:hover .fo-post-card__cover span {
+  display: none;
+}
