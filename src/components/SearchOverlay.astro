@@ -158,6 +158,13 @@ const dialogId = `site-search-${locale}`;
   };
 
   const initSearchOverlay = () => {
+    // The header uses backdrop-filter, which creates a containing block for fixed
+    // descendants. Keep the dialog at the document root so its backdrop covers
+    // the viewport rather than being clipped to the navigation bar.
+    document.querySelectorAll('[data-search-root]').forEach((root) => {
+      if (root.parentElement !== document.body) document.body.append(root);
+    });
+
     document.querySelectorAll('[data-search-root]').forEach((root) => {
       if (root.dataset.bound === 'true') return;
       root.dataset.bound = 'true';

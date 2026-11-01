@@ -303,31 +303,47 @@ main {
 .search-modal {
   position: fixed;
   inset: 0;
-  z-index: 140;
+  z-index: 1000;
+  display: grid;
+  place-items: start center;
+  overflow-y: auto;
+  padding: clamp(86px, 12vh, 132px) 18px 32px;
+  isolation: isolate;
+}
+
+.search-modal[hidden] {
+  display: none;
 }
 
 .search-modal__backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(10, 14, 24, 0.52);
-  backdrop-filter: blur(10px);
+  z-index: -1;
+  background:
+    radial-gradient(circle at 18% 8%, rgba(116, 222, 196, 0.16), transparent 32rem),
+    radial-gradient(circle at 84% 18%, rgba(242, 167, 209, 0.14), transparent 27rem),
+    rgba(8, 13, 24, 0.7);
+  backdrop-filter: blur(13px) saturate(0.82);
 }
 
 .search-modal__panel {
   position: relative;
-  width: min(760px, calc(100vw - 24px));
-  margin: 82px auto 0;
-  padding: 22px;
-  max-height: calc(100vh - 106px);
+  z-index: 1;
+  width: min(860px, 100%);
+  margin: 0;
+  padding: clamp(20px, 3.1vw, 30px);
+  max-height: calc(100dvh - clamp(118px, 16vh, 164px));
   display: flex;
   flex-direction: column;
-  border-radius: 26px;
-  border: 1px solid color-mix(in srgb, var(--line-strong) 82%, transparent);
+  border-radius: 30px;
+  border: 1px solid color-mix(in srgb, var(--line-strong) 88%, rgba(255, 255, 255, 0.24));
   background:
-    radial-gradient(circle at top right, color-mix(in srgb, var(--primary-soft) 68%, transparent), transparent 38%),
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-strong) 94%, transparent), color-mix(in srgb, var(--surface) 96%, transparent));
-  box-shadow: 0 26px 60px rgba(25, 36, 48, 0.18);
-  backdrop-filter: blur(18px);
+    radial-gradient(circle at 88% -12%, color-mix(in srgb, var(--primary-soft) 68%, transparent), transparent 39%),
+    radial-gradient(circle at -8% 108%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 42%),
+    linear-gradient(155deg, color-mix(in srgb, var(--surface-strong) 96%, transparent), color-mix(in srgb, var(--surface) 98%, transparent));
+  box-shadow: 0 32px 90px rgba(1, 7, 18, 0.44), 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  backdrop-filter: blur(24px) saturate(1.16);
+  animation: search-panel-enter 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
 .search-modal__panel::before {
@@ -339,7 +355,19 @@ main {
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.24), transparent 28%, transparent 72%, rgba(255, 255, 255, 0.12)),
     radial-gradient(circle at 18% 0%, rgba(255, 255, 255, 0.18), transparent 32%);
-  opacity: 0.75;
+  opacity: 0.68;
+}
+
+@keyframes search-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.982);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .search-modal__header {
@@ -2510,7 +2538,8 @@ body.search-open {
 
   .search-modal__panel {
     width: min(820px, calc(100vw - 20px));
-    margin-top: 92px;
+    margin: 0;
+    max-height: calc(100dvh - 104px);
   }
 
   .article-shell {
@@ -2596,6 +2625,34 @@ body.search-open {
 }
 
 @media (max-width: 640px) {
+  .search-modal {
+    padding: 74px 10px 16px;
+  }
+
+  .search-modal__panel {
+    padding: 18px;
+    max-height: calc(100dvh - 90px);
+    border-radius: 22px;
+  }
+
+  .search-modal__summary {
+    margin-top: 8px;
+    font-size: 0.86rem;
+  }
+
+  .search-modal__field {
+    margin-top: 14px;
+  }
+
+  .search-modal__input {
+    min-height: 50px;
+    border-radius: 15px;
+  }
+
+  .search-modal__results {
+    margin-top: 14px;
+  }
+
   .site-header__inner,
   .firefly-hero__inner,
   .firefly-ribbon__inner,
