@@ -24,15 +24,13 @@ const domain = new URL(item.url).hostname.replace(/^www\./, '');
 
     <p class="friend-card__description">{item.description[locale]}</p>
 
-    <div class="friend-card__tags" aria-label={locale === 'en' ? 'Tags' : '标签'}>
-      {item.tags && item.tags.length > 0 && (
-        <>
+    {item.tags && item.tags.length > 0 && (
+      <div class="friend-card__tags" aria-label={locale === 'en' ? 'Tags' : '标签'}>
         {item.tags.map((tag) => (
           <span>#{tag}</span>
         ))}
-        </>
-      )}
-    </div>
+      </div>
+    )}
   </div>
 
   <div class="friend-card__actions">

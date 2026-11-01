@@ -1,5 +1,6 @@
 ---
 import PageViewBadge from './PageViewBadge.astro';
+import { siQq, siWechat } from 'simple-icons';
 import { SITE, UI, type Locale } from '../config';
 import { FRIEND_LINKS, FRIEND_PAGE_COPY, FRIEND_SELF_CARD } from '../data/friends';
 import {
@@ -24,6 +25,8 @@ const postsHref = getPostsIndexUrl(locale);
 const articles = await getArticlesByLocale(locale);
 const totalTags = getUniqueTagCount(articles);
 const githubUrl = SITE.githubUrl.trim();
+const qqNumber = '3223771807';
+const wechatId = 'qm0608';
 const friendsHref = getFriendsUrl(locale);
 const friendCopy = FRIEND_PAGE_COPY[locale];
 const featuredFriends = FRIEND_LINKS.slice(0, 4);
@@ -146,6 +149,18 @@ const latestActivityLabel = latestActivityAt ? formatDate(latestActivityAt, loca
       <i class="fo-profile-card__line"></i>
       <p>{copy.role}</p>
       <p class="fo-profile-card__bio">{copy.bio}</p>
+      <div class="fo-profile-card__contacts" aria-label={locale === 'en' ? 'Contact details' : '联系方式'}>
+        <a class="fo-profile-card__contact" href={`https://wpa.qq.com/msgrd?v=3&uin=${qqNumber}&site=qq&menu=yes`} target="_blank" rel="noreferrer" aria-label={`QQ: ${qqNumber}`} title={`QQ：${qqNumber}`}>
+          <span class="fo-profile-card__contact-icon" aria-hidden="true" set:html={siQq.svg}></span>
+          <span>QQ</span>
+          <strong>{qqNumber}</strong>
+        </a>
+        <div class="fo-profile-card__contact" aria-label={`微信: ${wechatId}`} title={`微信：${wechatId}`}>
+          <span class="fo-profile-card__contact-icon" aria-hidden="true" set:html={siWechat.svg}></span>
+          <span>微信</span>
+          <strong>{wechatId}</strong>
+        </div>
+      </div>
       <div class="fo-profile-card__socials">
         <a href={postsHref} aria-label={UI[locale].posts}>▤</a>
         {githubUrl && <a href={githubUrl} target="_blank" rel="noreferrer" aria-label="GitHub">⌘</a>}

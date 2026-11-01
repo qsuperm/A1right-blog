@@ -3881,3 +3881,114 @@ body:has(.friends-shell) {
 .article-toc__text {
   line-height: 1.4;
 }
+
+/* Header controls share an identical 40px grid so the GitHub and theme icons stay optically aligned. */
+.site-header__actions {
+  align-items: center;
+}
+
+.site-header__actions > .site-header__link--github,
+.site-header__actions > .theme-toggle {
+  flex: 0 0 40px;
+  inline-size: 40px;
+  block-size: 40px;
+  min-inline-size: 40px;
+  min-block-size: 40px;
+  align-self: center;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+.site-header__actions .github-mark,
+.site-header__actions .theme-toggle__slider {
+  inline-size: 20px;
+  block-size: 20px;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+.site-header__actions .github-mark svg {
+  inline-size: 20px;
+  block-size: 20px;
+}
+
+.site-header__actions .theme-toggle__slider::before {
+  font-size: 1.28rem;
+  line-height: 1;
+  transform: translateY(-0.5px);
+}
+
+/* Keep the complete friend-card text stack centered against its avatar and action button. */
+.friend-card__body {
+  display: flex;
+  min-block-size: 100%;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding-block: 4px;
+}
+
+.friend-card__description {
+  flex: 0 0 auto;
+}
+
+.friend-card__tags {
+  min-height: 0;
+}
+
+/* Compact, readable contact identifiers in the introduction card. */
+.fo-profile-card__contacts {
+  display: grid;
+  gap: 8px;
+  margin-top: 15px;
+  text-align: left;
+}
+
+.fo-profile-card__contact {
+  min-width: 0;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--fo-line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--fo-soft-bg) 82%, transparent);
+  color: var(--fo-primary-deep);
+  font-size: .8rem;
+  line-height: 1;
+}
+
+.fo-profile-card__contact:hover {
+  background: color-mix(in srgb, var(--fo-primary) 16%, var(--fo-card-bg));
+}
+
+.fo-profile-card__contact-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: grid;
+  place-items: center;
+}
+
+.fo-profile-card__contact-icon svg {
+  display: block;
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.fo-profile-card__contact strong {
+  min-width: 0;
+  margin-left: auto;
+  overflow: hidden;
+  color: var(--fo-text);
+  font-size: .78rem;
+  font-weight: 800;
+  letter-spacing: .02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
