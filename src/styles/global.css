@@ -3614,6 +3614,13 @@ body {
   .site-logo__text { display: none; }
 }
 
+/* Keep the expanded mobile navigation above the animated homepage hero. */
+.site-header { z-index: 1000; }
+
+@media (max-width: 900px) {
+  .site-nav.is-open { z-index: 1001; }
+}
+
 /* Final dark-theme override: midnight blue + mint */
 :root[data-theme='dark'] {
   --bg: #171b2a;
