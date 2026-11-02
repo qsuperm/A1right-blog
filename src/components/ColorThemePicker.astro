@@ -39,13 +39,13 @@ const presets = [
 </div>
 
 <style>
-  .m3-color-theme { position: fixed; z-index: 96; right: 88px; bottom: 22px; }
-  .m3-color-theme__trigger { position: relative; width: 52px; height: 52px; display: grid; place-items: center; padding: 0; border: 1px solid var(--m3-outline-variant); border-radius: 50%; background: var(--m3-surface-container-high); color: var(--m3-on-surface); box-shadow: var(--m3-elevation-1); cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, background .18s ease; }
+  .m3-color-theme { position: fixed; z-index: 96; right: 74px; bottom: 22px; }
+  .m3-color-theme__trigger { position: relative; width: 42px; height: 42px; display: grid; place-items: center; padding: 0; border: 1px solid var(--m3-outline-variant); border-radius: 50%; background: var(--m3-surface-container-high); color: var(--m3-on-surface); box-shadow: var(--m3-elevation-1); cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, background .18s ease; }
   .m3-color-theme__trigger:hover { transform: translateY(-2px); box-shadow: var(--m3-elevation-2); }
   .m3-color-theme__trigger:active { transform: scale(.94); }
-  .m3-color-theme__swatch { position: absolute; width: 28px; height: 28px; border-radius: 50%; background: var(--m3-primary); box-shadow: inset 0 0 0 3px color-mix(in srgb, white 68%, transparent); }
+  .m3-color-theme__swatch { position: absolute; width: 23px; height: 23px; border-radius: 50%; background: var(--m3-primary); box-shadow: inset 0 0 0 3px color-mix(in srgb, white 68%, transparent); }
   .m3-color-theme__icon { position: relative; color: var(--m3-on-primary); font-size: .82rem; line-height: 1; }
-  .m3-color-theme__panel { position: absolute; right: 0; bottom: 64px; width: min(320px, calc(100vw - 32px)); padding: 20px; border: 1px solid var(--m3-outline-variant); border-radius: 28px; background: var(--m3-surface-container); color: var(--m3-on-surface); box-shadow: var(--m3-elevation-2); }
+  .m3-color-theme__panel { position: absolute; right: 0; bottom: 54px; width: min(320px, calc(100vw - 32px)); padding: 20px; border: 1px solid var(--m3-outline-variant); border-radius: 28px; background: var(--m3-surface-container); color: var(--m3-on-surface); box-shadow: var(--m3-elevation-2); }
   .m3-color-theme__panel header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .m3-color-theme__panel p { margin: 0; }
   .m3-color-theme__panel header p { color: var(--m3-primary); font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
@@ -64,7 +64,7 @@ const presets = [
   .m3-color-theme__custom input::-webkit-color-swatch { border: 0; border-radius: 50%; }
   .m3-color-theme__reset { width: 100%; min-height: 40px; margin-top: 12px; border: 0; border-radius: 999px; background: var(--m3-secondary-container); color: var(--m3-on-secondary-container); font: inherit; font-size: .82rem; font-weight: 750; cursor: pointer; }
   .m3-color-theme__reset:hover { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
-  @media (max-width: 640px) { .m3-color-theme { right: 88px; bottom: 17px; } .m3-color-theme__panel { bottom: 61px; } }
+  @media (max-width: 640px) { .m3-color-theme { right: 66px; bottom: 14px; } .m3-color-theme__panel { bottom: 54px; } }
 </style>
 
 <script>
@@ -153,3 +153,4 @@ const presets = [
   bindColorTheme();
   document.addEventListener('astro:page-load', bindColorTheme);
 </script>
+
