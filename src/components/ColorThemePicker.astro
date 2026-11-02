@@ -1,0 +1,155 @@
+---
+const presets = [
+  { name: '翡翠', color: '#00A978' },
+  { name: '海蓝', color: '#2D63C8' },
+  { name: '紫罗兰', color: '#7651B8' },
+  { name: '珊瑚', color: '#C5523E' },
+  { name: '琥珀', color: '#9A6500' },
+];
+---
+
+<div class="m3-color-theme" data-m3-color-theme>
+  <button class="m3-color-theme__trigger" type="button" aria-label="选择博客主题颜色" title="选择主题颜色" aria-expanded="false" data-m3-color-toggle>
+    <span class="m3-color-theme__swatch" aria-hidden="true"></span>
+    <span class="m3-color-theme__icon" aria-hidden="true">✦</span>
+  </button>
+
+  <section class="m3-color-theme__panel" aria-label="主题颜色" hidden data-m3-color-panel>
+    <header>
+      <div>
+        <p>Material You</p>
+        <h2>主题颜色</h2>
+      </div>
+      <button type="button" aria-label="关闭颜色面板" title="关闭" data-m3-color-close>×</button>
+    </header>
+    <p class="m3-color-theme__hint">选择一种色彩，整站的卡片、按钮与状态色会同步变化。</p>
+    <div class="m3-color-theme__presets" aria-label="预设颜色">
+      {presets.map((preset) => (
+        <button type="button" class="m3-color-theme__preset" style={`--preset-color:${preset.color}`} data-m3-color-preset={preset.color} aria-label={`使用${preset.name}主题`} title={preset.name}>
+          <span aria-hidden="true"></span>
+        </button>
+      ))}
+    </div>
+    <label class="m3-color-theme__custom">
+      <span>自定义颜色</span>
+      <input type="color" value="#00A978" aria-label="自定义主题颜色" data-m3-color-input />
+    </label>
+    <button class="m3-color-theme__reset" type="button" data-m3-color-reset>恢复默认翡翠色</button>
+  </section>
+</div>
+
+<style>
+  .m3-color-theme { position: fixed; z-index: 96; right: 88px; bottom: 22px; }
+  .m3-color-theme__trigger { position: relative; width: 52px; height: 52px; display: grid; place-items: center; padding: 0; border: 1px solid var(--m3-outline-variant); border-radius: 50%; background: var(--m3-surface-container-high); color: var(--m3-on-surface); box-shadow: var(--m3-elevation-1); cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, background .18s ease; }
+  .m3-color-theme__trigger:hover { transform: translateY(-2px); box-shadow: var(--m3-elevation-2); }
+  .m3-color-theme__trigger:active { transform: scale(.94); }
+  .m3-color-theme__swatch { position: absolute; width: 28px; height: 28px; border-radius: 50%; background: var(--m3-primary); box-shadow: inset 0 0 0 3px color-mix(in srgb, white 68%, transparent); }
+  .m3-color-theme__icon { position: relative; color: var(--m3-on-primary); font-size: .82rem; line-height: 1; }
+  .m3-color-theme__panel { position: absolute; right: 0; bottom: 64px; width: min(320px, calc(100vw - 32px)); padding: 20px; border: 1px solid var(--m3-outline-variant); border-radius: 28px; background: var(--m3-surface-container); color: var(--m3-on-surface); box-shadow: var(--m3-elevation-2); }
+  .m3-color-theme__panel header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .m3-color-theme__panel p { margin: 0; }
+  .m3-color-theme__panel header p { color: var(--m3-primary); font-size: .72rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+  .m3-color-theme__panel h2 { margin: 2px 0 0; font-size: 1.15rem; line-height: 1.2; }
+  .m3-color-theme__panel header button { width: 34px; height: 34px; border: 0; border-radius: 50%; background: transparent; color: var(--m3-on-surface-variant); font-size: 1.5rem; line-height: 1; cursor: pointer; }
+  .m3-color-theme__panel header button:hover { background: var(--m3-state-hover); color: var(--m3-on-surface); }
+  .m3-color-theme__hint { margin-top: 12px !important; color: var(--m3-on-surface-variant); font-size: .82rem; line-height: 1.55; }
+  .m3-color-theme__presets { display: flex; gap: 10px; margin-top: 16px; }
+  .m3-color-theme__preset { width: 35px; height: 35px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 50%; background: var(--preset-color); cursor: pointer; transition: transform .16s ease, box-shadow .16s ease; }
+  .m3-color-theme__preset span { width: 15px; height: 15px; border: 2px solid rgba(255,255,255,.9); border-radius: 50%; opacity: 0; transform: scale(.5); transition: opacity .16s ease, transform .16s ease; }
+  .m3-color-theme__preset:hover, .m3-color-theme__preset[aria-pressed='true'] { transform: translateY(-2px); box-shadow: 0 3px 8px rgba(0,0,0,.25); }
+  .m3-color-theme__preset[aria-pressed='true'] span { opacity: 1; transform: scale(1); }
+  .m3-color-theme__custom { display: flex; align-items: center; justify-content: space-between; min-height: 48px; margin-top: 17px; padding: 7px 9px 7px 14px; border: 1px solid var(--m3-outline-variant); border-radius: 16px; color: var(--m3-on-surface-variant); font-size: .85rem; }
+  .m3-color-theme__custom input { width: 35px; height: 35px; padding: 0; border: 0; border-radius: 50%; overflow: hidden; background: none; cursor: pointer; }
+  .m3-color-theme__custom input::-webkit-color-swatch-wrapper { padding: 0; }
+  .m3-color-theme__custom input::-webkit-color-swatch { border: 0; border-radius: 50%; }
+  .m3-color-theme__reset { width: 100%; min-height: 40px; margin-top: 12px; border: 0; border-radius: 999px; background: var(--m3-secondary-container); color: var(--m3-on-secondary-container); font: inherit; font-size: .82rem; font-weight: 750; cursor: pointer; }
+  .m3-color-theme__reset:hover { background: var(--m3-primary-container); color: var(--m3-on-primary-container); }
+  @media (max-width: 640px) { .m3-color-theme { right: 88px; bottom: 17px; } .m3-color-theme__panel { bottom: 61px; } }
+</style>
+
+<script>
+  const STORAGE_KEY = 'a1right-material-seed';
+  const DEFAULT_SEED = '#00A978';
+
+  const mix = (first: string, second: string, amount: number) => {
+    const hex = (value: string) => value.replace('#', '');
+    const a = hex(first); const b = hex(second);
+    const channels = [0, 2, 4].map((index) => Math.round(parseInt(a.slice(index, index + 2), 16) * (1 - amount) + parseInt(b.slice(index, index + 2), 16) * amount));
+    return `#${channels.map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+  };
+
+  const normalize = (value: string | null) => /^#[0-9a-f]{6}$/i.test(value || '') ? String(value).toUpperCase() : DEFAULT_SEED;
+
+  const applyColor = (seedValue: string) => {
+    const seed = normalize(seedValue);
+    const root = document.documentElement;
+    const dark = root.dataset.theme === 'dark';
+    const set = (name: string, value: string) => root.style.setProperty(name, value);
+    const ink = mix(seed, '#000000', .72);
+
+    if (dark) {
+      set('--m3-primary', mix(seed, '#FFFFFF', .42));
+      set('--m3-on-primary', mix(seed, '#000000', .72));
+      set('--m3-primary-container', mix(seed, '#000000', .50));
+      set('--m3-on-primary-container', mix(seed, '#FFFFFF', .56));
+      set('--m3-secondary-container', mix(seed, '#101512', .64));
+      set('--m3-on-secondary-container', mix(seed, '#FFFFFF', .72));
+      set('--m3-surface', mix(seed, '#101512', .92));
+      set('--m3-surface-container', mix(seed, '#1C211E', .82));
+      set('--m3-surface-container-high', mix(seed, '#272C29', .77));
+      set('--m3-surface-container-highest', mix(seed, '#323733', .72));
+      set('--m3-on-surface-variant', '#C0C9C2');
+      set('--m3-outline-variant', '#414943');
+    } else {
+      set('--m3-primary', mix(seed, '#000000', .38));
+      set('--m3-on-primary', '#FFFFFF');
+      set('--m3-primary-container', mix(seed, '#FFFFFF', .70));
+      set('--m3-on-primary-container', ink);
+      set('--m3-secondary-container', mix(seed, '#FFFFFF', .84));
+      set('--m3-on-secondary-container', ink);
+      set('--m3-surface', mix(seed, '#FFFFFF', .965));
+      set('--m3-surface-container', mix(seed, '#FFFFFF', .92));
+      set('--m3-surface-container-high', mix(seed, '#FFFFFF', .87));
+      set('--m3-surface-container-highest', mix(seed, '#FFFFFF', .82));
+      set('--m3-on-surface-variant', '#414944');
+      set('--m3-outline-variant', mix(seed, '#A8B2AA', .78));
+    }
+    set('--m3-tertiary-container', mix(seed, '#F8D8EB', .58));
+    set('--m3-on-tertiary-container', mix(seed, '#27001C', .68));
+    set('--fo-primary', 'var(--m3-primary)');
+    set('--fo-primary-deep', 'var(--m3-on-primary-container)');
+    document.querySelectorAll<HTMLElement>('[data-m3-color-theme]').forEach((element) => element.dataset.seed = seed);
+    document.querySelectorAll<HTMLInputElement>('[data-m3-color-input]').forEach((input) => { input.value = seed; });
+    document.querySelectorAll<HTMLButtonElement>('[data-m3-color-preset]').forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.m3ColorPreset?.toUpperCase() === seed)));
+    try { localStorage.setItem(STORAGE_KEY, seed); } catch { }
+  };
+
+  const bindColorTheme = () => {
+    document.querySelectorAll<HTMLElement>('[data-m3-color-theme]').forEach((theme) => {
+      if (theme.dataset.bound === 'true') return;
+      theme.dataset.bound = 'true';
+      const toggle = theme.querySelector<HTMLButtonElement>('[data-m3-color-toggle]');
+      const panel = theme.querySelector<HTMLElement>('[data-m3-color-panel]');
+      const close = theme.querySelector<HTMLButtonElement>('[data-m3-color-close]');
+      const input = theme.querySelector<HTMLInputElement>('[data-m3-color-input]');
+      if (!toggle || !panel || !input) return;
+
+      let saved = DEFAULT_SEED;
+      try { saved = normalize(localStorage.getItem(STORAGE_KEY)); } catch { }
+      applyColor(saved);
+      const open = () => { panel.hidden = false; toggle.setAttribute('aria-expanded', 'true'); };
+      const closePanel = () => { panel.hidden = true; toggle.setAttribute('aria-expanded', 'false'); };
+      toggle.addEventListener('click', () => panel.hidden ? open() : closePanel());
+      close?.addEventListener('click', closePanel);
+      input.addEventListener('input', () => applyColor(input.value));
+      theme.querySelectorAll<HTMLButtonElement>('[data-m3-color-preset]').forEach((button) => button.addEventListener('click', () => applyColor(button.dataset.m3ColorPreset || DEFAULT_SEED)));
+      theme.querySelector<HTMLButtonElement>('[data-m3-color-reset]')?.addEventListener('click', () => applyColor(DEFAULT_SEED));
+      document.addEventListener('pointerdown', (event) => { if (!theme.contains(event.target as Node)) closePanel(); });
+      document.addEventListener('keydown', (event) => { if (event.key === 'Escape') closePanel(); });
+      new MutationObserver(() => { try { applyColor(normalize(localStorage.getItem(STORAGE_KEY))); } catch { applyColor(DEFAULT_SEED); } }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+    });
+  };
+
+  bindColorTheme();
+  document.addEventListener('astro:page-load', bindColorTheme);
+</script>
