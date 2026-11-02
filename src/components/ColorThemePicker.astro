@@ -39,7 +39,7 @@ const presets = [
 </div>
 
 <style>
-  .m3-color-theme { position: fixed; z-index: 201; right: 74px; bottom: 22px; }
+  .m3-color-theme { position: fixed !important; z-index: 201 !important; right: 74px; bottom: 22px; }
   .m3-color-theme__trigger { position: relative; width: 42px; height: 42px; display: grid; place-items: center; padding: 0; border: 1px solid var(--m3-outline-variant); border-radius: 50%; background: var(--m3-surface-container-high); color: var(--m3-on-surface); box-shadow: var(--m3-elevation-1); cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, background .18s ease; }
   .m3-color-theme__trigger:hover { transform: translateY(-2px); box-shadow: var(--m3-elevation-2); }
   .m3-color-theme__trigger:active { transform: scale(.94); }
@@ -153,5 +153,6 @@ const presets = [
   bindColorTheme();
   document.addEventListener('astro:page-load', bindColorTheme);
 </script>
+
 
 
