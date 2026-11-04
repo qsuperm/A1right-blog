@@ -114,10 +114,12 @@ const latestActivityLabel = latestActivityAt ? formatDate(latestActivityAt, loca
   </div>
   <div class="fo-banner__text">
     <div class="fo-banner__gull" aria-hidden="true">
-      <svg viewBox="0 0 64 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" focusable="false">
-        <path class="fo-banner__gull-wing fo-banner__gull-wing--left" d="M32 18Q19 1 3 14"></path>
-        <path class="fo-banner__gull-wing fo-banner__gull-wing--right" d="M32 18Q45 1 61 14"></path>
-      </svg>
+      <div class="fo-banner__gull-body">
+        <svg viewBox="0 0 64 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" focusable="false">
+          <path class="fo-banner__gull-wing fo-banner__gull-wing--left" d="M32 18Q19 1 3 14"></path>
+          <path class="fo-banner__gull-wing fo-banner__gull-wing--right" d="M32 18Q45 1 61 14"></path>
+        </svg>
+      </div>
     </div>
     <h1>{copy.bannerTitle}</h1>
     <p
@@ -396,10 +398,14 @@ const latestActivityLabel = latestActivityAt ? formatDate(latestActivityAt, loca
     const heading = banner?.querySelector('h1');
     if (!banner || !gull || !heading) return;
 
+    if (typeof CSS === 'undefined' || !CSS.supports?.('offset-path', 'path("M 0 0 L 1 1")')) {
+      gull.style.display = 'none';
+      return;
+    }
+
     const bannerRect = banner.getBoundingClientRect();
-    const gullWidth = gull.offsetWidth;
-    const gullHeight = gull.offsetHeight;
     const headingRect = heading.getBoundingClientRect();
+    const gullHeight = gull.offsetHeight;
     let anchor: { left: number; top: number; width: number } = headingRect;
 
     const label = heading.textContent ?? '';
@@ -413,12 +419,22 @@ const latestActivityLabel = latestActivityAt ? formatDate(latestActivityAt, loca
       if (rect.width > 0) anchor = rect;
     }
 
-    const centerX = anchor.left + anchor.width / 2 - bannerRect.left;
-    const topY = anchor.top - bannerRect.top;
+    const width = bannerRect.width;
     const gap = window.innerWidth < 640 ? 10 : 18;
+    const headingTop = headingRect.top - bannerRect.top;
 
-    gull.style.setProperty('--fo-gull-x', `${Math.round(centerX - gullWidth / 2)}px`);
-    gull.style.setProperty('--fo-gull-y', `${Math.round(Math.max(topY - gullHeight - gap, 12))}px`);
+    // offset-anchor: center，所以路径点就是海鸥中心
+    const endX = Math.round(anchor.left + anchor.width / 2 - bannerRect.left);
+    const endY = Math.round(anchor.top - bannerRect.top - gullHeight / 2 - gap);
+    const startX = Math.round(width + 90);
+    const startY = 20;
+    const c1x = Math.round(width * 0.74);
+    const c1y = Math.round(startY + 66);
+    const c2x = Math.round(endX + width * 0.17);
+    const c2y = Math.round(Math.min(endY + 44, headingTop - gullHeight / 2 - 6));
+
+    const nextPath = `path("M ${startX} ${startY} C ${c1x} ${c1y} ${c2x} ${c2y} ${endX} ${endY}")`;
+    if (gull.style.offsetPath !== nextPath) gull.style.offsetPath = nextPath;
   };
 
   positionBannerGull();

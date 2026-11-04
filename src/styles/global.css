@@ -3317,34 +3317,42 @@ body {
   pointer-events: none;
   opacity: 0;
   filter: drop-shadow(0 6px 16px rgba(6, 16, 28, .45));
-  will-change: transform, opacity;
-  animation: fo-gull-flight 9.5s cubic-bezier(.42, .04, .28, 1) .6s 1 forwards;
+  offset-path: path("M 9999 40 L 9999 40");
+  offset-anchor: center;
+  offset-rotate: 0deg;
+  will-change: offset-distance, opacity;
+  animation: fo-gull-flight 7s cubic-bezier(.28, .06, .18, 1) .45s 1 forwards;
+}
+.fo-banner__gull-body {
+  will-change: transform;
+  animation: fo-gull-bank 7s cubic-bezier(.28, .06, .18, 1) .45s 1 forwards;
 }
 .fo-banner__gull svg { display: block; width: 100%; height: auto; overflow: visible; }
 .fo-banner__gull-wing {
   transform-box: view-box;
   transform-origin: 32px 18px;
-  animation: fo-gull-flap-left 1.15s ease-in-out infinite;
+  animation: fo-gull-flap-left .62s ease-in-out infinite;
 }
 .fo-banner__gull-wing--right { animation-name: fo-gull-flap-right; }
 @keyframes fo-gull-flap-left {
-  0%, 100% { transform: rotate(-13deg) scaleY(.9); }
-  50% { transform: rotate(6deg) scaleY(1); }
+  0%, 100% { transform: rotate(-14deg) scaleY(.88); }
+  50% { transform: rotate(7deg) scaleY(1); }
 }
 @keyframes fo-gull-flap-right {
-  0%, 100% { transform: rotate(13deg) scaleY(.9); }
-  50% { transform: rotate(-6deg) scaleY(1); }
+  0%, 100% { transform: rotate(14deg) scaleY(.88); }
+  50% { transform: rotate(-7deg) scaleY(1); }
 }
 @keyframes fo-gull-flight {
-  0% { transform: translate(calc(100vw + 70px), 78px) rotate(-9deg) scale(.6); opacity: 0; }
-  5% { opacity: 1; }
-  20% { transform: translate(85vw, 96px) rotate(-6deg) scale(.76); opacity: 1; }
-  40% { transform: translate(73vw, 138px) rotate(-2deg) scale(.9); }
-  56% { transform: translate(66vw, 178px) rotate(2deg) scale(1); }
-  68% { transform: translate(62vw, 176px) rotate(-1deg) scale(1); }
-  78% { transform: translate(var(--fo-gull-x, 54vw), var(--fo-gull-y, 210px)) rotate(0deg) scale(1); }
-  89% { transform: translate(var(--fo-gull-x, 54vw), calc(var(--fo-gull-y, 210px) - 7px)) rotate(0deg) scale(1); }
-  100% { transform: translate(var(--fo-gull-x, 54vw), var(--fo-gull-y, 210px)) rotate(0deg) scale(1); opacity: 1; }
+  0% { offset-distance: 0%; opacity: 0; }
+  7% { opacity: 1; }
+  100% { offset-distance: 100%; opacity: 1; }
+}
+@keyframes fo-gull-bank {
+  0% { transform: rotate(-10deg) scale(.68); }
+  18% { transform: rotate(-7deg) scale(.78); }
+  42% { transform: rotate(-2deg) scale(.9); }
+  66% { transform: rotate(3.5deg) scale(1); }
+  82%, 100% { transform: rotate(0deg) scale(1); }
 }
 @media (max-width: 640px) {
   .fo-banner__gull { width: 40px; }
