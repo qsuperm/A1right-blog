@@ -150,15 +150,15 @@ const latestActivityLabel = latestActivityAt ? formatDate(latestActivityAt, loca
       <p>{copy.role}</p>
       <p class="fo-profile-card__bio">{copy.bio}</p>
       <div class="fo-profile-card__contacts" aria-label={locale === 'en' ? 'Contact details' : '联系方式'}>
-        <a class="fo-profile-card__contact" data-contact-base64={qqEncoded} data-contact-type="qq" target="_blank" rel="noreferrer" aria-label="QQ" title="QQ">
+        <a class="fo-profile-card__contact" data-contact-base64={qqEncoded} data-contact-type="qq" target="_blank" rel="noreferrer" aria-label="QQ（点击复制）" title="QQ（点击复制）">
           <span class="fo-profile-card__contact-icon" aria-hidden="true" set:html={siQq.svg}></span>
           <span>QQ</span>
-          <strong data-contact-value>···</strong>
+          <strong data-contact-value>{qqEncoded}</strong>
         </a>
-        <div class="fo-profile-card__contact" data-contact-base64={wechatEncoded} data-contact-type="wechat" aria-label="微信" title="微信">
+        <div class="fo-profile-card__contact" data-contact-base64={wechatEncoded} data-contact-type="wechat" aria-label="微信（点击复制）" title="微信（点击复制）">
           <span class="fo-profile-card__contact-icon" aria-hidden="true" set:html={siWechat.svg}></span>
           <span>微信</span>
-          <strong data-contact-value>···</strong>
+          <strong data-contact-value>{wechatEncoded}</strong>
         </div>
       </div>
       <div class="fo-profile-card__socials">
@@ -352,18 +352,32 @@ const latestActivityLabel = latestActivityAt ? formatDate(latestActivityAt, loca
 <script>
   const hydrateProfileContacts = () => {
     document.querySelectorAll<HTMLElement>('[data-contact-base64]').forEach((element) => {
+      if (element.dataset.contactBound === 'true') return;
+      element.dataset.contactBound = 'true';
+
       const encoded = element.dataset.contactBase64;
       if (!encoded) return;
-      try {
-        const value = window.atob(encoded);
-        element.querySelector<HTMLElement>('[data-contact-value]')?.replaceChildren(value);
-        const label = `${element.dataset.contactType === 'qq' ? 'QQ' : '微信'}：${value}`;
-        element.setAttribute('aria-label', label);
-        element.setAttribute('title', label);
-        if (element.dataset.contactType === 'qq' && element instanceof HTMLAnchorElement) {
-          element.href = `https://wpa.qq.com/msgrd?v=3&uin=${encodeURIComponent(value)}&site=qq&menu=yes`;
+      const valueEl = element.querySelector<HTMLElement>('[data-contact-value]');
+      const label = element.dataset.contactType === 'qq' ? 'QQ' : '微信';
+
+      element.addEventListener('click', (event) => {
+        event.preventDefault();
+        let value = '';
+        try { value = window.atob(encoded); } catch { return; }
+        if (!value) return;
+
+        void navigator.clipboard?.writeText(value).catch(() => { });
+        if (element.dataset.contactType === 'qq') {
+          window.open(`https://wpa.qq.com/msgrd?v=3&uin=${encodeURIComponent(value)}&site=qq&menu=yes`, '_blank', 'noopener');
         }
-      } catch { }
+        if (valueEl) {
+          valueEl.textContent = '已复制';
+          window.setTimeout(() => { valueEl.textContent = encoded; }, 1200);
+        }
+      });
+
+      element.setAttribute('aria-label', `${label}（点击复制）`);
+      element.setAttribute('title', `${label}（点击复制）`);
     });
   };
   hydrateProfileContacts();
