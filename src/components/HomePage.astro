@@ -113,6 +113,12 @@ const latestActivityLabel = latestActivityAt ? formatDate(latestActivityAt, loca
     {Array.from({ length: 16 }).map((_, index) => <i style={`--a1-i:${index};--a1-x:${(index * 23 + 4) % 96}%;--a1-y:${(index * 31 + 8) % 76}%;--a1-duration:${4.5 + (index % 5) * 1.1}s;--a1-delay:${index * -.56}s`}></i>)}
   </div>
   <div class="fo-banner__text">
+    <div class="fo-banner__gull" aria-hidden="true">
+      <svg viewBox="0 0 64 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" focusable="false">
+        <path class="fo-banner__gull-wing fo-banner__gull-wing--left" d="M32 18Q19 1 3 14"></path>
+        <path class="fo-banner__gull-wing fo-banner__gull-wing--right" d="M32 18Q45 1 61 14"></path>
+      </svg>
+    </div>
     <h1>{copy.bannerTitle}</h1>
     <p
       class="fo-banner__typewriter"
@@ -382,4 +388,41 @@ const latestActivityLabel = latestActivityAt ? formatDate(latestActivityAt, loca
   };
   hydrateProfileContacts();
   document.addEventListener('astro:page-load', hydrateProfileContacts);
+</script>
+<script>
+  const positionBannerGull = () => {
+    const banner = document.querySelector<HTMLElement>('.fo-banner__text');
+    const gull = document.querySelector<HTMLElement>('.fo-banner__gull');
+    const heading = banner?.querySelector('h1');
+    if (!banner || !gull || !heading) return;
+
+    const bannerRect = banner.getBoundingClientRect();
+    const gullWidth = gull.offsetWidth;
+    const gullHeight = gull.offsetHeight;
+    const headingRect = heading.getBoundingClientRect();
+    let anchor: { left: number; top: number; width: number } = headingRect;
+
+    const label = heading.textContent ?? '';
+    const index = label.indexOf('小窝');
+    const textNode = heading.firstChild;
+    if (index >= 0 && textNode?.nodeType === Node.TEXT_NODE) {
+      const range = document.createRange();
+      range.setStart(textNode, index);
+      range.setEnd(textNode, Math.min(index + 2, textNode.textContent?.length ?? 0));
+      const rect = range.getBoundingClientRect();
+      if (rect.width > 0) anchor = rect;
+    }
+
+    const centerX = anchor.left + anchor.width / 2 - bannerRect.left;
+    const topY = anchor.top - bannerRect.top;
+    const gap = window.innerWidth < 640 ? 10 : 18;
+
+    gull.style.setProperty('--fo-gull-x', `${Math.round(centerX - gullWidth / 2)}px`);
+    gull.style.setProperty('--fo-gull-y', `${Math.round(Math.max(topY - gullHeight - gap, 12))}px`);
+  };
+
+  positionBannerGull();
+  window.addEventListener('resize', positionBannerGull);
+  document.addEventListener('astro:page-load', positionBannerGull);
+  document.fonts?.ready.then(positionBannerGull).catch(() => { });
 </script>

@@ -3307,6 +3307,51 @@ body {
 :root[data-theme='dark'] .fo-banner__dim::after { opacity: 1; }
 .fo-banner__text { position: absolute; z-index: 1; inset: 0; display: grid; place-content: center; text-align: center; padding-bottom: 38px; text-shadow: 0 6px 26px rgba(7,15,24,.34); }
 .fo-banner__text h1 { margin: 0; font-family: var(--font-display); font-size: clamp(2.7rem, 5vw, 4.4rem); line-height: 1.12; letter-spacing: -.02em; }
+.fo-banner__gull {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  width: clamp(48px, 5.2vw, 64px);
+  color: #fff;
+  pointer-events: none;
+  opacity: 0;
+  filter: drop-shadow(0 6px 16px rgba(6, 16, 28, .45));
+  will-change: transform, opacity;
+  animation: fo-gull-flight 9.5s cubic-bezier(.42, .04, .28, 1) .6s 1 forwards;
+}
+.fo-banner__gull svg { display: block; width: 100%; height: auto; overflow: visible; }
+.fo-banner__gull-wing {
+  transform-box: view-box;
+  transform-origin: 32px 18px;
+  animation: fo-gull-flap-left 1.15s ease-in-out infinite;
+}
+.fo-banner__gull-wing--right { animation-name: fo-gull-flap-right; }
+@keyframes fo-gull-flap-left {
+  0%, 100% { transform: rotate(-13deg) scaleY(.9); }
+  50% { transform: rotate(6deg) scaleY(1); }
+}
+@keyframes fo-gull-flap-right {
+  0%, 100% { transform: rotate(13deg) scaleY(.9); }
+  50% { transform: rotate(-6deg) scaleY(1); }
+}
+@keyframes fo-gull-flight {
+  0% { transform: translate(calc(100vw + 70px), 78px) rotate(-9deg) scale(.6); opacity: 0; }
+  5% { opacity: 1; }
+  20% { transform: translate(85vw, 96px) rotate(-6deg) scale(.76); opacity: 1; }
+  40% { transform: translate(73vw, 138px) rotate(-2deg) scale(.9); }
+  56% { transform: translate(66vw, 178px) rotate(2deg) scale(1); }
+  68% { transform: translate(62vw, 176px) rotate(-1deg) scale(1); }
+  78% { transform: translate(var(--fo-gull-x, 54vw), var(--fo-gull-y, 210px)) rotate(0deg) scale(1); }
+  89% { transform: translate(var(--fo-gull-x, 54vw), calc(var(--fo-gull-y, 210px) - 7px)) rotate(0deg) scale(1); }
+  100% { transform: translate(var(--fo-gull-x, 54vw), var(--fo-gull-y, 210px)) rotate(0deg) scale(1); opacity: 1; }
+}
+@media (max-width: 640px) {
+  .fo-banner__gull { width: 40px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fo-banner__gull { display: none; }
+}
 .fo-banner__typewriter {
   width: min(94vw, 960px);
   min-height: 5.25em;
