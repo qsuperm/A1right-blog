@@ -3875,8 +3875,9 @@ body:has(.friends-shell) {
 
 .article-toc__children {
   list-style: none;
-  margin: 0;
-  padding: 0;
+  margin: 0 0 2px 9px;
+  padding: 1px 0 3px 8px;
+  border-left: 1.5px solid color-mix(in srgb, var(--m3-primary) 30%, var(--m3-outline-variant));
   overflow: hidden;
 }
 
@@ -3917,7 +3918,7 @@ body:has(.friends-shell) {
 
 .article-toc__item a {
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-columns: 26px minmax(0, 1fr);
   align-items: center;
   min-height: 26px;
   padding: 3px 8px;
@@ -3929,6 +3930,40 @@ body:has(.friends-shell) {
   line-height: 1.45;
   text-align: left;
   transition: color .18s ease, background .18s ease, border-color .18s ease;
+}
+
+/* 一级章节：更大的行高与上边距，作为视觉分段 */
+.article-toc__item--depth-1 { margin-top: 10px; }
+.article-toc__item--depth-1:first-child { margin-top: 0; }
+.article-toc__item--depth-1 > .article-toc__row > a {
+  min-height: 32px;
+  padding: 5px 8px;
+  color: var(--text);
+  font-size: .88rem;
+  letter-spacing: -.01em;
+}
+.article-toc__item--depth-1 > .article-toc__row > a .article-toc__number {
+  color: color-mix(in srgb, var(--m3-primary) 82%, var(--muted));
+  font-weight: 600;
+}
+
+/* 二级：略暗的序号与更紧的行距 */
+.article-toc__item--depth-2 > .article-toc__row > a {
+  min-height: 24px;
+  padding: 2px 8px;
+  color: color-mix(in srgb, var(--text) 70%, transparent);
+  font-size: .84rem;
+}
+
+/* 三级：最轻 */
+.article-toc__item--depth-3 > .article-toc__row > a {
+  min-height: 22px;
+  padding: 2px 8px;
+  color: color-mix(in srgb, var(--muted) 78%, transparent);
+  font-size: .8rem;
+}
+.article-toc__item--depth-3 > .article-toc__row > a .article-toc__number {
+  opacity: .55;
 }
 
 .article-toc__item a:hover {
