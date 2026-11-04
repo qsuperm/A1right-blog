@@ -35,6 +35,20 @@ const homeHref = getLocaleHome(locale);
 const backHref = `${homeHref}#posts`;
 const postsHref = locale === 'en' ? '/en/posts' : '/posts';
 const toc = headings.filter((heading) => heading.depth >= 1 && heading.depth <= 3);
+type TocHeading = (typeof toc)[number];
+type TocNode = { heading: TocHeading; number: number; children: TocNode[] };
+const tocTree = (() => {
+  const roots: TocNode[] = [];
+  const stack: TocNode[] = [];
+  toc.forEach((heading, index) => {
+    const node: TocNode = { heading, number: index + 1, children: [] };
+    while (stack.length > 0 && stack[stack.length - 1].heading.depth >= heading.depth) stack.pop();
+    if (stack.length > 0) stack[stack.length - 1].children.push(node);
+    else roots.push(node);
+    stack.push(node);
+  });
+  return roots;
+})();
 const seoTitle = entry.data.seoTitle ?? entry.data.title;
 const seoDescription = entry.data.seoDescription ?? entry.data.excerpt;
 const authorName = entry.data.author ?? SITE.author;
@@ -165,14 +179,75 @@ const breadcrumbStructuredData = buildBreadcrumbJsonLd([
             </div>
             <div class="article-toc__viewport">
               <ul class="article-toc">
-                {toc.map((heading, index) => (
-                <li class={`article-toc__item article-toc__item--depth-${heading.depth}`}>
-                  <a data-toc-link href={`#${heading.slug}`}>
-                    <span class="article-toc__number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
-                    <span class="article-toc__text">{heading.text}</span>
-                  </a>
-                </li>
-              ))}
+                {tocTree.map((node) => (
+                  <li class="article-toc__item article-toc__item--depth-1" data-toc-node>
+                    <div class="article-toc__row">
+                      {node.children.length > 0 ? (
+                        <button
+                          class="article-toc__toggle"
+                          type="button"
+                          data-toc-toggle
+                          aria-expanded="true"
+                          aria-label={locale === 'en' ? `Collapse ${node.heading.text}` : `收起「${node.heading.text}」`}
+                        >
+                          <span class="article-toc__chevron" aria-hidden="true">
+                            <svg viewBox="0 0 12 12" focusable="false"><path d="M2 4.5 6 8.5 10 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                          </span>
+                        </button>
+                      ) : (
+                        <span class="article-toc__toggle article-toc__toggle--placeholder" aria-hidden="true"></span>
+                      )}
+                      <a data-toc-link href={`#${node.heading.slug}`}>
+                        <span class="article-toc__number" aria-hidden="true">{String(node.number).padStart(2, '0')}</span>
+                        <span class="article-toc__text">{node.heading.text}</span>
+                      </a>
+                    </div>
+                    {node.children.length > 0 && (
+                      <ul class="article-toc__children">
+                        {node.children.map((child) => (
+                          <li class={`article-toc__item article-toc__item--depth-${child.heading.depth}`} data-toc-node>
+                            <div class="article-toc__row">
+                              {child.children.length > 0 ? (
+                                <button
+                                  class="article-toc__toggle"
+                                  type="button"
+                                  data-toc-toggle
+                                  aria-expanded="true"
+                                  aria-label={locale === 'en' ? `Collapse ${child.heading.text}` : `收起「${child.heading.text}」`}
+                                >
+                                  <span class="article-toc__chevron" aria-hidden="true">
+                            <svg viewBox="0 0 12 12" focusable="false"><path d="M2 4.5 6 8.5 10 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                          </span>
+                                </button>
+                              ) : (
+                                <span class="article-toc__toggle article-toc__toggle--placeholder" aria-hidden="true"></span>
+                              )}
+                              <a data-toc-link href={`#${child.heading.slug}`}>
+                                <span class="article-toc__number" aria-hidden="true">{String(child.number).padStart(2, '0')}</span>
+                                <span class="article-toc__text">{child.heading.text}</span>
+                              </a>
+                            </div>
+                            {child.children.length > 0 && (
+                              <ul class="article-toc__children">
+                                {child.children.map((leaf) => (
+                                  <li class={`article-toc__item article-toc__item--depth-${leaf.heading.depth}`} data-toc-node>
+                                    <div class="article-toc__row">
+                                      <span class="article-toc__toggle article-toc__toggle--placeholder" aria-hidden="true"></span>
+                                      <a data-toc-link href={`#${leaf.heading.slug}`}>
+                                        <span class="article-toc__number" aria-hidden="true">{String(leaf.number).padStart(2, '0')}</span>
+                                        <span class="article-toc__text">{leaf.heading.text}</span>
+                                      </a>
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
               </ul>
             </div>
           </section>
@@ -223,6 +298,33 @@ const breadcrumbStructuredData = buildBreadcrumbJsonLd([
   const tocLinks = Array.from(tocRoot?.querySelectorAll<HTMLAnchorElement>('[data-toc-link]') ?? []);
   const tocViewport = tocRoot?.querySelector<HTMLElement>('.article-toc__viewport');
 
+  // 折叠：按钮控制同一 li 下的子列表
+  tocRoot?.querySelectorAll<HTMLButtonElement>('[data-toc-toggle]').forEach((button) => {
+    const item = button.closest<HTMLElement>('[data-toc-node]');
+    const children = item?.querySelector<HTMLElement>(':scope > .article-toc__children');
+    if (!children) return;
+    button.addEventListener('click', () => {
+      const expanded = button.getAttribute('aria-expanded') !== 'false';
+      button.setAttribute('aria-expanded', String(!expanded));
+      children.hidden = expanded;
+    });
+  });
+
+  const expandAncestors = (link: HTMLAnchorElement) => {
+    let node = link.closest<HTMLElement>('[data-toc-node]')?.parentElement;
+    while (node) {
+      const parentItem = node.closest<HTMLElement>('[data-toc-node]');
+      if (!parentItem) break;
+      const toggle = parentItem.querySelector<HTMLButtonElement>(':scope > .article-toc__row > [data-toc-toggle]');
+      const children = parentItem.querySelector<HTMLElement>(':scope > .article-toc__children');
+      if (toggle && children && children.hidden) {
+        children.hidden = false;
+        toggle.setAttribute('aria-expanded', 'true');
+      }
+      node = parentItem.parentElement?.closest<HTMLElement>('[data-toc-node]');
+    }
+  };
+
   if (tocLinks.length > 0 && 'IntersectionObserver' in window) {
     const linksById = new Map(tocLinks.map((link) => [decodeURIComponent(link.hash.slice(1)), link]));
     const visibleHeadings = new Map<string, number>();
@@ -233,6 +335,7 @@ const breadcrumbStructuredData = buildBreadcrumbJsonLd([
       activeId = id;
       const activeLink = linksById.get(id);
       tocLinks.forEach((link) => link.classList.toggle('is-active', link === activeLink));
+      if (activeLink) expandAncestors(activeLink);
 
       if (activeLink && tocViewport) {
         window.requestAnimationFrame(() => {
